@@ -192,7 +192,7 @@ export class Oracle {
   }
   /** 07 §3 / R-1: each `await` that is not the equation's result becomes its own async memo, asked only while the conditions
    *  that reach it hold (E-11); the equation reads it where the `await` was (ref/src/awaits.ts). */
-  hoistedByName = new Map<string, (() => unknown)[]>();
+  hoistedByName = new WeakMap<Scope, Map<string, (() => unknown)[]>>();
   private hoistAwaits(name: string | null, e: Expr, scope: Scope, tail = true) {
     for (const h of nonTailAwaits(e, tail)) {
       const lv = h.node.init ? { loadingValue: untrack(() => this.ev(h.node.init!, scope)) } : undefined;
@@ -203,7 +203,7 @@ export class Oracle {
       }, lv as any);
       let map = hoistedOf.get(scope); if (!map) hoistedOf.set(scope, (map = new Map())); map.set(h.node, m);
       if (name === null) continue;
-      let byName = this.hoistedByName.get(name); if (!byName) this.hoistedByName.set(name, (byName = [])); byName.push(m);
+      let byName = this.hoistedByName.get(scope); if (!byName) this.hoistedByName.set(scope, (byName = new Map())); let l = byName.get(name); if (!l) byName.set(name, (l = [])); l.push(m);   // per scope: a refresh never reaches a disposed mount's
     }
   }
   /** A region: its declarations, the awaits its own view reads (07 §3), then its view. */
@@ -458,7 +458,7 @@ export class Oracle {
       }
       case "throw": throw untrack(() => this.ev(s.e, scope, env));
       case "action": this.lowerAction([], s.body, scope, env)(); return;
-      case "refresh": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_REFRESH_TARGET"); const key = this.lastKey.get(s.name); if (key) this.forget(key); for (const h of this.hoistedByName.get(s.name) ?? []) refresh(h as any); refresh((b.k === "store" ? b.get() : (b.k === "sig" && b.truth) || b.get) as any); return; }
+      case "refresh": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_REFRESH_TARGET"); const key = this.lastKey.get(s.name); if (key) this.forget(key); const d = Scope.all.find(x => x.vars.get(s.name) === b); for (const h of (d && this.hoistedByName.get(d)?.get(s.name)) ?? []) refresh(h as any); refresh((b.k === "store" ? b.get() : (b.k === "sig" && b.truth) || b.get) as any); return; }
       case "affects": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_AFFECTS_TARGET"); affects(b.get as any); return; }
       case "optimistic": case "write": {
         const b = s.target.ctx ? this.provision(s.target.name, scope) : scope.lookup(s.target.name);
