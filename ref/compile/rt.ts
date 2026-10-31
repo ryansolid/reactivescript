@@ -116,7 +116,10 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
   const contexts = new Map<string, ReturnType<typeof createContext<Entry | undefined>>>();
   const storeAccs = new WeakSet<object>();
   const modules = new Map<unknown, Record<string, unknown>>();
-  const hoistedBy = new Map<string, Acc[]>();   // an equation's hoisted awaits, re-asked with it by `refresh`
+  // An equation's hoisted awaits, re-asked with it by `refresh`. They are emitted just before the equation and claimed
+  // by its accessor when it registers, so a refresh reaches only its own instance's (never a disposed mount's).
+  const hoistedBy = new Map<string, Acc[]>();
+  const hoistedOf = new WeakMap<Acc, Acc[]>();
   const log: string[] = [];
   let currentEq: string | null = null; let serverSeq = 0;
   const jsErrors = new Map<string, unknown>();   // MO-8: one class per declared JS error, per app
@@ -152,7 +155,7 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
     api: (name: string) => opts.api ? (opts.api[name] ?? (() => { throw new Error(`./api has no ${name}`); })) : (...a: unknown[]) => flight(`${name}:${a.map(fmt).join(",")}`),
 
     // ---- the scenario harness's view of names (handler rows reach any live binding by name) ----
-    reg(name: string, e: Entry) { let l = registry.get(name); if (!l) registry.set(name, (l = [])); l.push(e); },
+    reg(name: string, e: Entry) { let l = registry.get(name); if (!l) registry.set(name, (l = [])); l.push(e); const h = hoistedBy.get(name); if (h && e.get) { hoistedOf.set(e.get, h); hoistedBy.delete(name); } },
     lookup(name: string): Entry { const l = registry.get(name); if (!l?.length) throw new Error(`unbound ${name}`); for (let i = l.length - 1; i >= 0; i--) if (l[i].w) return l[i]; return l[l.length - 1]; },
     dget(name: string, live = false) { const e = app.lookup(name); return e.get ? (live ? e.get() : app.snapshot(e.get)) : e.value; },   // live: inside a probe (R-12), the read itself
     dset(name: string, keys: (string | number)[], v: unknown, guess = false) { const w = app.lookup(name).w; if (!w) throw new Error(`W-1: write to non-source ${name}`); if (guess) w.guess(v, keys); else if (keys.length) w.path(keys, v); else w.set(v); },
@@ -258,7 +261,7 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
     until: (p: () => unknown) => until(p),                                   // AC-6
     onSettled: (f: () => void) => onSettled(f),                             // EF-7
     onFlush: (f: () => void) => onFlush(f),                                 // EF-8
-    refresh(name: string, get: Acc) { const key = lastKey.get(name); if (key) flights.delete(key); for (const h of hoistedBy.get(name) ?? []) refresh(h as any); const t = truthOf.get(get) ?? get; refresh((storeAccs.has(t) ? t() : t) as any); },
+    refresh(name: string, get: Acc) { const key = lastKey.get(name); if (key) flights.delete(key); for (const h of hoistedOf.get(get) ?? []) refresh(h as any); const t = truthOf.get(get) ?? get; refresh((storeAccs.has(t) ? t() : t) as any); },
     affects: (get: Acc) => affects(get as any),
     preOr: (v: unknown, init: () => unknown) => v === undefined ? init() : v,
 
