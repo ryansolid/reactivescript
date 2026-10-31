@@ -1,0 +1,5 @@
+import { Missing as Lost } from "./types.rx"
+import { Reader } from "./reader.rx"
+export default component App() {
+  errored fallback(e: Lost) { <p>{e.message}</p> } { <Reader/> }
+}

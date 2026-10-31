@@ -1,0 +1,5 @@
+export component Counter() {
+  source state := { count: 0, rows: [{ id: 1, label: "A" }, { id: 2, label: "B" }] };
+  total = state.count + state.rows.length;
+  <button onClick={() => { state.count := state.count + 1; state.rows[0].label := "X" }}>{"" + state.count}/{"" + total}{if state.count > 0 { for row in state.rows { <i>{"" + row.label}</i> } } else { <i>empty</i> }}</button>
+}

@@ -1,0 +1,6 @@
+export component Counter() {
+  source count := 0;
+  source seen := 0;
+  effect(count) { seen := $0 * 10; }
+  <button onClick={() => { count := count + 1 }}>{"" + count}/{"" + seen}</button>
+}

@@ -1,0 +1,141 @@
+diff --git a/ref/compile/rt-server.ts b/ref/compile/rt-server.ts
+index 107e064..7cebd14 100644
+--- a/ref/compile/rt-server.ts
++++ b/ref/compile/rt-server.ts
+@@ -53,6 +53,18 @@ function tryCatch(f: () => unknown, match: (err: unknown) => boolean, alt: (err:
+ }
+ 
+ // ---------------------------------------------------------------- the wire (12 SF-6; a copy of ref/src/failure.ts's)
++/** A server question's argument key (frontend patch 0001): lossless for wire data and independent of record key order,
++ *  so argument lists that differ as data never share a flight. serverCall still validates the arguments (wireCopy). */
++function wireKey(args: readonly unknown[]): string {
++  const enc = (v: unknown): unknown =>
++    v === undefined ? ["u"] : v === null ? ["z"] : typeof v === "boolean" ? ["b", v] : typeof v === "string" ? ["s", v]
++    : typeof v === "number" ? ["n", Object.is(v, -0) ? "-0" : String(v)]
++    : Array.isArray(v) ? ["a", Array.from({ length: v.length }, (_, i) => Object.hasOwn(v, i) ? enc(v[i]) : ["h"])]
++    : typeof v === "object" && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
++      ? ["o", Object.keys(v as object).sort().map(k => [k, enc((v as Record<string, unknown>)[k])])]
++      : ["x", typeof v];
++  return JSON.stringify(args.map(enc));
++}
+ function wireCopy(v: unknown, where: string, fail: (msg: string) => never): unknown {
+   if (v === null || v === undefined || typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+   if (Array.isArray(v)) return v.map((x, i) => wireCopy(x, `${where}[${i}]`, fail));
+@@ -166,7 +178,7 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
+      *  — a request to the server. */
+     serverRef(name: string, fn: (...a: unknown[]) => Promise<unknown>) {
+       return (...args: unknown[]) => {
+-        const key = `${name}:${args.map(fmt).join(",")}`;
++        const key = `${name}:${wireKey(args)}`;
+         const question = !!getObserver();
+         if (question && flights.has(key)) return flights.get(key)!;
+         const fl = question ? flight(key) : new Flight(`${key}#${serverSeq++}`);
+diff --git a/ref/compile/rt-web.ts b/ref/compile/rt-web.ts
+index b4a4c61..ee94872 100644
+--- a/ref/compile/rt-web.ts
++++ b/ref/compile/rt-web.ts
+@@ -74,6 +74,18 @@ const NO_PROVISION: Entry = {};
+ class Forward { err: unknown; constructor(e: unknown) { this.err = e; } }
+ 
+ // ---------------------------------------------------------------- the wire (12 SF-6; a copy of ref/src/failure.ts's)
++/** A server question's argument key (frontend patch 0001): lossless for wire data and independent of record key order,
++ *  so argument lists that differ as data never share a flight. serverCall still validates the arguments (wireCopy). */
++function wireKey(args: readonly unknown[]): string {
++  const enc = (v: unknown): unknown =>
++    v === undefined ? ["u"] : v === null ? ["z"] : typeof v === "boolean" ? ["b", v] : typeof v === "string" ? ["s", v]
++    : typeof v === "number" ? ["n", Object.is(v, -0) ? "-0" : String(v)]
++    : Array.isArray(v) ? ["a", Array.from({ length: v.length }, (_, i) => Object.hasOwn(v, i) ? enc(v[i]) : ["h"])]
++    : typeof v === "object" && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
++      ? ["o", Object.keys(v as object).sort().map(k => [k, enc((v as Record<string, unknown>)[k])])]
++      : ["x", typeof v];
++  return JSON.stringify(args.map(enc));
++}
+ function wireCopy(v: unknown, where: string, fail: (msg: string) => never): unknown {
+   if (v === null || v === undefined || typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+   if (Array.isArray(v)) return v.map((x, i) => wireCopy(x, `${where}[${i}]`, fail));
+@@ -220,7 +232,7 @@ export function createApp(opts: { root: any; api?: Record<string, (...a: any[])
+      *  — a request to the server. */
+     serverRef(name: string, fn: (...a: unknown[]) => Promise<unknown>) {
+       return (...args: unknown[]) => {
+-        const key = `${name}:${args.map(fmt).join(",")}`;
++        const key = `${name}:${wireKey(args)}`;
+         const question = !!getObserver();
+         if (question && flights.has(key)) return flights.get(key)!;
+         const fl = question ? flight(key) : new Flight(`${key}#${serverSeq++}`);
+diff --git a/ref/compile/rt.ts b/ref/compile/rt.ts
+index 6cdd55c..662d418 100644
+--- a/ref/compile/rt.ts
++++ b/ref/compile/rt.ts
+@@ -65,6 +65,18 @@ const NO_PROVISION: Entry = {};
+ class Forward { err: unknown; constructor(e: unknown) { this.err = e; } }
+ 
+ // ---------------------------------------------------------------- the wire (12 SF-6; a copy of ref/src/failure.ts's)
++/** A server question's argument key (frontend patch 0001): lossless for wire data and independent of record key order,
++ *  so argument lists that differ as data never share a flight. serverCall still validates the arguments (wireCopy). */
++function wireKey(args: readonly unknown[]): string {
++  const enc = (v: unknown): unknown =>
++    v === undefined ? ["u"] : v === null ? ["z"] : typeof v === "boolean" ? ["b", v] : typeof v === "string" ? ["s", v]
++    : typeof v === "number" ? ["n", Object.is(v, -0) ? "-0" : String(v)]
++    : Array.isArray(v) ? ["a", Array.from({ length: v.length }, (_, i) => Object.hasOwn(v, i) ? enc(v[i]) : ["h"])]
++    : typeof v === "object" && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
++      ? ["o", Object.keys(v as object).sort().map(k => [k, enc((v as Record<string, unknown>)[k])])]
++      : ["x", typeof v];
++  return JSON.stringify(args.map(enc));
++}
+ function wireCopy(v: unknown, where: string, fail: (msg: string) => never): unknown {
+   if (v === null || v === undefined || typeof v === "string" || typeof v === "number" || typeof v === "boolean") return v;
+   if (Array.isArray(v)) return v.map((x, i) => wireCopy(x, `${where}[${i}]`, fail));
+@@ -228,7 +240,7 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
+      *  — a request to the server. */
+     serverRef(name: string, fn: (...a: unknown[]) => Promise<unknown>) {
+       return (...args: unknown[]) => {
+-        const key = `${name}:${args.map(fmt).join(",")}`;
++        const key = `${name}:${wireKey(args)}`;
+         const question = !!getObserver();
+         if (question && flights.has(key)) return flights.get(key)!;
+         const fl = question ? flight(key) : new Flight(`${key}#${serverSeq++}`);
+diff --git a/ref/src/failure.ts b/ref/src/failure.ts
+index b00ff35..089c7f6 100644
+--- a/ref/src/failure.ts
++++ b/ref/src/failure.ts
+@@ -57,6 +57,18 @@ export function wireCopy(v: unknown, where: string, fail: (msg: string) => never
+   }
+   return fail(`${where} is ${typeof v === "function" ? "a function" : `an instance of ${(v as object).constructor?.name ?? "a class"}`}, which the wire cannot carry: send data`);
+ }
++/** A server question's argument key (frontend patch 0001): lossless for wire data and independent of record key order,
++ *  so argument lists that differ as data never share a flight. serverCall still validates the arguments (wireCopy). */
++export function wireKey(args: readonly unknown[]): string {
++  const enc = (v: unknown): unknown =>
++    v === undefined ? ["u"] : v === null ? ["z"] : typeof v === "boolean" ? ["b", v] : typeof v === "string" ? ["s", v]
++    : typeof v === "number" ? ["n", Object.is(v, -0) ? "-0" : String(v)]
++    : Array.isArray(v) ? ["a", Array.from({ length: v.length }, (_, i) => Object.hasOwn(v, i) ? enc(v[i]) : ["h"])]
++    : typeof v === "object" && (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
++      ? ["o", Object.keys(v as object).sort().map(k => [k, enc((v as Record<string, unknown>)[k])])]
++      : ["x", typeof v];
++  return JSON.stringify(args.map(enc));
++}
+ /** SF-6b / SV-5: a failure crosses as it is when its class is declared; anything else as the generic error. */
+ export function wireFailure(err: unknown): unknown {
+   return err instanceof Error && (err.constructor as { declared?: boolean }).declared ? err : new Error("Internal Server Error");
+diff --git a/ref/src/runtime.ts b/ref/src/runtime.ts
+index cd3da47..f47a4ad 100644
+--- a/ref/src/runtime.ts
++++ b/ref/src/runtime.ts
+@@ -8,7 +8,7 @@ type FnDecl = Extract<Decl, { k: "fn" }>; type CompDecl = Extract<Decl, { k: "co
+ import { RuleError, CheckError } from "./errors.ts";
+ import { checkModules, unwrapServer } from "./check.ts";
+ export { RuleError, CheckError };
+-import { makeErrorClass, isA, PANIC, wireCopy, wireFailure } from "./failure.ts";
++import { makeErrorClass, isA, PANIC, wireCopy, wireFailure, wireKey } from "./failure.ts";
+ import { singleModule, type ModuleSet } from "./modules.ts";
+ /** 12 SF-1d: Solid's server-function wrappers (\`GET\`, \`live\`, …) where there is no network: the function as it is (SF-7b). */
+ const LOCAL_WRAPPERS: Record<string, unknown> = { GET: (f: unknown) => f, live: (f: unknown) => f, broadcast: (f: unknown) => f, withMeta: (f: unknown) => f };
+@@ -903,7 +903,7 @@ export class Runtime {
+   private serverFns = new WeakMap<Expr, unknown>(); private serverNames = new WeakMap<Expr, string>();
+   private serverFn(d: { name: string; params: string[]; body: Stmt[] }, home: Region) {
+     return (...args: unknown[]) => {
+-      const key = `${d.name}:${args.map(fmt).join(",")}`;
++      const key = `${d.name}:${wireKey(args)}`;
+       const question = this.demandMode;
+       if (question && this.flights.has(key)) return this.flights.get(key)!;
+       const f = question ? this.flight(key) : new Flight(`${key}#${this.serverSeq++}`);

@@ -1,0 +1,9 @@
+factor: number = 2;
+fn format(n: number): string => "n=" + n;
+export component Counter() {
+  source count := 0;
+  source initial := peek count;
+  label = format(count * factor);
+  frozen = peek count;
+  <button title={"counter"} disabled={false} onClick={() => { count := (previous) => previous + 1 }}>{"" + initial}/{"" + label}/{"" + frozen}/{if count > 1 { {"" + "many"} } else { {"" + "few"} }}/{false ? "" : ""}/{null ? "" : ""}</button>
+}

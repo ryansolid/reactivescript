@@ -1,0 +1,39 @@
+{
+  "name": "reactivescript-tsx",
+  "private": true,
+  "type": "module",
+  "description": "Experimental Oxc TSX frontend for ReactiveScript (demo, in-tree as tsx-frontend/). Lowers authored Solid-style TSX onto the pinned upstream Program/checker in ../ref. See README.md.",
+  "exports": {
+    ".": "./tsx/primitives.ts"
+  },
+  "imports": {
+    "#rx/*": "reactivescript-ref/*"
+  },
+  "scripts": {
+    "verify:subset": "npm run check && node --experimental-strip-types --conditions=browser --conditions=development --test tsx/boundary.test.ts tsx/paired.test.ts tsx/composition.test.ts tsx/demo.test.ts tsx/stale-write.test.ts",
+    "test:contracts": "node --experimental-strip-types --conditions=browser --conditions=development --test tsx/boundary.test.ts tsx/verifier.test.ts tsx/paired.test.ts tsx/contracts.test.ts",
+    "test": "node --experimental-strip-types --conditions=browser --conditions=development --test tsx/*.test.ts",
+    "test:browser": "node --experimental-strip-types --test tsx/browser.ts",
+    "check": "node --experimental-strip-types scripts/check-types.ts",
+    "build": "node --experimental-strip-types tsx/build.ts",
+    "verify:pinned": "sh scripts/verify-pinned.sh",
+    "compare:pinned": "sh scripts/verify-pinned.sh --compare",
+    "canary": "sh scripts/canary.sh"
+  },
+  "dependencies": {
+    "@solidjs/compiler": "file:../../solid-next/packages/compiler",
+    "@solidjs/signals": "file:../../solid-next/packages/signals",
+    "@solidjs/universal": "file:../../solid-next/packages/universal",
+    "@solidjs/web": "file:../../solid-next/packages/web",
+    "entities": "8.1.0",
+    "oxc-parser": "0.155.0",
+    "reactivescript-ref": "file:../ref",
+    "solid-js": "file:../../solid-next/packages/solid"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "esbuild": "0.28.2",
+    "playwright": "1.59.1",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,9 @@
+server fn load(x) { return x === 1 ? "number" : "string" }
+server fn first(x, y) { return x }
+a = await load(1)
+b = await load("1")
+c = await first("a,b", "c")
+d = await first("a", "b,c")
+export default component App() {
+  errored fallback(e) { <p>failed</p> } { <p>{a}/{b}/{c}/{d}</p> }
+}
