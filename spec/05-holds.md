@@ -194,7 +194,11 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   (S-solid-33, S-solid-34 — the first draft said "unaffected"; Solid's
   D-26 and S-33 say otherwise). It lives as long as the hold it was made
   over: the hold's commit ends it and reveals the truth in the same frame;
-  the hold ending without a commit reverts it. When `x`'s own question
+  the hold ending without a commit reverts it. A path guess's hold is its own action's
+  (per key), except that a keyed source with a question is a projection of
+  its answer: while an action's re-ask of it is in flight, every reader of
+  it waits for that action, a declined guess's revert included (ruled
+  2026-10-31: by design, a re-ask can touch every row). When `x`'s own question
   answers: an answer equal to the guess confirms silently — the held answer
   is not pending (S-solid-34 instant 5); a different answer **corrects the
   graph now** (derivations re-derive from the truth, `latest x` is the

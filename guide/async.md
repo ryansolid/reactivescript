@@ -85,10 +85,27 @@ export action markDone(id: number) {
 }
 ```
 
-A guess on `todos[i].done` belongs to its own action: another action's guess on another row reverts on its own
-(AC-3). A guess on the whole list (`optimistic todos := …`) makes every action on the list one change, so a
-declined one stays on screen until the others end. After the `await`, re-ask the list (`refresh todos`) rather than
-writing the row: a plain write to a list that is guessed by row is not supported yet.
+Guessing the row changes only that row on screen, and a new answer for the list corrects only the rows that differ
+(AC-3). After the `await`, re-ask the list (`refresh todos`) rather than writing the row: a plain write to a list that
+is guessed by row is not supported yet.
+
+### When a declined guess waits
+
+A row guess belongs to its action: when the action ends (accepted or declined), the row shows the truth again,
+even while other actions on the same list are still out. The exception is a re-ask. A keyed source with a question
+is one projection of its answer, and a new answer can touch every row, so while an action's `refresh todos` is in
+flight, everything shown from `todos` waits for that action to end, including another action's declined guess.
+The screen is never wrong in between: it shows the guesses, then the truth, in one frame. This is the design (H-11),
+not a bug, and moving the guess to a source of its own doesn't change it: the rows that show it read `todos`.
+
+A guess on a whole list (`optimistic adding := as => [...as, x]`) is one change with every other guess on that list:
+two adds in flight end together, so a declined one stays until the other ends. That's the same rule, not something
+to work around.
+
+- **Show that something is in flight**, so the longer wait isn't silent: a row flag set by the guess
+  (`optimistic todos[i].saving := true`), or `pending? todos` with `affects todos`.
+- **Don't rebuild guesses by hand** (a plain list of pending ids with your own revert) to end them one by one: it
+  loses the revert and the hold that keep the screen consistent.
 
 ### Guessing data that depends on a selection
 
@@ -160,9 +177,9 @@ export action add(id: string, title: string) {
 
 - **A plain write in an action doesn't show until the server answers.** That's the hold. Use `optimistic` or
   `onFlush` (the table above). Don't move the code into a plain handler to escape it.
-- **Two actions guessing the same source revert together.** Their guesses are one change (H-11): a declined one
-  goes back when the other ends. For a list, guess the row instead (above). Don't rebuild guesses by hand to
-  separate them.
+- **A declined row guess stays until another action's re-ask lands.** While an action's `refresh` of the list is
+  in flight, the list's rows wait for that action (H-11), declined guesses included. That's by design; see "When
+  a declined guess waits" above.
 - **A click waits for an action it has nothing to do with.** A plain write to a source an action in flight has
   written or guessed joins that action's hold (H-2): a click that clears the action's error waits for the
   server. Keep such a write off the action's sources, or make it an `onFlush` run.
