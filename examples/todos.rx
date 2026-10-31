@@ -38,9 +38,9 @@ shown = live.filter(t => filter === "all" || (filter === "done") === t.done)
 remaining = live.filter(t => !t.done).length
 anyDone = live.some(t => t.done)
 
-// A guess on `todos[i]` is its action's own, so a declined toggle reverts without waiting for the others (AC-3). A
-// new row has no index yet, so an add guesses `adding`, a list of its own: adds in flight together end together
-// (H-11), but they never hold a toggle. A guess on all of `todos` (clearDone) is one change with every row guess.
+// A row guess ends with its action, but while any action's re-ask of the list is in flight the rows wait for it
+// (H-11): a declined toggle can stay until then. A guess on all of `todos` (clearDone) is one change with every row
+// guess. A new row has no index yet, so an add guesses `adding`, a list of its own.
 action add(id: string, title: string) {
   try {
     optimistic adding := as => [...as, { id: id, title: title, done: false, gone: false, saving: true, failure: null }]
