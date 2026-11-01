@@ -4,9 +4,9 @@
 export type Theme = "light" | "dark"
 export type Density = "comfortable" | "compact"
 
-// The theme being edited. It carries a source (RG-7c), so a picker anywhere
-// beneath the provider can change it without knowing who owns it.
-export context theme: source Theme
+// The theme being edited, and the one write its owner allows (O-4): a picker
+// anywhere beneath the provider can change it without knowing who owns it.
+export context theme: { current: Theme; pick: (t: Theme) => void }
 
 // Layout density. Only some subtrees provide it; everywhere else it is the
 // default (RG-7b).

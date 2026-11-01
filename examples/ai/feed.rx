@@ -1,6 +1,7 @@
 // feed.rx — a chat feed: rooms fetched once, the selected room's messages as a
 // stream, a compose box whose send is an optimistic action, a typing indicator,
-// and a room list that reads / writes the selected room through context.
+// and a room list that reads the selected room through context and picks one
+// through the function the context provides.
 // Written from the spec alone (02–08) as a cold test of the language.
 
 import pure { fetchRooms, streamMessages, sendMessage } from "./api"
@@ -12,8 +13,9 @@ type Message = { id: number; from: string; text: string }
 
 // --- app state (module level: lives for the module's lifetime, 07 §1) ---
 source selected: number := 1                       // E-4: a plain source
-context room: source number                        // RG-7: a declared context that carries a source (RG-7c)
-provide room = selected                            // the provision *is* the source — `use room := …` writes it
+action pick(id) { selected := id }                 // O-4: the module owns `selected`; this is the one write it allows
+context room: { current: number; pick: (id: number) => void }   // RG-7: a declared context
+provide room = { current: selected, pick: pick }   // readers beneath read `current` and call `pick`
 
 rooms: Room[] = await fetchRooms()                 // R-1: fetched once; pending until it lands (no inputs → never re-asked)
 source messages: Message[] = await* streamMessages(selected) -> []   // ST-5 + ST-6b: a stream, first paint `[]` (R-7)
@@ -49,8 +51,8 @@ component RoomList(props: { rooms: Room[] }) {
 }
 
 component RoomItem(props: { room: Room }) {
-  active = (use room) == props.room.id              // RG-7b: `use` is an equation over the provision
-  <li onClick={() => { use room := props.room.id }}>{props.room.name} {active ? "*" : "-"}{" "}</li>
+  active = (use room).current == props.room.id      // RG-7b: `use` is an equation over the provision
+  <li onClick={() => { (use room).pick(props.room.id) }}>{props.room.name} {active ? "*" : "-"}{" "}</li>
 }
 
 component Compose(props: {}) {

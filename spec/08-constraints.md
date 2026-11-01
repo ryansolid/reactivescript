@@ -198,8 +198,9 @@ How each enforcer is realised:
   write whose stored value contains a closure — directly, through a `let`,
   or as the result of a functional write's function — capturing a reactive
   name from a region deeper than the written source's is `REGION_ESCAPE`.
-  A write through a provision (`use p := …`) is taken to outlive the
-  writing component unless the provision is declared in it. A name holds
+  (A write through a provision, `use p := …`, is no longer a program:
+  O-4. A closure passed to an action that stores it is not followed yet,
+  O-4a.) A name holds
   a closure through a `let` or an equation's expression; a call to a
   `fn` holds what its result captures, with the instance of an
   instantiation (RG-6) standing for whatever it declared, at the call's

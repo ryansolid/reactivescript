@@ -1,6 +1,6 @@
-# S-region-7 — downstream registration is an effect with a cleanup; context carries the target
+# S-region-7 — downstream registration is an effect with a cleanup; context carries the writes
 
-Rules: RG-7, W-6, O-2, O-3, EF.
+Rules: RG-7, O-4, W-6, O-2, O-3, EF.
 
 The concrete shape: a form with two inputs, each telling the form "I am
 here and I am valid/invalid" so the form can say whether the whole thing
@@ -11,23 +11,31 @@ functional (`fields := f => [...f, row]`, W-6) and compose — with plain
 value writes the second would overwrite the first and one input would be
 lost. Storing a value is not an escape (O-3 is about closures capturing
 region-local names); re-registration on change is the effect re-running.
+The form owns `rows`, so only the form writes it (O-4): it provides
+actions that say what a field may do, add itself and remove itself,
+and nothing else. (Until 2026-10-31 the context carried the source itself,
+RG-7c, and a field wrote `use fields := …` with any value it liked.)
 
 ## Program
 
 ```
-context fields: source { ok: boolean }[]   // RG-7: declared; it carries a source (RG-7c)
+type Row = { ok: boolean }
+context fields: { add: (r: Row) => void; remove: (r: Row) => void }   // RG-7: declared; it carries the writes the form allows (O-4)
 component Form(props) {
   source rows := []
-  provide fields = rows
+  action add(r) { rows := f => [...f, r] }
+  action remove(r) { rows := f => filter(f, x => x != r) }
+  provide fields = { add: add, remove: remove }
   valid = every(rows, f => f.ok)
   <div>{props.children} <p>{len(rows)} {valid ? "valid" : "invalid"}</p></div>
 }
 component Field(props) {
   ok = props.value != ""
+  reg = use fields
   effect (ok) {
     let row = { ok: $0 }
-    use fields := f => [...f, row]
-    () => { use fields := f => filter(f, x => x != row) }
+    reg.add(row)
+    () => { reg.remove(row) }
   }
   <i>{props.value}</i>
 }
@@ -60,17 +68,17 @@ export default component App() {
 
 Registration lands one instant after the render that caused it (an
 effect's writes begin the next instant, EF-5); the cleanup unregisters when
-the email field's region ends (instant 6→7). No `register`/`unregister`
-pair to keep in step.
+the email field's region ends (instant 6→7). The effect and its cleanup
+keep `add` and `remove` in step: nothing calls one without the other.
 
 ## Rejected variants
 
 ```
 -- reject: RG-7b
-context fields: source unknown[]
+context fields: { add: (r: unknown) => void }
 component Field(props) {
   ok = props.value != ""
-  <i>{props.value} {len(use fields)}</i>
+  <i>{props.value} {(use fields).add ? "y" : "n"}</i>
 }
 
 export default component App() {

@@ -120,3 +120,6 @@ Modules: `theme.rx` (contexts only) ← `settings.rx` (server truth + actions),
 | 9 density | high | plain local write, RG-7b |
 | 10 save again | medium | H-11 on `saveError` (a constant question); branch closing under a guess (assumption 5) |
 | 11 resolve save | medium-high | H-11: an equal truth confirms silently; the plain `saveError := ""` truth |
+
+(2026-10-31: RG-7c is withdrawn. The program now provides `{ current, pick }`, with `pick` an action
+the form declares (O-4); the notes above describe the run as it was.)

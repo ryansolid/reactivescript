@@ -191,10 +191,10 @@ Function application `f(e…)` covers both language functions and FFI imports;
   committed value. (Restates Solid F-10 for the synchronous case.) So a
   read of a source the run's own change has written is a compile error
   (`STALE_OWN_READ`, 06 AC-1d): it could only mean the write.
-- **W-5 (Writer scope).** A source may be written only by imperative code in
-  its declaring region or a region nested in it, or by a handler that was
-  handed the source explicitly. Exported sources export a reader; the writer is
-  exported only when declared so. (Full rule: 03-regions O-4.)
+- **W-5 (Writer scope).** A source is written only through its own name, by
+  imperative code in its declaring region or a region nested in it. Props,
+  parameters, contexts and imports are read-only; the owner passes an action
+  to let other code write. (Full rule: 03-regions O-4, ruled 2026-10-31.)
 - **W-6 (Functional writes).** [ruled 2026-10-22] `x := f`, with `f` a
   function, writes the result of applying `f` to the slot *as it stands at
   the instant* — after the writes before it in the same instant — rather

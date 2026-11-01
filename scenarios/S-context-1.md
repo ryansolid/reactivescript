@@ -98,17 +98,21 @@ export default component App() {
 }
 ```
 
-RG-7c: only a context declared `source` is written through.
+O-4: a context is read beneath its provision, never written through.
 
 ```
--- reject: PROVIDE_NOT_A_SOURCE
+-- reject: SOURCE_CONTEXT
 context picked: source number
-provide picked = 1 + 1
 
 export default component App() {
+  source n := 1
+  provide picked = n
   <b>{use picked}</b>
 }
 ```
+
+`context x: source T` (RG-7c) is withdrawn (ruled 2026-10-31): the
+provider provides the writes it allows, as functions.
 
 ```
 -- reject: NOT_A_CONTEXT
@@ -117,15 +121,6 @@ export default component App() {
   provide picked = 2
 
   <b>{picked}</b>
-}
-```
-
-```
--- reject: INVALID_CONTEXT_DEFAULT
-context picked: source number = 1
-
-export default component App() {
-  <b>{use picked}</b>
 }
 ```
 

@@ -14,7 +14,9 @@ export default component App() { … }       // the entry module's default compo
 ```
 
 A file's top level is imports, exports and declarations. A `source` at the top level is app state; inside a
-component it is that instance's state. Exported sources are read-only to importers: export actions that write them.
+component it is that instance's state. Only the block that declares a source writes it: importers, props, function
+parameters and contexts are read-only, at every path into a store. To let other code write it, hand it an action that
+does (`export action select(id) { selected := id }`, or an action passed as a prop or provided in a context).
 
 ## Declarations
 
@@ -48,7 +50,7 @@ values. Arrays and strings have their usual methods: `xs.filter(f)`, `xs.map(f)`
 | `peek(x)` | `x` read once, without depending on it |
 | `e catch (err) => alt` | `alt` when `e` fails |
 | `c ? a : throw NotFound(id)` | a failure as a value of an arm |
-| `use name` / `provide name = e` | context: the nearest provision above |
+| `use name` / `provide name = e` | context: the nearest provision above, read-only (provide actions to let readers write) |
 
 ## Markup
 

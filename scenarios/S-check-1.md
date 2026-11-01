@@ -268,25 +268,10 @@ export default component App() {
 Through a `let`, and through a functional write's result: the function a
 functional write is given is applied, but what it returns is stored (W-6).
 
-```
--- reject: REGION_ESCAPE
-context fields: source unknown[]
-component Form(props) {
-  source rows := []
-  provide fields = rows
-  <form>{props.children}</form>
-}
-component Field(props) {
-  source v := ""
-  <input onInput={() => { use fields := fs => [...fs, () => v] }} />
-}
-
-export default component App() {
-  <Form><Field /></Form>
-}
-```
-
-A provision always outlives the component that writes through it.
+(A case here stored a closure through a `source` context, `use fields :=
+fs => [...fs, () => v]`. RG-7c is withdrawn, 2026-10-31: a provider now
+provides writer functions, and a closure handed to one as an argument is
+not yet followed by O-3. See the gap noted under O-3 in 03-regions.)
 
 ```
 -- reject: REGION_ESCAPE
@@ -348,32 +333,10 @@ export default component App() {
 captures is checked where `Item` is applied. Storing `props.label` (a
 value) is never an escape.
 
-```
--- reject: REGION_ESCAPE
-context fields: source unknown[]
-component Form(props) {
-  source rows := []
-  provide fields = rows
-  <form>{props.children}</form>
-}
-component Field(props) {
-  effect (props.n) { use fields := f => [...f, props.onPick] }
-  <i>{props.n}</i>
-}
-component Labeled(props) { <label><Field n={props.n} onPick={props.onPick} /></label> }
-
-export default component App() {
-  source rows := [1, 2]
-  <Form>{for r in rows {
-    source hits := 0
-    <Labeled n={r} onPick={() => { hits := hits + 1 }} />
-  }}</Form>
-}
-```
-
-Passed on: `Labeled` hands `onPick` to `Field`, which stores it through a
-provision `Form` makes above the rows. Were `Form` applied inside the row,
-the same program would be accepted.
+(A case here stored `props.onPick`, passed on through `Labeled`, through
+a `source` context provided above the rows. That form is withdrawn
+(RG-7c, 2026-10-31); the same store made through a provided writer
+function is the O-3 gap noted in 03-regions.)
 
 ```
 -- reject: CONTEXT_NOT_FOUND

@@ -85,8 +85,7 @@ component Header() { … }               // no props
 context theme: Theme = defaultTheme    // RG-7a: a declared context (module level); `= …` is its default
 provide theme = settings.theme         // RG-7b: to everything rendered beneath
 palette = (use theme).palette          // RG-7b: the nearest provision above
-context fields: source Field[]         // RG-7c: a context that carries a source
-provide fields = rows                  // the provision is the source — `use fields := …` writes it
+provide fields = { add: addField }    // O-4: a context is read beneath it; to let readers write, provide actions
 error NotFound(id: number) => `no user ${id}`   // R-f-1: an error class; `NotFound(3)` constructs one
 ```
 
@@ -212,8 +211,8 @@ action { refresh user; affects user }   // inline, one run (AC-1)
 }}>♥</button>
 ```
 
-- A write is `target := e`; `target` is a source or a path into one (W-1),
-  or `use name …` for a provided source (RG-7c). There is no compound
+- A write is `target := e`; `target` is a source declared in this region or
+  one enclosing it, or a path into one (W-1, O-4). There is no compound
   assignment; `x := f` with `f` a function is a functional write — `f` is
   applied to the slot at the instant, so writes to one slot in one instant
   compose (W-6).
@@ -431,7 +430,7 @@ Classes   ::= Name ("|" Name)*                                       -- error cl
 Decl      ::= "export"? Decl' | "export" "default" Component        -- the entry's default component is the mounted view
 Decl'     ::= "source" Name Type? ("key" Name)? (":=" | "=") Expr
             | ("type" | "interface") Name …                        -- kept as text
-            | "context" Name (":" "source"? Type)? ("=" Expr)?            -- RG-7a, RG-7c
+            | "context" Name (":" "source"? Type)? ("=" Expr)?            -- RG-7a; `source`: SOURCE_CONTEXT (RG-7c withdrawn)
             | "provide" Name "=" Expr                                  -- Name: a context
             | "deferred"? Name Type? ("key" Name)? "=" Expr
             | "effect" "(" (Expr ("," Expr)*)? ")" Block           -- no inputs: EF-4
@@ -446,7 +445,7 @@ Control   ::= "if" Expr "{" RBlock "}" ("else" "{" RBlock "}")?
             | "loading" ("on" "(" Expr ")")? "fallback" "{" RBlock "}" "{" RBlock "}"
             | "errored" "fallback" ("(" Name (":" Classes)? ")")? "{" RBlock "}" "{" RBlock "}"
 Block     ::= "{" Stmt* "}"
-Stmt      ::= Target ":=" Expr | "optimistic" Target ":=" Expr      -- Target may be `use` Name Path (RG-7c)
+Stmt      ::= Target ":=" Expr | "optimistic" Target ":=" Expr      -- Target `use` Name Path: WRITE_TO_NON_SOURCE (O-4)
             | "refresh" Name | "affects" Name | "action" Block
             | ("let" | "const") Name Type? "=" Expr
             | "if" "(" Expr ")" (Block | Stmt) ("else" (Block | Stmt))?
@@ -492,7 +491,7 @@ Expr      ::= TSExpr with §3's removals and additions
     operator, so `c ? a : b catch …` catches the conditional.
 13. **Contexts are declared** (ruled 2026-10-23): `context x: T [= d]`;
     `provide`/`use` name the declaration (RG-7). Keyword `context`, and
-    defaults (except on a `source` context, RG-7c), ruled 2026-10-26.
+    defaults, ruled 2026-10-26. (`source` contexts withdrawn 2026-10-31, O-4.)
 
 14. **One `catch` per `try`** (ruled 2026-10-25): TypeScript's statement
     form; a typed `catch (e: A)` rethrows other classes (AC-7), and two
