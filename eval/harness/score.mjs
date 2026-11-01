@@ -24,7 +24,7 @@ const round5 = new Set(["desk", "labels", "related", "count", "chain1", "chain2"
 const rows = [];
 for (const name of readdirSync(runs).sort()) {
   const dir = path.join(runs, name);
-  const m = name.match(/^(\w+)-(rx|react|solid|foldkit)-(\d+)$/);
+  const m = name.match(/^(\w+)-(rx|react|solid|foldkit|vanilla)-(\d+)$/);
   if (!m) continue;
   const [, task, arm, n] = m;
   const alongside = round5.has(task) ? round5Alongside : round4Alongside;

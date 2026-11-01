@@ -11,8 +11,8 @@
 // For foldkit, the docs are Foldkit's own FOLDKIT.md (create-foldkit-app's template) at the end of the prompt, and the
 // Foldkit repository at the installed release's tag readable in docs/foldkit, as Foldkit tells agents to vendor it
 // (examples, skills, AGENTS.md, the framework source); FOLDKIT_REPO names the checkout (default ../../foldkit).
-// Arms: rx, react, solid (Solid 2 TSX, round 5), foldkit (round 6).
-// Usage: node harness/scaffold.mjs <task> <rx|react|solid|foldkit> <dir> [--reference] [--brief <name>] [--base <dir>] [--inline-docs]
+// Arms: rx, react, solid (Solid 2 TSX, round 5), foldkit (round 6), vanilla (plain TypeScript and DOM, no framework).
+// Usage: node harness/scaffold.mjs <task> <rx|react|solid|foldkit|vanilla> <dir> [--reference] [--brief <name>] [--base <dir>] [--inline-docs]
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -38,8 +38,8 @@ export function scaffold(task, arm, dir, { reference = false, brief = null, base
   }, null, 2) + "\n");
   cpSync(path.join(t, "visible.mjs"), path.join(dir, "tests/visible.mjs"));
   cpSync(path.join(t, "fixtures.mjs"), path.join(dir, "tests/fixtures.mjs"));
-  if (arm === "react" || arm === "solid") {
-    const jsx = arm === "react" ? { jsx: "react-jsx" } : { jsx: "preserve", jsxImportSource: "@solidjs/web" };
+  if (arm === "react" || arm === "solid" || arm === "vanilla") {
+    const jsx = arm === "react" ? { jsx: "react-jsx" } : arm === "solid" ? { jsx: "preserve", jsxImportSource: "@solidjs/web" } : {};
     writeFileSync(path.join(dir, "tsconfig.json"), JSON.stringify({
       compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "bundler", ...jsx, strict: true, noEmit: true, allowJs: true, checkJs: false, skipLibCheck: true, lib: ["ES2022", "DOM", "DOM.Iterable"] },
       include: ["src"],
