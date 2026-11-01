@@ -272,15 +272,15 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     const click = async (id, nth = 0) => { await page.locator(sel(id)).nth(nth).click({ timeout: 2000 }); };
     switch (m) {
       case "select": { const t = pick(rows); const id = Number(t.match(/^#(\d+)/)?.[1]); if (!id) return; trail.push(`select #${id}`); await page.locator(sel("issue"), { hasText: `#${id} ` }).first().click({ timeout: 2000 }); if ((await pending()).length && ui.selected !== id) held.selections.add(ui.selected); ui.selected = id; break; }
-      case "user": { const u = pick(USERS); trail.push(`user ${u}`); await page.locator(sel("user")).first().fill(u); break; }
+      case "user": { const u = pick(USERS); trail.push(`user ${u}`); await page.locator(sel("user")).first().fill(u, { timeout: 2000 }); break; }
       case "assign": trail.push("assign"); await click("assign"); break;
-      case "rename": { const t = pick(TITLES); trail.push(`rename ${t}`); await page.locator(sel("title-input")).first().fill(t); await click("rename"); break; }
+      case "rename": { const t = pick(TITLES); trail.push(`rename ${t}`); await page.locator(sel("title-input")).first().fill(t, { timeout: 2000 }); await click("rename"); break; }
       case "close": trail.push("close"); await click("close"); break;
       case "row-assign": { const n = Math.floor(r() * (await page.locator(sel("row-assign")).count())); trail.push(`row-assign ${n}`); await click("row-assign", n); break; }
       case "row-close": { const n = Math.floor(r() * (await page.locator(sel("row-close")).count())); trail.push(`row-close ${n}`); await click("row-close", n); break; }
-      case "add-label": { const l = pick(LABELS); trail.push(`add-label ${l}`); await page.locator(sel("label-input")).first().fill(l); await click("add-label"); break; }
+      case "add-label": { const l = pick(LABELS); trail.push(`add-label ${l}`); await page.locator(sel("label-input")).first().fill(l, { timeout: 2000 }); await click("add-label"); break; }
       case "remove-label": { const n = Math.floor(r() * (await page.locator(sel("remove-label")).count())); trail.push(`remove-label ${n}`); await click("remove-label", n); break; }
-      case "post": { const t = pick(TEXTS); trail.push(`post ${t}`); await page.locator(sel("comment-input")).first().fill(t); await click("post"); break; }
+      case "post": { const t = pick(TEXTS); trail.push(`post ${t}`); await page.locator(sel("comment-input")).first().fill(t, { timeout: 2000 }); await click("post"); break; }
       case "filter": { const f = ui.filter === "open" ? "closed" : "open"; trail.push(`filter ${f}`); if ((await pending()).length) { held.filters.add(ui.filter); for (const t of await texts("issue")) { const m = t.match(/^#(\d+)/); if (m) held.rows.add(Number(m[1])); } } await click(`filter-${f}`); ui.filter = f; break; }
       case "focus": trail.push("focus"); await page.evaluate(() => { Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true }); for (const t of [document, window]) t.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("blur")); Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true }); for (const t of [document, window]) t.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("focus")); }); break;
       case "leave": trail.push("tab help"); await click("tab-help"); ui.page = "help"; gen++; break;
