@@ -211,6 +211,8 @@ struct Sym<'a> {
     line: i64,
     question: bool,
     io: bool,
+    /// a fn's parameter: never a write target (O-4)
+    param: bool,
     instantiating: bool,
     params: Option<Vec<SigParam>>,
     captures: Vec<SId>,
@@ -244,6 +246,7 @@ impl<'a> Sym<'a> {
             line,
             question: false,
             io: false,
+            param: false,
             instantiating: false,
             params: None,
             captures: vec![],
@@ -1105,8 +1108,8 @@ impl<'a> Checker<'a> {
                         self.err("DUPLICATE_DECLARATION", "E-7", format!("{} is declared twice in one block", name));
                     }
                     let contract = if ty.as_ref().is_some_and(|t| ROW_WORDS.is_match(t)) || *exported { Some(contract_of(ty.as_deref())) } else { None };
-                    if *source && dflt.is_some() {
-                        self.err("INVALID_CONTEXT_DEFAULT", "RG-7c", format!("context {}: source … has no default — a provided source is its provider's; a default would be one source every user writes (declare that source instead)", name));
+                    if *source {
+                        self.err("SOURCE_CONTEXT", "O-4", format!("context {}: source … is withdrawn (RG-7c, 2026-10-31): what is provided is read beneath it — provide the writes you allow, as actions (`context {}: {{ current: T; set: (v: T) => void }}`)", name, name));
                     }
                     let suffix = if self.regions[region].parent.is_some() {
                         let n = self.seq;
@@ -1694,12 +1697,6 @@ impl<'a> Checker<'a> {
                 let region = self.reg(env);
                 self.regions[region].provides.insert(info.key.clone());
                 self.provisions.push(Provision { key: info.key.clone(), e, env });
-                if info.source {
-                    let t = if let ExprKind::Id(n) = &e.k { self.lookup(env, n) } else { None };
-                    if t.is_none_or(|t| self.syms[t].kind != SymKind::Source || self.syms[t].imported.is_some()) {
-                        self.err("PROVIDE_NOT_A_SOURCE", "RG-7c", format!("context {} carries a source: provide one of this module's sources by name (`provide {} = x`)", name, name));
-                    }
-                }
                 if let Some(contract) = info.contract {
                     let line = self.line;
                     self.later.push(Later::Provide { name: name.clone(), e, env, line, contract });
@@ -1753,9 +1750,13 @@ impl<'a> Checker<'a> {
                 let inner = self.env(Some(env), r);
                 for p in params {
                     if p.r#ref {
-                        self.bind(inner, &p.name, Sym::new(SymKind::Eq, &p.name, r, *line as i64));
+                        let mut s = Sym::new(SymKind::Eq, &p.name, r, *line as i64);
+                        s.param = true;
+                        self.bind(inner, &p.name, s);
                     } else {
-                        let s = self.new_sym(Sym::new(SymKind::Value, &p.name, r, *line as i64));
+                        let mut s = Sym::new(SymKind::Value, &p.name, r, *line as i64);
+                        s.param = true;
+                        let s = self.new_sym(s);
                         self.envs[inner].vars.insert(p.name.clone(), s);
                     }
                 }
@@ -2323,11 +2324,7 @@ impl<'a> Checker<'a> {
                             let info = self.syms[c].ctx.clone().unwrap();
                             self.uses.push(UseRec { region, name: info.key.clone(), line: self.line, display: target.name.clone() });
                             if !info.source {
-                                self.err(
-                                    "WRITE_TO_NON_SOURCE",
-                                    "RG-7c",
-                                    format!("context {} is not declared `source`: what is provided is read-only (`context {}: source T` to write through it)", target.name, target.name),
-                                );
+                                self.err("WRITE_TO_NON_SOURCE", "O-4", format!("context {} is read beneath its provision: call an action it provides that writes it (O-4)", target.name));
                             }
                         }
                     } else {
@@ -2341,7 +2338,8 @@ impl<'a> Checker<'a> {
                                     SymKind::Props => "props".to_string(),
                                     k => format!("a {}", k.as_str()),
                                 };
-                                self.err("WRITE_TO_NON_SOURCE", "W-1", format!("{} is {}: only sources are written (W-1)", target.name, what));
+                                let hint = if k == SymKind::Props || k == SymKind::Value || self.syms[t].param { " — a source is written only in the region that declares it: have its owner pass an action that writes it (O-4)" } else { "" };
+                                self.err("WRITE_TO_NON_SOURCE", "W-1", format!("{} is {}: only sources are written (W-1){}", target.name, what, hint));
                             } else if let Some(imp) = self.syms[t].imported.clone() {
                                 self.err(
                                     "WRITE_TO_NON_SOURCE",

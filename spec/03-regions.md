@@ -50,10 +50,23 @@ when the region ends. Regions nest; the program is the root region.
     that stores it counts as storing it. Across modules this is in the
     signature (09 MO-3). (Found by #15, 2026-10-27: both holes accepted a
     row-local closure stored in a module source.)
-- **O-4 (Writer scope).** A source may be written by imperative code in its own
-  region or any nested region, or by a handler that received the source — not
-  a snapshot of it — as an argument. An exported source exports its reader;
-  exporting the writer is a separate, explicit declaration.
+- **O-4 (Writer scope).** [ruled 2026-10-31] A source is written only
+  through its own name, by imperative code in its declaring region or a
+  region nested in it (lexically: its handlers, apply blocks and actions).
+  Every other way of reaching it is a read: a prop (RG-4b), a parameter of
+  either kind (E-9), a local or field bound from it, a context (RG-7), an
+  import (MO-2a) — at every path into a store too. To let other code
+  write it, the owner passes an action (or an `on*` handler) that writes
+  it, so the owner decides what a write may be: Solid's read/write
+  segregation, checked statically, nothing added at run time. A write
+  through any of these is `WRITE_TO_NON_SOURCE`, which names the fix.
+  - **O-4a (Known gap).** O-3 does not yet follow a closure handed to an
+    action as an argument and stored by it (`register(() => v)` where
+    `register` stores its parameter in an outer source). The same gap
+    exists for an `on*` handler prop that stores its argument. Before
+    RG-7c was withdrawn, a closure stored through a `source` context was
+    caught; that program now goes through a provided action, so it falls
+    in this gap.
 - **O-5 (Inference).** Regions are never annotated. The compiler assigns every
   declaration its region syntactically and checks O-3 by the escape analysis of
   closures and stored references.
@@ -126,9 +139,9 @@ A component is a function from a props value to a region whose tail is a view.
   content more than once, or conditionally own it, asks for a function prop
   instead, which is ordinary.
 - **RG-4d (No return channel).** A component body evaluates to its view and
-  nothing else. To expose a value upward, the caller passes a source and the
-  child writes it (O-4), or passes a handler the child calls. (Solid: `ref`
-  props.)
+  nothing else. To expose a value upward, the caller passes a handler (or an
+  action) the child calls: a source passed as a prop is read-only in the child
+  (O-4). (Solid: `ref` props.)
 
 ### RG-6 Instantiation
 
@@ -174,16 +187,16 @@ palette = (use theme).palette           // used: in any region beneath — the n
   default, `context density: number = 1`, which is the value where nothing
   above provides it. A component body sees the caller's provisions, never
   the caller's locals.
-- **RG-7c (Writing through a provision).** `context fields: source T`
-  declares a context that carries a source: every `provide fields = x`
-  must name one of the module's sources (`PROVIDE_NOT_A_SOURCE`), and that
-  provision *is* the source — `use fields := …` writes it from any region
-  beneath (O-4: the handler was handed the source). This is how a rendered
-  child registers with its provider — an effect that adds a row and removes
-  it in its cleanup (S-region-7). A context not declared `source` is
-  read-only: `use x := …` is `WRITE_TO_NON_SOURCE`. A `source` context has
-  no default (`INVALID_CONTEXT_DEFAULT`: a default would be one source
-  every user writes — declare that source instead).
+- **RG-7c (Writing through a provision) — withdrawn 2026-10-31.** A
+  context is read beneath its provision; `use x := …` is
+  `WRITE_TO_NON_SOURCE` (O-4) and `context x: source T` is
+  `SOURCE_CONTEXT`. A provider that lets readers write provides the
+  writes it allows, as actions in the context's value:
+  `context fields: { add: (r: Row) => void; remove: (r: Row) => void }`,
+  `provide fields = { add: add, remove: remove }`. This is how a rendered
+  child registers with its provider — an effect that calls `add` and
+  calls `remove` in its cleanup (S-region-7). (Until 2026-10-31 the
+  provision *was* the source, and a child could write any value to it.)
 - **RG-7e (Rows).** A context's rows are the reader's rows at a `use`. When
   the context's type writes row words (`context user: pending
   fails(Error) User`), or the context is exported, its type is the

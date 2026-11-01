@@ -17,7 +17,8 @@ export component SettingsForm(props: { initial: Settings }) {
   // The failure as a value next to the field: "" when the draft is valid.
   nameError: string = (valid && "") catch (e: NameRequired | NameTooLong) => e.message
 
-  provide theme = draftTheme
+  action pickTheme(t) { draftTheme := t }           // O-4: the form owns the draft; a picker beneath may only pick
+  provide theme = { current: draftTheme, pick: pickTheme }
   provide density = draftDensity
 
   <div>

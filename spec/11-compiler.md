@@ -199,7 +199,7 @@ spellings again. Compile-time only; nothing of it reaches run time.
   field of props or a store records the field.
 - **CP-6c (writes and calls).** A write is `x := e` (W-1, with whether it
   writes a path), `optimistic` (AC-3), `refresh` (AC-4) or `affects`
-  (AC-5); `use p := e` writes the context's provided source (RG-7c). A call
+  (AC-5); `use p := e` is recorded for the diagnostic it gets (O-4). A call
   names a fn, action, server fn or JS import called by name.
 - **CP-6d (one walk, two implementations).** The facts are recorded by the
   checker's own walk, at the point where it resolves each name, in

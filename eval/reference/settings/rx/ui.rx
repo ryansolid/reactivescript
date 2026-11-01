@@ -11,23 +11,23 @@ export component Panel(props: { title: string; children: View }) {
   </section>
 }
 
-// Changes the theme by writing through the context (RG-7c): it does not know,
-// or import, who owns the theme.
+// Changes the theme through the function the context provides (O-4): it does
+// not know, or import, who owns the theme.
 export component ThemePicker(props: {}) {
-  current = use theme
+  current = (use theme).current
   <div>
     <span>Theme: {current}</span>{" "}
-    <button data-testid="theme-light" onClick={() => { use theme := "light" }}>light</button>{" "}
-    <button data-testid="theme-dark" onClick={() => { use theme := "dark" }}>dark</button>
+    <button data-testid="theme-light" onClick={() => { (use theme).pick("light") }}>light</button>{" "}
+    <button data-testid="theme-dark" onClick={() => { (use theme).pick("dark") }}>dark</button>
   </div>
 }
 
 // The appearance controls: the picker, whatever extra controls the caller
 // passes, and a preview of both contexts.
 export component Appearance(props: { children: View }) {
-  <div class={use theme}>
+  <div class={(use theme).current}>
     <ThemePicker />{" "}
     {props.children}{" "}
-    <p data-testid="preview">Preview: {use theme} / {use density}</p>
+    <p data-testid="preview">Preview: {(use theme).current} / {use density}</p>
   </div>
 }

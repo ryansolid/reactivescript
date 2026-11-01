@@ -118,7 +118,7 @@ named.
 | `MODULE_CYCLE`                    | S   | MO-5  | S-module-1 |
 | `NOT_EXPORTED`, `MODULE_NOT_FOUND` | S  | MO-6a | S-module-1 |
 | `NOT_A_CONTEXT`, `CONTEXT_AS_VALUE` | S | RG-7a | S-context-1 |
-| `PROVIDE_NOT_A_SOURCE`, `INVALID_CONTEXT_DEFAULT`, `WRITE_TO_NON_SOURCE` (RG-7c) | S | RG-7c | S-context-1 |
+| `SOURCE_CONTEXT`, `WRITE_TO_NON_SOURCE` (O-4) | S | O-4: a context is read beneath its provision; `context x: source T` withdrawn (RG-7c, 2026-10-31) | S-context-1 |
 | `ROW_NARROWER_THAN_INFERRED` (RG-7e) | S | a provision wider than its context's declared rows | S-context-1 |
 | `SERVER_CAPTURE`                  | S   | 12 SF-3: a server function names reactive state (by kind; through the fns it calls) | S-sf-1 |
 | `SERVER_WRITE`                    | S   | 12 SF-4 | S-sf-1 |

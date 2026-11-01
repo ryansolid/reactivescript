@@ -8,8 +8,9 @@ stream with a first paint of `[]`, a compose box whose `send` is an action
 with an optimistic append (and an optimistic clear of the draft and a
 `sending` flag — three guesses over constant-question sources), a typing
 indicator (`if draftText != ""`), and a room list that reads the selected
-room through `use room` and writes it through `use room := …` (the
-context `room` carries the source `selected`).
+room through `(use room).current` and picks one by calling
+`(use room).pick(id)`, a writer the module provides (O-4; until
+2026-10-31 the context carried the source itself, RG-7c).
 
 ## Program
 

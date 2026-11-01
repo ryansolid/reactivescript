@@ -74,6 +74,7 @@ type Sym = {
   kind: SymKind; name: string; region: Region; line: number;
   question?: boolean;                  // source x = e
   io?: boolean;                        // calling it is io (R-io)
+  param?: boolean;                     // a fn's parameter: never a write target (O-4)
   instantiating?: boolean;             // fn with ref params or declarations (E-9)
   params?: { name: string; ref: boolean }[];
   captures?: Sym[];                    // a value holding a closure: the reactive names it captured (O-3)
@@ -362,7 +363,7 @@ class Checker {
       if (d.k === "context") {                                                             // RG-7: a declared context — its identity is the declaration, not its spelling
         if (env.vars.has(d.name)) this.err("DUPLICATE_DECLARATION", "E-7", `${d.name} is declared twice in one block`);
         const contract = (d.type && ROW_WORDS.test(d.type)) || d.exported ? this.contractOf(d.type) : null;   // RG-7e: written rows, or exported (its type is then the contract: no row words, no rows)
-        if (d.source && d.dflt) this.err("INVALID_CONTEXT_DEFAULT", "RG-7c", `context ${d.name}: source … has no default — a provided source is its provider's; a default would be one source every user writes (declare that source instead)`);
+        if (d.source) this.err("SOURCE_CONTEXT", "O-4", `context ${d.name}: source … is withdrawn (RG-7c, 2026-10-31): what is provided is read beneath it — provide the writes you allow, as actions (\`context ${d.name}: { current: T; set: (v: T) => void }\`)`);
         this.bind(env, d.name, { kind: "context", name: d.name, region: env.region, line: d.line, ctx: { key: `${this.opts.file ?? "main.rx"}#${d.name}${env.region.parent ? `@${this.seq++}` : ""}`, source: d.source, dflt: !!d.dflt, contract } });
         if (d.dflt) this.provisions.push({ key: env.vars.get(d.name)!.ctx!.key, e: d.dflt, env });
         continue;
@@ -558,7 +559,6 @@ class Checker {
         this.comp("provide", env, { name: d.name }, () => this.expr(d.e, env, reactive));
         const c = this.ctxOf(d.name, env); if (!c) return;
         env.region.provides.add(c.ctx!.key); this.provisions.push({ key: c.ctx!.key, e: d.e, env });
-        if (c.ctx!.source) { const t = d.e.k === "id" ? env.lookup(d.e.name) : undefined; if (!t || t.kind !== "source" || t.imported) this.err("PROVIDE_NOT_A_SOURCE", "RG-7c", `context ${d.name} carries a source: provide one of this module's sources by name (\`provide ${d.name} = x\`)`); }
         const contract = c.ctx!.contract; const line = this.line;
         if (contract) this.later.push(() => {                                              // RG-7e: a provision is checked against the declared rows
           const rows = this.rowsThunk(d.e, env)(); const f = this.failsOf(d.e, env, false, new Map());
@@ -598,7 +598,7 @@ class Checker {
       case "fn": {
         const r = d.decls.length ? this.region(env.region, "fn", { name: d.name }) : env.region;                     // RG-6: an instantiating fn is a region
         const inner = new Env(env, r);
-        for (const p of d.params) this.bind(inner, p.name, { kind: p.ref ? "eq" : "value", name: p.name, region: r, line: d.line });
+        for (const p of d.params) this.bind(inner, p.name, { kind: p.ref ? "eq" : "value", name: p.name, region: r, line: d.line, param: true });
         this.comp("fn", env, { name: d.name }, () => { this.block(d.decls, [], inner, { scope: "reactive", inFn: true }); this.expr(d.tail, inner, { scope: "reactive", inFn: true }); });
         { const sym = env.lookup(d.name)!; sym.fnTail = d.tail; sym.fnEnv = inner; sym.failsT = this.failsThunk(d.tail, inner); sym.rows = this.rowsThunk(d.tail, inner); }
         return;
@@ -833,11 +833,11 @@ class Checker {
           let target: Sym | undefined;
           if (s.target.ctx) {
             const c = this.ctxOf(s.target.name, env);
-            if (c) { this.model.write(c, s.k, s.target.path.length > 0); this.uses.push({ region: env.region, name: c.ctx!.key, line: this.line, display: s.target.name }); if (!c.ctx!.source) this.err("WRITE_TO_NON_SOURCE", "RG-7c", `context ${s.target.name} is not declared \`source\`: what is provided is read-only (\`context ${s.target.name}: source T\` to write through it)`); }
+            if (c) { this.model.write(c, s.k, s.target.path.length > 0); this.uses.push({ region: env.region, name: c.ctx!.key, line: this.line, display: s.target.name }); if (!c.ctx!.source) this.err("WRITE_TO_NON_SOURCE", "O-4", `context ${s.target.name} is read beneath its provision: call an action it provides that writes it (O-4)`); }
           }
           else {
             target = this.resolve(s.target.name, env, ctx); this.model.write(target, s.k, s.target.path.length > 0);
-            if (target && target.kind !== "source") this.err("WRITE_TO_NON_SOURCE", "W-1", `${s.target.name} is ${target.kind === "eq" ? "an equation" : target.kind === "props" ? "props" : `a ${target.kind}`}: only sources are written (W-1)`);
+            if (target && target.kind !== "source") this.err("WRITE_TO_NON_SOURCE", "W-1", `${s.target.name} is ${target.kind === "eq" ? "an equation" : target.kind === "props" ? "props" : `a ${target.kind}`}: only sources are written (W-1)${target.kind === "props" || target.kind === "value" || target.param ? " — a source is written only in the region that declares it: have its owner pass an action that writes it (O-4)" : ""}`);
             else if (target?.imported) this.err("WRITE_TO_NON_SOURCE", "MO-2", `${s.target.name} is a source of ${target.imported}: a module boundary is a value boundary — write it through an action ${target.imported} exports`);
           }
           if (s.k === "optimistic") {
