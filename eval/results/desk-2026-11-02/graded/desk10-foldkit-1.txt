@@ -1,0 +1,12 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: comments that load while a post is out keep the post
+✗ labels that load while an add is out keep the add
+33/38 passed
+== fuzz
+desk10-foldkit-1: 0/20 seeds found a hole
+DONE

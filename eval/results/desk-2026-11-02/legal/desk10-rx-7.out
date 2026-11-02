@@ -1,0 +1,6 @@
+✗ L1 two issues assigned at once: declined row reverts once the other lands
+    page.evaluate: Error: no flight in the air for assign:1,ann; in the air: fetchComments:3 | fetchLabels:3 | search:Crash on save | fetchComments:1 | fetchLabels:1 | search:Login fails
+✗ L2 a detail that reloads while a rename is out shows the new title once the rename lands
+    locator.click: Timeout 30000ms exceeded.
+
+0/2 passed

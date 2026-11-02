@@ -1,0 +1,42 @@
+✗ base: two issues assigned at once: declining one reverts only that row
+    expected [list] to show "#3 Crash on save (unassigned)", it shows "#1 Login fails (ann)assign to annclose#3 Crash on save (ann)assign to annclose#4 Typo in footer (dana)assign to annclose"
+✓ base: a list that loads while an assignment is out keeps the new assignee
+✓ base: a declined assignment keeps a rename in flight on the same issue
+✓ base: a declined rename keeps an assignment in flight on the same issue
+✓ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+    locator.click: Timeout 30000ms exceeded.
+✓ base: an earlier rename declined after a later one was accepted keeps the later title
+✓ base: a declined close keeps an assignment in flight on another issue
+✓ base: a declined assignment keeps a close in flight on another issue
+✓ base: a list that loads while a close is out keeps the row out
+✓ base: two closes at once: a declined one does not undo the other
+✓ base: two posts at once: a declined one does not take the other with it
+✓ base: a post on one issue does not show on another
+✓ base: comments that load while a post is out keep the post
+✓ base: a post declined while an assignment is out leaves the assignment
+✓ base: help: a retry's answer landing after another selection is ignored
+✓ base: settings: an earlier save failing after a later one succeeded leaves the later one
+✓ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✓ base: settings: an earlier save landing while a later one is out keeps showing the later one
+✓ base: tabs: an assignment that answers after the page was left changes nothing on its return
+✓ base: tabs: a save that answers after the page was left shows the reloaded settings
+✓ an add and a remove at once: a declined add does not undo the remove
+✓ two adds at once: a declined one does not take the other with it
+✓ a label added on one issue does not show on another
+✓ labels that load while an add is out keep the add
+✓ a label change declined while a rename is out leaves the rename
+✓ two closes at once: a declined one leaves the other off the count
+✓ open issues that load while a close is out keep it off the count
+✓ a close that answers after the issues page was left still shows in the count
+✓ a related search answering after the issues page was left does not show on the help page
+✓ selecting another hit after opening a related one shows the other
+✓ typing a new query after opening a related hit searches for it
+✓ rows: a detail assign and a newer row assign on one issue: the newer shows while the older answers
+✓ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+✓ rows: a declined row close leaves a rename out on another issue
+✓ rows: a row close and a detail close at once: a declined one leaves the other out and off the count
+✓ rows: open issues that load while a row close is out keep the row out
+✓ rows: a row action that answers after the issues page was left changes nothing on its return
+
+36/38 passed

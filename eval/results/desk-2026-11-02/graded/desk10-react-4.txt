@@ -1,0 +1,24 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: a list that loads while a close is out keeps the row out
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ open issues that load while a close is out keep it off the count
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+✗ rows: open issues that load while a row close is out keep the row out
+27/38 passed
+== fuzz
+desk10-react-4: 3/20 seeds found a hole
+  seed 4 step 24: closed row shown: #1 is closed on the server
+    filter closed ; land fetchIssues:open ; user guest ; tab help ; tab issues ; focus ; tab help ; tab issues ; focus ; filter closed ; land fetchIssues:open ; tab help ; fail fetchIssues:closed ; tab issues ; focus ; land fetchIssues:open ; row-assign 1 ; fail assign:3,guest ; row-close 0 ; filter closed ; filter open ; land fetchIssues:closed ; land fetchIssues:open ; land closeIssue:1
+  seed 12 step 39: row assignee: #1 shows guest, server null
+    land fetchIssues:open ; focus ; select #1 ; row-close 1 ; select #4 ; land closeIssue:3 ; row-assign 1 ; rename Alpha ; close ; rename Alpha ; land fetchComments:1 ; land fetchComments:4 ; row-close 0 ; rename Alpha ; fail closeIssue:4 ; land fetchIssue:4 ; land fetchLabels:1 ; land fetchIssue:1 ; post me too ; close ; fail closeIssue:1 ; select #1 ; row-assign 0 ; assign ; land closeIssue:4 ;
+  seed 16 step 36: at rest: comments: #2 shows [guest: ping | guest: ping], server [guest: ping]
+    user guest ; fail fetchIssues:open ; focus ; tab help ; tab issues ; filter closed ; land fetchIssues:open ; focus ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; close ; post me too ; fail addComment:2,guest,me too ; row-assign 0 ; row-assign 0 ; close ; post ping ; assign ; land addComment:2,guest,ping ; land fetchIssue:2 ; fail assign:2,guest ; select #2 ; rename Bravo ; assign
+DONE

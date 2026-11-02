@@ -11,6 +11,7 @@ const r = await runTest(br, srv.url, { run: async app => {
   for (const s of trail.split(" ; ")) {
     const [op, ...rest] = s.split(" "); const arg = rest.join(" ");
     if (op === "land" || op === "fail") { const a = answer(db, arg, op === "fail"); if (a.fail) await app.fail(arg, "declined"); else await app.land(arg, a.value); }
+    else if (op === "focus") await app.page.evaluate(() => { Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true }); for (const t of [document, window]) t.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("blur")); Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true }); for (const t of [document, window]) t.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("focus")); });
     else if (op === "select") await app.clickText("issue", `${arg} `);
     else if (op === "user") await app.type("user", arg);
     else if (op === "rename") { await app.type("title-input", arg); await app.click("rename"); }
