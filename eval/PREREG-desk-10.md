@@ -1,6 +1,6 @@
 # Round 10: cost per correct app, by model tier, across four approaches
 
-Pre-registration, committed before any round 10 agent runs. Status: DRAFT until Ryan approves it.
+Pre-registration, committed before any round 10 agent runs. Status: FROZEN (Ryan approved 2026-11-02: "lets go").
 
 ## Why
 
@@ -31,8 +31,8 @@ The four arms are the four positions on where that responsibility lives (Ryan, 2
   - `foldkit` with `--inline-docs`: Foldkit's `FOLDKIT.md` at the end of the prompt, the repository in `docs/foldkit`.
   - `react`: no docs (React is in the model's training).
   - `vanilla`: no docs.
-- Solid: `solid-next` at the `next` commit recorded in the results (d9b5a79e or later, with the fixes for the issues
-  rounds 8 and 9 found); the same build for every .rx run and grade.
+- Solid: `solid-next` at `next` 81803325 (2026-11-02; includes the fixes for the Solid issues rounds 8-9 found, and
+  #4613), the same build for every .rx run and grade.
 
 ## Runs
 
