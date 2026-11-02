@@ -3,6 +3,7 @@
 //   react arm: `src/App.tsx` (default export) mounted with createRoot under StrictMode, as Vite's React template does
 //   solid arm: `src/App.tsx` (default export) compiled by @solidjs/compiler (Solid 2's JSX compiler) and mounted with
 //              @solidjs/web's `render`
+//   vanilla arm: `src/main.ts` default-exports `mount(root: HTMLElement)`, called once with the `#app` container
 //   foldkit arm: `src/main.ts` exports Model, init, update and view; booted with Runtime.makeApplication and
 //              Runtime.run, as Foldkit's own `src/entry.ts` does
 // The app's API is `src/api.js` over `src/flights.js`: every call is a flight the test lands or fails.
@@ -48,6 +49,8 @@ export async function build(dir, arm = armOf(dir)) {
     entry = `import { render } from "@solidjs/web";\nimport { createComponent } from "solid-js";\nimport App from ${JSON.stringify(path.join(dir, "src/App.tsx"))};\nrender(() => createComponent(App, {}), document.getElementById("app"));\n`;
   } else if (arm === "foldkit") {
     entry = `import { Runtime } from "foldkit";\nimport { Model, init, update, view } from ${JSON.stringify(path.join(dir, "src/main.ts"))};\nRuntime.run(Runtime.makeApplication({ Model, init, update, view, container: document.getElementById("app") }));\n`;
+  } else if (arm === "vanilla") {
+    entry = `import mount from ${JSON.stringify(path.join(dir, "src/main.ts"))};\nmount(document.getElementById("app"));\n`;
   } else {
     entry = `import { StrictMode, createElement } from "react";\nimport { createRoot } from "react-dom/client";\nimport App from ${JSON.stringify(path.join(dir, "src/App.tsx"))};\ncreateRoot(document.getElementById("app")).render(createElement(StrictMode, null, createElement(App)));\n`;
   }

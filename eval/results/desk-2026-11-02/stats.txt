@@ -1,0 +1,26 @@
+=== as pre-registered
+  rx      frontier  mean  6.67  per desk [8, 6, 6]  correct 0
+  rx      small     mean  6.67  per desk [3, 4, 6, 13, 3, 11]  correct 0
+  react   frontier  mean  3.00  per desk [3, 4, 2]  correct 0
+  react   small     mean 14.67  per desk [14, 7, 18, 17, 16, 16]  correct 0
+  vanilla frontier  mean  2.67  per desk [3, 3, 2]  correct 0
+  vanilla small     mean  9.83  per desk [13, 9, 9, 10, 9, 9]  correct 0
+  foldkit frontier  mean  4.67  per desk [5, 5, 4]  correct 0
+  foldkit small     mean 14.50  per desk [16, 13, 15, 14, 15, 14]  correct 0
+  H10b rx<foldkit: p=0.00200 Holm 0.00600
+  H10a rx<react: p=0.00714 Holm 0.01428
+  H10b rx<plain: p=0.07004 Holm 0.07004
+  H10c small rx - frontier react: 3.67, 90% CI [1.00, 6.50] -> holds if upper < 1: False
+=== adjusted for retry-visibility ambiguity
+  rx      frontier  mean  6.33  per desk [7, 6, 6]  correct 0
+  rx      small     mean  5.67  per desk [2, 3, 5, 12, 2, 10]  correct 0
+  react   frontier  mean  3.00  per desk [3, 4, 2]  correct 0
+  react   small     mean 13.67  per desk [13, 6, 17, 16, 15, 15]  correct 0
+  vanilla frontier  mean  2.67  per desk [3, 3, 2]  correct 0
+  vanilla small     mean  8.83  per desk [12, 8, 8, 9, 8, 8]  correct 0
+  foldkit frontier  mean  4.33  per desk [5, 4, 4]  correct 0
+  foldkit small     mean 13.67  per desk [15, 12, 14, 13, 14, 14]  correct 0
+  H10b rx<foldkit: p=0.00200 Holm 0.00600
+  H10a rx<react: p=0.00714 Holm 0.01428
+  H10b rx<plain: p=0.07004 Holm 0.07004
+  H10c small rx - frontier react: 2.67, 90% CI [0.00, 5.50] -> holds if upper < 1: False

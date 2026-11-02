@@ -1,0 +1,15 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: two issues assigned at once: declining one reverts only that row
+✗ base: a detail that loads while a rename is out keeps the new title
+36/38 passed
+== fuzz
+desk10-rx-5: 3/20 seeds found a hole
+  seed 1 step 21: count: tab Issues (1), 0 open rows shown
+    user bob ; focus ; land fetchIssues:open ; row-assign 2 ; row-close 0 ; row-assign 0 ; select #3 ; row-assign 0 ; land assign:3,bob ; row-assign 0 ; row-close 1 ; land assign:3,bob ; focus ; land fetchLabels:3 ; land fetchIssue:3 ; land closeIssue:4 ; fail closeIssue:1 ; post me too ; add-label ui ; land search:Crash on save ; row-close 0
+  seed 3 step 14: count: tab Issues (1), 0 open rows shown
+    user bob ; land fetchIssues:open ; row-close 0 ; fail closeIssue:1 ; select #4 ; user guest ; land fetchLabels:4 ; row-close 2 ; select #3 ; land fetchLabels:3 ; row-close 0 ; fail fetchComments:3 ; land closeIssue:4 ; row-close 0
+  seed 8 step 34: open row in closed list: #4
+    land fetchIssues:open ; row-close 1 ; filter closed ; fail fetchIssues:closed ; user bob ; land closeIssue:3 ; tab help ; tab issues ; land fetchIssues:open ; row-assign 1 ; select #1 ; land fetchComments:1 ; select #4 ; land fetchComments:4 ; row-close 1 ; row-assign 0 ; land fetchLabels:1 ; row-assign 0 ; user guest ; fail assign:1,guest ; row-close 0 ; user ann ; focus ; land assign:4,guest
+DONE

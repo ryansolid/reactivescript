@@ -557,6 +557,20 @@ fn free_names_stmts(ss: &[Stmt], bound0: &HashSet<String>, out: &mut IndexSet<St
         }
     }
 }
+/// An expression with a `catch` expression in it (R-f-11: a failure stops at that equation).
+fn contains_catch(e: &Expr) -> bool {
+    fn any(n: Node) -> bool {
+        children(n, true).into_iter().any(|c| matches!(c, Node::E(Expr { k: ExprKind::Catch { .. }, .. })) || any(c))
+    }
+    matches!(e.k, ExprKind::Catch { .. }) || any(Node::E(e))
+}
+/// An expression with an `await` in it (R-f-11: a question that can fail, R-6).
+fn contains_await(e: &Expr) -> bool {
+    fn any(n: Node) -> bool {
+        children(n, true).into_iter().any(|c| matches!(c, Node::E(Expr { k: ExprKind::Await { .. }, .. })) || any(c))
+    }
+    matches!(e.k, ExprKind::Await { .. }) || any(Node::E(e))
+}
 /// A closure whose body makes another closure (O-3: what calling it returns may hold one).
 fn contains_fn(f: &Expr) -> bool {
     fn any(n: Node) -> bool {
@@ -850,12 +864,18 @@ pub struct Checker<'a> {
     reader_f: Vec<(RId, &'a Expr, i64, Fails)>,
     arg_r: Vec<(usize, String)>,
     arg_f: Vec<(usize, String, Fails)>,
+    catch_eqs: HashSet<i64>,
+    await_eqs: HashSet<i64>,
 }
 
 pub struct CheckResult {
     pub diags: Vec<Diagnostic>,
     pub sig: ModSig,
     pub model: serde_json::Value,
+    /// lines of equations whose expression has a `catch` (R-f-11 stops a failure there)
+    pub catch_eqs: HashSet<i64>,
+    /// lines of equations and questions whose expression has an `await` (R-f-11: they can fail)
+    pub await_eqs: HashSet<i64>,
 }
 
 pub fn check_with_signature(p: &Program, opts: Opts) -> CheckResult {
@@ -864,7 +884,7 @@ pub fn check_with_signature(p: &Program, opts: Opts) -> CheckResult {
     c.run(p);
     let sig = c.signature(p);
     let model = c.build_model(&file);
-    CheckResult { diags: c.diags, sig, model }
+    CheckResult { diags: c.diags, sig, model, catch_eqs: c.catch_eqs, await_eqs: c.await_eqs }
 }
 
 pub struct Checked {
@@ -877,12 +897,17 @@ pub fn check_modules(set: &ModuleSet, spa: bool) -> Checked {
     let mut sigs: IndexMap<String, ModSig> = set.signatures.clone();
     let mut diags = set.diags.clone();
     let mut models = IndexMap::new();
+    let mut catch_eqs = HashMap::new();
+    let mut await_eqs = HashMap::new();
     for path in &set.order {
         let r = check_with_signature(&set.programs[path], Opts { sigs: &sigs, file: Some(path.clone()), declarations: &set.declarations, spa });
         diags.extend(r.diags);
         sigs.insert(path.clone(), r.sig);
         models.insert(path.clone(), r.model);
+        catch_eqs.insert(path.clone(), r.catch_eqs);
+        await_eqs.insert(path.clone(), r.await_eqs);
     }
+    diags.extend(crate::foreign::foreign_failures(&models, &catch_eqs, &await_eqs));
     Checked { diags, sigs, models }
 }
 
@@ -925,6 +950,8 @@ impl<'a> Checker<'a> {
             reader_f: vec![],
             arg_r: vec![],
             arg_f: vec![],
+            catch_eqs: HashSet::new(),
+            await_eqs: HashSet::new(),
         }
     }
 
@@ -1637,6 +1664,12 @@ impl<'a> Checker<'a> {
                 }
             }
             Decl::Source { name, init, question, ty, .. } => {
+                if *question && contains_catch(init) {
+                    self.catch_eqs.insert(self.line);
+                }
+                if *question && contains_await(init) {
+                    self.await_eqs.insert(self.line);
+                }
                 if *question {
                     self.comp("question", env, Some(name.clone()), None, |c| c.expr(init, env, reactive, None));
                     self.row_check(name, ty.as_deref(), env);
@@ -1655,6 +1688,12 @@ impl<'a> Checker<'a> {
                 });
             }
             Decl::Eq { name, e, deferred, key, ty, .. } => {
+                if contains_catch(e) {
+                    self.catch_eqs.insert(self.line);
+                }
+                if contains_await(e) {
+                    self.await_eqs.insert(self.line);
+                }
                 let kind = if *deferred {
                     "deferred"
                 } else if key.is_some() {
@@ -4108,6 +4147,46 @@ mod tests {
         let read = |p: &str| if p == "/app.rx" { Some(src.to_string()) } else { None };
         let set = load_modules("/app.rx", &read).unwrap();
         check_modules(&set, spa).diags.iter().map(|d| (d.line, d.code.clone())).collect()
+    }
+
+    /// 04 R-f-11: a list's failure passed into the detail shows in the detail's `errored` region; a `catch` stops it.
+    #[test]
+    fn foreign_failure_in_another_sections_boundary() {
+        let src = r#"import pure { list, item } from "./api"
+
+component Detail(props: { id: number; rows: { id: number; title: string }[] }) {
+  fetched = await item(props.id)
+  heading = props.rows.length > 0 ? props.rows[0].title : fetched.title
+  <div>
+    {loading fallback { <p>…</p> } {
+      {errored fallback(e) { <p>detail error</p> } {
+        <h2>{heading}</h2>
+      }}
+    }}
+  </div>
+}
+
+export default component App() {
+  source sel: number := 0
+  rows = await list()
+  <main>
+    {errored fallback(e) { <p>root</p> } {
+      {loading fallback { <p>…</p> } {
+        {errored fallback(e) { <p>list error</p> } {
+          {for r in rows { <p onClick={() => { sel := r.id }}>{r.title}</p> }}
+        }}
+      }}
+      <Detail id={sel} rows={rows} />
+    }}
+  </main>
+}
+"#;
+        let got: Vec<i64> = codes(src, false).iter().filter(|(_, c)| c == "FOREIGN_FAILURE").map(|(l, _)| *l).collect();
+        assert_eq!(got, vec![9]);
+        let caught = src.replace("heading = props.rows.length > 0 ? props.rows[0].title : fetched.title", "heading = (props.rows.length > 0 ? props.rows[0].title : \"\") catch (e) => fetched.title");
+        assert!(codes(&caught, false).iter().all(|(_, c)| c != "FOREIGN_FAILURE"));
+        let own = src.replace("<h2>{heading}</h2>", "<h2>{fetched.title}</h2>");
+        assert!(codes(&own, false).iter().all(|(_, c)| c != "FOREIGN_FAILURE"));
     }
 
     /// 08 CN-3d: in a client-only build, a reader the first load surely waits on needs a `loading` above it.

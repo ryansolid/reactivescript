@@ -1,0 +1,23 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: a list that loads while a close is out keeps the row out
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: an earlier save landing while a later one is out keeps showing the later one
+✗ labels that load while an add is out keep the add
+✗ open issues that load while a close is out keep it off the count
+✗ rows: a detail assign and a newer row assign on one issue: the newer shows while the older answers
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+✗ rows: open issues that load while a row close is out keep the row out
+26/38 passed
+== fuzz
+desk10-foldkit-9: 2/20 seeds found a hole
+  seed 2 step 37: row assignee: #2 shows guest, server eve
+    filter closed ; land fetchIssues:closed ; row-assign 0 ; select #2 ; land fetchIssue:2 ; assign ; rename Delta ; fail renameIssue:2,Delta ; fail fetchIssues:open ; close ; focus ; land fetchLabels:2 ; fail search:Old bug ; land closeIssue:2 ; fail fetchComments:2 ; row-assign 0 ; select #2 ; post fixed? ; select #2 ; post fixed? ; select #2 ; close ; land closeIssue:2 ; rename Alpha ; rename B
+  seed 9 step 40: row assignee: #4 shows null, server dana
+    land fetchIssues:open ; filter closed ; tab help ; land fetchIssues:closed ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; filter closed ; focus ; filter open ; user guest ; land fetchIssues:open ; land fetchIssues:closed ; select #4 ; assign ; land fetchComments:4 ; rename Bravo ; row-assign 0 ; rename Bravo ; row-assign 1 ; row-close 1 ; land closeIssue:3 ; row-assign 1 ; filt
+DONE

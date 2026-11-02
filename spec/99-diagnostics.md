@@ -111,6 +111,7 @@ named.
 | `ROW_NARROWER_THAN_INFERRED`      | S   | CN-4a (checked only where a row is written); R-f-9 for `fails(…)` | S-check-1, S-fail-1 |
 | `EFFECT_WRITES_OWN_SOURCE`        | S   | C-3 (directly or through equations; not closures the apply creates) | S-check-2 |
 | `UNHANDLED_FAILURE`               | S   | R-f-5 / CN-6a (over the static application tree; props where read, children where rendered) | S-fail-1, S-fail-2 |
+| `FOREIGN_FAILURE`                 | S   | R-f-11 (taken by default 2026-11-02; over the static application tree, after every module is checked) | S-fail-4 |
 | `UNCAUGHT_ACTION_FAILURE`         | S   | R-f-6 / CN-6a (incl. a prop the action reads, checked at each application) | S-action-1, S-fail-2 |
 | `NOT_AN_ERROR_CLASS`              | S   | R-f-1 | S-fail-1 |
 | `WRITE_TO_NON_SOURCE` (MO-2)      | S   | MO-2a: an imported source is read-only | S-module-1 |

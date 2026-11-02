@@ -1,0 +1,5 @@
+✓ L1 two issues assigned at once: declined row reverts once the other lands
+✗ L2 a detail that reloads while a rename is out shows the new title once the rename lands
+    expected [detail] to show "#3 Crash at boot", it shows "#3 Crash on savestack trace attachedretryassign to guestrenamecloseloading commentspostloading labelsadd labelfinding related help"
+
+1/2 passed

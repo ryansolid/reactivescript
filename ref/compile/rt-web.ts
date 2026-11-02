@@ -7,7 +7,7 @@ import { getObserver } from "solid-js";
 import {
   createSignal, createMemo, createEffect, createOptimistic, createOptimisticStore, createStore, createProjection, createDeferred, createErrorBoundary, createContext,
   Show, For, Loading, Errored, createComponent,
-  flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, getOwner, runWithOwner, sharedConfig, deep,
+  flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, getOwner, runWithOwner, sharedConfig,
 } from "solid-js";
 import { getContext, setContext, $TARGET } from "@solidjs/signals";
 import { hydrate, render } from "@solidjs/web";
@@ -17,7 +17,10 @@ import { hydrate, render } from "@solidjs/web";
 const readWhole = (v: unknown) => { if (v !== null && typeof v === "object") Reflect.ownKeys(v); return v; };
 /** `latest x` (R-12) of a store is its whole value, read inside `latest` and handed out as a snapshot: a later read of a
  *  field outside `latest` would be a tracked read of the store (found by desk9-rx-7: `len(latest rows)` held a `loading on`). */
-const latestWhole = (v: unknown) => v !== null && typeof v === "object" && (v as any)[$TARGET] !== undefined ? deep(v) : v;
+/** A store's whole value, copied by reading through the store (so a guess still in flight shows, as R-12 asks of
+ *  `latest`); Solid's `deep(v)` serves the landed frame and would drop the guess (found by desk9-rx-7). */
+const readCopy = (v: unknown): unknown => v === null || typeof v !== "object" ? v : Array.isArray(v) ? v.map(readCopy) : Object.fromEntries(Object.keys(v).map(k => [k, readCopy((v as any)[k])]));
+const latestWhole = (v: unknown) => v !== null && typeof v === "object" && (v as any)[$TARGET] !== undefined ? readCopy(v) : v;
 /** EF-2: effect inputs compare as values: arrays and plain objects (a store's snapshot) by their contents. */
 const sameInput = (a: unknown, b: unknown): boolean => {
   if (Object.is(a, b)) return true;

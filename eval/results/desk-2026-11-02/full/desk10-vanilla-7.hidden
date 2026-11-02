@@ -1,0 +1,79 @@
+✓ base: a declined assignment reverts the row and shows the message
+✓ base: a new assignment clears the previous error at once
+✓ base: selecting another issue clears the assignment error
+✓ base: a filter answer landing late does not replace the current filter's list
+✓ base: a filter failing late shows no error
+✓ base: details landing out of order show the selected issue
+✓ base: selecting after not found shows loading, not the old message
+✓ base: retry after not found shows the issue
+✓ base: a failing list leaves the detail alone
+✓ base: a failing detail leaves the list alone
+✓ base: an accepted assignment survives switching filters and back
+✓ base: a declined rename reverts the row and the heading and shows the message
+✓ base: a new rename clears the previous error at once
+✓ base: selecting another issue clears the rename error
+✓ base: the title input is empty when another issue is selected
+✓ base: an accepted rename survives switching filters and back
+✓ base: a declined close brings the row back in place and shows the message
+✓ base: a new close clears the previous error at once
+✓ base: selecting another issue clears the close error
+✓ base: an accepted close survives switching filters and back
+✓ base: a declined post removes the row and shows the message
+✓ base: a new post clears the previous error at once
+✓ base: selecting another issue clears the post error
+✓ base: comments landing out of order show the selected issue's
+✓ base: failing comments show their error and leave the issue
+✓ base: an accepted post stays after switching issues and back
+✓ base: help: an earlier search landing late does not replace the current results
+✓ base: help: an earlier search failing late shows no error
+✓ base: help: a search landing after the query became too short is ignored
+✓ base: help: a search landing after the query was cleared is ignored
+✓ base: help: the previous results stay up while the next search is in flight
+✓ base: help: the current search failing shows its error, a later search clears it
+✓ base: help: details landing out of order show the selected item
+✓ base: help: a late failure for a previous selection shows nothing
+✓ base: help: selecting after a failure shows loading…, not the old failure
+✓ base: help: selecting after not found shows loading…, not the old message
+✓ base: help: retry asks again and its answer replaces the failure
+✓ base: help: a failing detail leaves the results alone
+✓ base: settings: a failed save reverts the saved line, shows the error and keeps the draft
+✓ base: settings: saving an invalid name asks nothing
+✓ base: settings: a new save hides the previous error at once
+✓ base: settings: edits made while a save is in flight survive its success
+✓ base: settings: edits made while a save is in flight survive its failure
+✓ base: settings: a failed save after a successful one reverts to the last save
+✓ base: settings: retrying a failed load shows the settings
+✓ base: settings: draft changes do not touch the saved line until a save
+✓ base: tabs: the help page starts again when reopened
+✓ base: tabs: the settings page loads again when reopened, with a fresh draft
+✓ base: tabs: a detail answer for a page that was left does not show when it is reopened
+✓ base: tabs: the user resets to guest when the issues page is reopened
+✓ a declined add removes the label and shows the message
+✓ a declined remove puts the label back where it was and shows the message
+✓ adding a label the issue already has asks nothing
+✓ a new label change clears the previous error at once
+✓ selecting another issue clears the label error
+✓ labels landing out of order show the selected issue's
+✓ failing labels show their error and leave the issue
+✓ an accepted add stays after switching issues and back
+✓ a declined close puts the count back
+✓ the count stays on the other pages
+✓ the count follows the open issues when the issues page opens again
+✓ the count keeps its number while closed issues show, and follows open ones again
+✓ a failed load keeps the last count
+✓ no count before the open issues have loaded once
+✓ an issue with no related help says so
+✓ a failed related search says so and leaves the issue
+✓ related help landing out of order shows the selected issue's
+✓ the help page opened from its tab after a related hit starts empty
+✓ the results for a related hit may land after the help page opens
+✓ a related item that fails can be retried on the help page
+✓ rows: a declined row assign reverts the row and shows the row error
+✓ rows: a declined row close brings the row back in place, the count back, and shows the row error
+✓ rows: the next row action clears the row error at once
+✓ rows: a row close on the selected issue leaves its detail
+✓ rows: row errors and detail errors leave each other alone
+✓ rows: a row button does not select, even after another issue was selected
+✓ rows: an accepted row close survives switching filters and back
+
+77/77 passed

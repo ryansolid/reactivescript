@@ -1,0 +1,22 @@
+== hidden
+✗ base: selecting another issue clears the post error
+76/77 passed
+== overlap
+✗ base: two issues assigned at once: declining one reverts only that row
+✗ base: a detail that loads while a rename is out keeps the new title
+36/38 passed
+== fuzz
+desk10-rx-1: 6/20 seeds found a hole
+  seed 1 step 21: count: tab Issues (2), 1 open rows shown
+    user bob ; focus ; land fetchIssues:open ; row-assign 2 ; row-close 0 ; row-assign 0 ; select #3 ; rename Alpha ; land assign:3,bob ; rename Alpha ; row-assign 1 ; land renameIssue:3,Alpha ; focus ; land fetchLabels:3 ; land fetchIssue:3 ; land fetchIssues:open ; fail closeIssue:1 ; post me too ; add-label ui ; land search:Alpha ; row-close 1
+  seed 5 step 22: closed row shown: #3 is closed on the server
+    focus ; fail fetchIssues:open ; tab help ; tab issues ; focus ; land fetchIssues:open ; row-close 0 ; row-assign 1 ; land assign:4,guest ; land closeIssue:1 ; land fetchIssues:open ; row-close 1 ; land closeIssue:4 ; land fetchIssues:open ; row-assign 0 ; land assign:3,guest ; row-close 0 ; select #3 ; rename Delta ; select #3 ; land fetchIssue:3 ; land closeIssue:3
+  seed 7 step 11: count: tab Issues (1), 0 open rows shown
+    land fetchIssues:open ; row-close 1 ; row-assign 0 ; row-close 0 ; land closeIssue:1 ; fail assign:1,guest ; row-assign 0 ; fail assign:4,guest ; fail closeIssue:3 ; user ann ; row-close 0
+  seed 12 step 9: row assignee: #4 shows dana, server guest
+    land fetchIssues:open ; focus ; select #1 ; row-assign 1 ; select #4 ; land assign:3,guest ; row-assign 2 ; assign ; land assign:4,guest
+  seed 15 step 38: row title: #2 shows "Bravo", server "Delta"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; fail fetchIssues:open ; tab help ; tab issues ; land fetchIssues:open ; focus ; filter closed ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; rename Bravo ; select #2 ; assign ; land fetchIssue:2 ; row-assign 0 ; select #2 ; land fetchComments:2 ; assign ; remove-label 0 ; land search:Old bug ; land renameIssue:2
+  seed 17 step 10: row assignee: #1 shows null, server bob
+    user bob ; land fetchIssues:open ; row-assign 1 ; land assign:3,bob ; land fetchIssues:open ; row-close 2 ; land closeIssue:4 ; row-close 1 ; row-assign 0 ; land assign:1,bob
+DONE

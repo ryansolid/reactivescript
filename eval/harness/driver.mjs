@@ -29,6 +29,9 @@ export async function runTest(browser, url, test) {
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", e => errors.push(`uncaught: ${e.message}`));
+  // the framework's own warnings and errors in the console (dev builds: Solid's diagnostics such as SILENT_HOLD, React's)
+  const logs = [];
+  page.on("console", m => { if (m.type() === "warning" || m.type() === "error") logs.push(`${m.type() === "error" ? "error" : "warning"}: ${m.text().split("\n").slice(0, 6).join("\n  ")}`); });
   const settle = () => page.waitForTimeout(60);
   const sel = id => `[data-testid="${id}"]`;
   const app = {
@@ -66,8 +69,8 @@ export async function runTest(browser, url, test) {
     await settle();
     await test.run(app);
     if (errors.length) throw new Failure(errors.join(" | "));
-    return { ok: true };
+    return { ok: true, logs };
   } catch (e) {
-    return { ok: false, error: e instanceof Failure ? e.message : `${e.message}`.split("\n")[0] + (errors.length ? ` (page: ${errors.join(" | ")})` : "") };
+    return { ok: false, logs, error: e instanceof Failure ? e.message : `${e.message}`.split("\n")[0] + (errors.length ? ` (page: ${errors.join(" | ")})` : "") };
   } finally { await page.close(); }
 }

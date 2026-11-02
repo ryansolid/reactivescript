@@ -13,7 +13,7 @@
   },
   "rx-inline": {
     "DOCS_RULE": ", except that you may read the language documentation in {{DIR}}/docs",
-    "LANG_RULE": "ReactiveScript (`.rx`), a new language that compiles to Solid 2.0. Nothing about it is online. The two pages at the end of this message are the language and how it talks to a server; they are enough to write the change. The full specification is in `docs/spec/` if you need a detail they don't cover. `src/main.rx` must be the program's entry, `export default component App() { … }`; you may add `.rx` modules under `src/`. Import the backend from \"./api\": loaders with `import pure { … } from \"./api\"`, functions that write with `import { … } from \"./api\"`. Give an element a test id with `data-testid=\"…\"`.",
+    "LANG_RULE": "ReactiveScript (`.rx`), a new language that compiles to Solid 2.0. Nothing about it is online. The two pages at the end of this message are the language and how it talks to a server; they are enough for this task. The full specification is in `docs/spec/` if you need a detail they don't cover. `src/main.rx` must be the program's entry, `export default component App() { … }`; you may add `.rx` modules under `src/`. Import the backend from \"./api\": loaders with `import pure { … } from \"./api\"`, functions that write with `import { … } from \"./api\"`. Give an element a test id with `data-testid=\"…\"`.",
     "API_TYPES": "`src/api.d.rx`",
     "CHECKER": "the ReactiveScript compiler's checker (`rxc check src/main.rx`)"
   },
@@ -40,5 +40,11 @@
     "LANG_RULE": "Foldkit 0.170 (The Elm Architecture in TypeScript, on Effect 4): `src/main.ts` must export `Model`, `init`, `update` and `view`; the harness boots them with `Runtime.makeApplication` and `Runtime.run` into a `#app` container, as Foldkit's `src/entry.ts` does. You may add files under `src/`. Installed packages you may use: foldkit, effect, @effect/platform-browser. Foldkit is newer than most training data. The page at the end of this message is Foldkit's own conventions file for coding agents (`FOLDKIT.md`); the repository it refers to as `repos/foldkit` is `docs/foldkit` here.",
     "API_TYPES": "`src/api.d.ts`",
     "CHECKER": "the TypeScript compiler (strict, with Foldkit's template settings)"
+  },
+  "vanilla": {
+    "DOCS_RULE": "",
+    "LANG_RULE": "plain TypeScript and the browser DOM, with no UI framework or library: `src/main.ts` must default-export `function mount(root: HTMLElement): void`, which the harness calls once with the page's `#app` element. You may add files under `src/`. No packages are installed for you to use.",
+    "API_TYPES": "`src/api.d.ts`",
+    "CHECKER": "the TypeScript compiler (strict)"
   }
 }

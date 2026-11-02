@@ -281,6 +281,24 @@ tracked. Inspired by solid-yield's typed failure color; the checks are
   checker keeps each failure in its pane (ruled 2026-10-24, from the second
   AI test; S-fail-3).
 
+- **R-f-11 (A failure in another section's boundary).** [taken by default
+  2026-11-02] A question can fail when its equation awaits outside a
+  `catch` (R-6); its failure reaches every equation and prop that reads it,
+  up to an equation with a `catch` (R-f-4). It **surfaces** in the nearest
+  `errored` regions above each reader, over the static application tree
+  (R-f-5). A read is `FOREIGN_FAILURE` (bin S) when question `F` surfaces
+  there, in region `B`, and: `F` also surfaces in a region that is neither
+  inside nor around `B` (its own section), and `B` shows a question `G` that
+  neither depends on `F` nor `F` on it (`B` is `G`'s section). When `F`
+  fails, `B` shows `F`'s error as `G`'s, and `B`'s retry (`refresh G`) does
+  not ask `F` again. Catch the borrowed read (`x catch (e) => …`), or read
+  `F` only inside its own section. A read under both sections' boundaries
+  (nested regions), or a section that shows nothing but `F`, is not
+  flagged. Found by the round 10 AI eval (desk rx-2: the list, passed to
+  the detail as `rows`, replaced the detail when it failed); over every .rx
+  program in the repository and the eval runs (695 files) it fires on that
+  one. S-fail-4.
+
 ## R-inference
 
 - **R-13.** Rows are inferred locally per function and per equation from the

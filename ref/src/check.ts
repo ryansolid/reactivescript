@@ -2,6 +2,7 @@
 // Every diagnostic is an error (CN-1a). Codes keep Solid's names where one exists (CN-1b); `rule`
 // is the spec rule enforced. Names resolve lexically (a component body sees its declaration
 // site, never its caller — RG-7a); provisions resolve through the static application tree (RG-7b).
+import { eqLines, foreignFailures } from "./foreign.ts";
 import type { Decl, Expr, Markup, Program, Stmt } from "./ast.ts";
 import type { Diagnostic } from "./errors.ts";
 import type { ModuleSet } from "./modules.ts";
@@ -207,7 +208,9 @@ export function checkWithSignature(p: Program, opts: Opts = {}): { diags: Diagno
 export function checkModules(set: ModuleSet): { diags: Diagnostic[]; sigs: Map<string, ModSig>; models: Map<string, Model> } {
   const sigs = new Map<string, ModSig>(set.signatures ?? []); const diags: Diagnostic[] = [...set.diags];   // MO-9: a module known by its .d.rx
   const models = new Map<string, Model>();                              // CP-6: each module's resolved model
-  for (const path of set.order) { const r = checkWithSignature(set.programs.get(path)!, { sigs, file: path, declarations: set.declarations }); diags.push(...r.diags); sigs.set(path, r.sig); models.set(path, r.model); }
+  const catches = new Map<string, Set<number>>(); const awaits = new Map<string, Set<number>>();
+  for (const path of set.order) { const r = checkWithSignature(set.programs.get(path)!, { sigs, file: path, declarations: set.declarations }); diags.push(...r.diags); sigs.set(path, r.sig); models.set(path, r.model); catches.set(path, eqLines(set.programs.get(path)!, "catch")); awaits.set(path, eqLines(set.programs.get(path)!, "await")); }
+  diags.push(...foreignFailures(models, catches, awaits));   // R-f-11: over every module's model
   return { diags, sigs, models };
 }
 
