@@ -10,7 +10,7 @@ import { Show, For, Loading, Errored } from "solid-js";
 import { getObserver } from "@solidjs/signals";
 import {
   createSignal, createMemo, createEffect, createOptimistic, createOptimisticStore, createStore, createProjection, createDeferred,
-  createRoot, createRenderEffect, flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, resetErrorHalt, createContext, getContext, setContext, getOwner, runWithOwner, $TARGET, createErrorBoundary, deep
+  createRoot, createRenderEffect, flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, resetErrorHalt, createContext, getContext, setContext, getOwner, runWithOwner, $TARGET, createErrorBoundary
 } from "@solidjs/signals";
 
 const noFlight = (v: unknown) => { if (v instanceof Flight || v instanceof Promise) throw new Unsupported("`await` not in tail position (the oracle lowers a tail `await` to the memo's result)"); };
@@ -52,6 +52,9 @@ const sameInput = (a: unknown, b: unknown): boolean => {
   const ka = Object.keys(a), kb = Object.keys(b);
   return ka.length === kb.length && ka.every(k => Object.prototype.hasOwnProperty.call(b, k) && sameInput((a as any)[k], (b as any)[k]));
 };
+/** A store's whole value, read through the store so a guess in flight shows (Solid's `deep` serves the landed frame). */
+const readCopy = (v: unknown): unknown => v === null || typeof v !== "object" ? v : Array.isArray(v) ? v.map(readCopy) : Object.fromEntries(Object.keys(v).map(k => [k, readCopy((v as any)[k])]));
+
 export class Unsupported extends Error { name = "Unsupported"; static last = ""; constructor(m: string) { super(m); Unsupported.last = m; } }
 
 // ---------------------------------------------------------------- string-tree renderer
@@ -305,7 +308,7 @@ export class Oracle {
           const inputs = d.inputs; for (const e of inputs) this.hoistAwaits(null, e, scope, false);
           const apply = (vals: unknown[]) => { const env = new Map<string, unknown>(); vals.forEach((v, i) => env.set(`$${i}`, v)); const r = this.runStmts(d.body, scope, env); return typeof r === "function" ? (r as () => void) : undefined; };
           let last: unknown[] | null = null;
-          createEffect(() => inputs.map(e => { const v = this.ev(e, scope); return v !== null && typeof v === "object" && (v as any)[$TARGET] !== undefined ? deep(v) : v; }), {   // a store enters whole, as a snapshot
+          createEffect(() => inputs.map(e => { const v = this.ev(e, scope); return v !== null && typeof v === "object" && (v as any)[$TARGET] !== undefined ? readCopy(v) : v; }), {   // a store enters whole, as a snapshot
             effect: (vals: unknown[]) => { if (last && last.length === vals.length && vals.every((v, i) => sameInput(v, last![i]))) return; last = vals; return apply(vals); },   // EF-3: fires when an input changed (an error in between is a change)
             error: () => { last = null; return apply(inputs.map(() => ERR)); },   // E-12: an error is an answer the apply receives
           } as any);
@@ -398,7 +401,7 @@ export class Oracle {
         for (let s: Scope | null = scope; s; s = s.parent) { const h = hoistedOf.get(s)?.get(e); if (h) return h(); }   // a hoisted `await`: its own node, read here
         const v = this.ev(e.e, scope, env); return !e.stream && v instanceof Flight ? v.first : v;   // in tail position the memo returns the flight (R-1): a stream for `await*`, else its one answer
       }   // in tail position the memo returns the flight (R-1); elsewhere the operand checks below refuse it
-      case "latest": { const was = this.imperative; this.imperative = 0; try { return latest(() => { const v = this.ev(e.e, scope, env); return v !== null && typeof v === "object" && (v as any)[$TARGET] !== undefined ? deep(v) : v; }); } finally { this.imperative = was; } }   // R-12: `latest` of a value that never had one throws, in a handler as anywhere (Solid S-28)
+      case "latest": { const was = this.imperative; this.imperative = 0; try { return latest(() => { const v = this.ev(e.e, scope, env); return v !== null && typeof v === "object" && (v as any)[$TARGET] !== undefined ? readCopy(v) : v; }); } finally { this.imperative = was; } }   // R-12: `latest` of a value that never had one throws, in a handler as anywhere (Solid S-28)
       case "pending": return isPending(() => { const v = this.ev(e.e, scope, env); if (v !== null && typeof v === "object") Reflect.ownKeys(v); return v; });   // Solid D-24: the probe judges reads, so a structured value is read whole
       case "if": return this.ev(e.c, scope, env) ? this.ev(e.t, scope, env) : this.ev(e.f, scope, env);
       case "throw": throw this.ev(e.e, scope, env);                    // R-f-3
