@@ -158,7 +158,9 @@ async function session(browser, url, seed, steps, log, r9 = false) {
       const v = shownValue(parsed, listShown, detail, w.issue, w.field);
       if (v === undefined) continue;
       if (v === w.value) { w.shown = true; continue; }
-      const newer = [...writes.values()].some(o => o !== w && o.issue === w.issue && o.field === w.field && o.seq > w.seq);
+      const newer = started.some(o => o !== w && o.issue === w.issue && o.field === w.field && o.seq > w.seq && (o.accepted || [...writes.values()].includes(o)));   // a newer write still out, or accepted, supersedes it
+      // A1 (H-11): a declined newer write to the same field may keep showing while anything is in the air
+      if (declined.some(o => o.issue === w.issue && o.field === w.field && o.seq > w.seq && o.value === v)) continue;
       if (w.shown && !newer) return note("dropped guess", `#${w.issue} ${w.field}: showed ${JSON.stringify(w.value)} while it was in flight, now ${JSON.stringify(v)}`);
     }
     if (listShown && detail && ui.selected != null) {
