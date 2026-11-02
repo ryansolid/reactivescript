@@ -8,6 +8,7 @@ pub mod awaits;
 pub mod check;
 pub mod content;
 pub mod emit;
+pub mod foreign;
 pub mod infer;
 pub mod js;
 pub mod model;
