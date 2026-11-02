@@ -48,7 +48,11 @@ The four arms are the four positions on where that responsibility lives (Ryan, 2
 - **Fuzz**: `harness/fuzz.mjs <dir> --seeds 20 --r9`, seeds 1-20, 30 steps; the number of seeds that found a hole. Holds
   that settle are not holes (Ryan, 2026-10-30); the allowances are those of `PREREG-fuzz-8.md` plus the round 9 ones
   in `fuzz.mjs`. A session that times out is re-run once alone before it counts (load flake seen in round 9 grading).
-- **Defects** = hidden failed + overlap failed + fuzz seeds with a hole.
+- **Legal holds**: an overlap or hidden failure is not a defect when the frame it expects shows once the action in
+  flight lands, a loading or pending affordance shows meanwhile, and the held read is a source that action guessed on
+  or re-asks (Ryan 2026-10-30: holds that settle and are not silent are not bugs; 2026-11-02: one question per node).
+  Each such failure is checked by replay and listed; the same rule applies to every arm.
+- **Defects** = hidden failed + overlap failed + fuzz seeds with a hole, less legal holds.
 - **Correct** = 0 defects.
 - **Cost**: billed units from the transcript (`harness/cost.mjs`: input 1, cache write 1.25, cache read 0.1, output 5)
   times the tier's list price per input token on the run date, in dollars; the prices are recorded in the results.
