@@ -41,6 +41,9 @@ The four arms are the four positions on where that responsibility lives (Ryan, 2
 - All 36 launched in one batch, interleaved by arm, so prompt-cache state is the same for every arm (round 5b lesson).
 - Each run: the scaffolded prompt verbatim, at most 15 `./check` and `./test` calls, no other tools than file, search
   and shell inside its directory. A run that stops without a report is graded as it stands.
+- `./test` builds the app in development mode and prints, after the results, the console warnings and errors the
+  page logged (each once), so every arm's agent sees its framework's dev diagnostics (Solid's SILENT_HOLD and the
+  like; React's warnings). Grading builds in production mode, as before. (Ryan, 2026-11-02.)
 
 ## Grading (per run, by the round 9 `grade.sh`)
 
