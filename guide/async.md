@@ -31,8 +31,7 @@ forecast = city == "" ? null : city.length < 3 ? throw TooShort(city) : await fe
   Give each pane its own, so one pane's failure never touches another.
 - A pane that borrows another pane's data (a detail reading the list's title, passed in as a prop) catches that read:
   `heading = props.rows.find(r => r.id == props.id)?.title catch (e) => item.title`. Uncaught, the list's failure
-  shows in the detail's boundary as the detail's own, and the detail's retry asks the wrong thing
-  (`FOREIGN_FAILURE`, R-f-11).
+  shows in the detail's boundary as the detail's own, and the detail's retry asks the wrong thing.
 - `x catch (e) => e.message` turns a failure into a value, for showing it inline.
 - An answer that means "missing" (`null`) is a failure you declare: `export error NotFound(id: number) => …`, and
   `found(await fetchUser(id), id)` with `fn found(it, id) => it == null ? throw NotFound(id) : it`.
