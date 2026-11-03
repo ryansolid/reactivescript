@@ -13,7 +13,7 @@
   },
   "rx-inline": {
     "DOCS_RULE": ", except that you may read the language documentation in {{DIR}}/docs",
-    "LANG_RULE": "ReactiveScript (`.rx`), a new language that compiles to Solid 2.0. Nothing about it is online. The two pages at the end of this message are the language and how it talks to a server; they are enough for this task. The full specification is in `docs/spec/` if you need a detail they don't cover. `src/main.rx` must be the program's entry, `export default component App() { … }`; you may add `.rx` modules under `src/`. Import the backend from \"./api\": loaders with `import pure { … } from \"./api\"`, functions that write with `import { … } from \"./api\"`. Give an element a test id with `data-testid=\"…\"`.",
+    "LANG_RULE": "ReactiveScript (`.rx`), a new language that compiles to Solid 2.0. Nothing about it is online. The three pages at the end of this message are the language, how it talks to a server, and its rules on one page with their ids; they are enough for this task. The full specification (`docs/spec/`, 250 KB) is those rules in detail: when a checker message needs more, look up that one rule by its id (`grep -n \"^- \\\\*\\\\*AC-4 \" docs/spec/*.md`) rather than reading chapters. `src/main.rx` must be the program's entry, `export default component App() { … }`; you may add `.rx` modules under `src/`. Import the backend from \"./api\": loaders with `import pure { … } from \"./api\"`, functions that write with `import { … } from \"./api\"`. Give an element a test id with `data-testid=\"…\"`.",
     "API_TYPES": "`src/api.d.rx`",
     "CHECKER": "the ReactiveScript compiler's checker (`rxc check src/main.rx`)"
   },
