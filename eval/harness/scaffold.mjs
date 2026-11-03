@@ -5,7 +5,8 @@
 // --base <dir> makes a change task (round 4): it copies an existing app's source files from <dir> into src/, and the
 // task's BASE.md (the brief that app was built to) next to BRIEF.md, and the prompt asks for a change, not a new app.
 // Round 7's chain steps (tasks/chain1..4, harness/make-chain.mjs) take the previous step's run's src/ as the base.
-// --inline-docs (round 5) puts the .rx guide's two pages (guide/language.md, guide/async.md) at the end of the .rx
+// --inline-docs (round 5) puts the .rx guide's pages (guide/language.md, guide/async.md, and from round 11
+// guide/reference.md) at the end of the .rx
 // prompt, so reading them costs no tool calls, and Solid's own agent primer (solid-js/skills/solid-2.0/SKILL.md) at
 // the end of the Solid prompt; the React prompt is unchanged.
 // For foldkit, the docs are Foldkit's own FOLDKIT.md (create-foldkit-app's template) at the end of the prompt, and the
@@ -78,7 +79,7 @@ export function prompt(arm, dir, { plain = false, change = false, inline = false
   fill.BACKEND_NOTE = plain ? "" : " whose answers the tests control";
   let text = readFileSync(path.join(here, change ? "prompt-change.md" : "prompt.md"), "utf8");
   for (let i = 0; i < 2; i++) for (const k of [...Object.keys(fill), "DIR"]) text = text.replaceAll(`{{${k}}}`, k === "DIR" ? dir : fill[k]);
-  if (docs && arm === "rx") for (const f of ["language.md", "async.md"]) text += `\n---\n\n${readFileSync(path.join(evalDir, "../guide", f), "utf8")}`;
+  if (docs && arm === "rx") for (const f of ["language.md", "async.md", "reference.md"]) text += `\n---\n\n${readFileSync(path.join(evalDir, "../guide", f), "utf8")}`;
   if (docs && arm === "foldkit") text += `\n---\n\n${readFileSync(path.join(foldkitRepo, "packages/create-foldkit-app/templates/base/FOLDKIT.md"), "utf8")}`;
   if (docs && arm === "solid") text += `\n---\n\n${readFileSync(path.join(evalDir, "node_modules/solid-js/skills/solid-2.0/SKILL.md"), "utf8").replace(/^---\n[\s\S]*?\n---\n+/, "")}`;
   return text;
