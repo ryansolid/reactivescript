@@ -50,15 +50,15 @@
     "test": "node test.mjs"
   },
   "peerDependencies": {
-    "@solidjs/signals": "^2.0.0-rc.19",
-    "@solidjs/web": "^2.0.0-rc.19",
-    "solid-js": "^2.0.0-rc.19"
+    "@solidjs/signals": "^2.0.0-rc.21",
+    "@solidjs/web": "^2.0.0-rc.21",
+    "solid-js": "^2.0.0-rc.21"
   },
   "devDependencies": {
-    "@solidjs/signals": "2.0.0-rc.19",
-    "@solidjs/web": "2.0.0-rc.19",
+    "@solidjs/signals": "2.0.0-rc.21",
+    "@solidjs/web": "2.0.0-rc.21",
     "esbuild": "^0.28.2",
-    "solid-js": "2.0.0-rc.19",
+    "solid-js": "2.0.0-rc.21",
     "typescript": "^6.0.3"
   }
 }

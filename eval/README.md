@@ -98,6 +98,15 @@ mutants/   naive React drafts the hidden tests must catch
 results/   scored runs
 ```
 
-Setup: `npm install` here; `cargo build --release --bin rxc` in `../compiler` (its Solid pin is d2323b0, rc.19).
+Setup: `npm install` here (Solid 2.0.0-rc.21 from npm); `cargo build --release --bin rxc` in `../compiler` (its Solid pin is d2323b0, rc.19).
 `RXC` and `RT_WEB` override the paths to the binary and `ref/compile/rt-web.ts`. (The pilot itself ran on PR #6's
 crate before it merged, built with the same pin.)
+
+## Running another agent harness (Cursor, Grok, Codex, …)
+
+A desk is a self-contained folder: `node harness/scaffold.mjs desk9 rx <dir> --brief plain --inline-docs` writes
+`.prompt` (the whole instructions), `BRIEF.md`, `src/`, `./check` and `./test`. Give the agent `.prompt` as its task
+and the folder as its workspace, then grade with `sh harness/grade.sh <dir>`. Use the `react` arm for the control.
+Defects are comparable across harnesses; cost needs that harness's own token count (`cost.mjs` reads Claude
+transcripts). The hidden tests and references are in this public repo: an outside run relies on the prompt's
+"don't look elsewhere" rule, so check its transcript.
