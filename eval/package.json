@@ -5,9 +5,9 @@
   "description": "The .rx vs React (and Solid 2 TSX) benchmark harness (eval/README.md)",
   "dependencies": {
     "@effect/platform-browser": "^4.1.0",
-    "@solidjs/compiler": "file:../../solid-next/packages/compiler",
-    "@solidjs/signals": "file:../../solid-next/packages/signals",
-    "@solidjs/web": "file:../../solid-next/packages/web",
+    "@solidjs/compiler": "2.0.0-rc.21",
+    "@solidjs/signals": "2.0.0-rc.21",
+    "@solidjs/web": "2.0.0-rc.21",
     "@tanstack/react-query": "5.90.2",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.1",
@@ -19,7 +19,7 @@
     "foldkit": "^0.170.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "solid-js": "file:../../solid-next/packages/solid",
+    "solid-js": "2.0.0-rc.21",
     "typescript": "5.9.3",
     "typescript-eslint": "8.46.0",
     "vite": "7.1.9"
