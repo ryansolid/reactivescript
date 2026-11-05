@@ -22,7 +22,7 @@ export component IssuesPage(props: { onOpenCount: (n: number) => void }) {
 
   // the open list as shown (closes in flight already out of it) is the tab's count; other lists, loads and failures
   // leave the count as it was
-  effect ((filter == "open" ? issues.length : -1) catch (e) => -1) {
+  effect ((filter == "open" ? (latest issues).length : -1) catch (e) => -1) {
     if ($0 >= 0) {
       props.onOpenCount($0)
     }

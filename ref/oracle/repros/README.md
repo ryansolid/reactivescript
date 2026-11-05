@@ -18,6 +18,8 @@ node repros/dv14-replay-instant/run.mjs
 node --conditions=browser --conditions=development repros/dv16-latest-first.mjs [latest-first|n0-first]
 node --conditions=browser --conditions=development repros/dv17-boundary-merges-mounts.mjs [boundary|none]
 node --conditions=browser --conditions=development repros/dv18-projection-relanding.mjs [row-memo|direct]
+node --conditions=browser --conditions=development repros/dv19-latest-reask.mjs
+node --conditions=browser --conditions=development repros/4690-guess-reask-refresh.mjs
 ```
 
 The hydration repros are each one `app.jsx`, compiled by Solid's own
@@ -379,3 +381,40 @@ thunk makes, never its return value (RULES-DERIVED D-24, A23) — so it is
 `false` while the memo under the projection re-asks. `keys` (what
 `__rt.isPending` now does for a structured value) and `length` report
 `searching` as S-ai2-search's instants 2 and 4 expect.
+
+---
+
+## DV-19 — `latest()` over a pending guess answers the re-asked truth once a re-ask lands under it — filed as solidjs/solid#4689
+
+**Rule.** Spec R-12 and H-7: `latest x` reads past a hold but answers what `x` shows, the guess while its action is out
+(S-latest-reask instant 4).
+
+**Shape.** A keyed `createOptimisticStore` over an async loader; an action guesses a row away and awaits; the store is
+refreshed from outside the action and that answer lands while the guess is pending. The same with `createOptimistic`
+over `createSignal(async)`.
+
+**Expected.** `store.length` 2, `latest(() => store.length)` 2.
+
+**Observed on 2.0.0-rc.21 (next @ 2105ffb8).** `store.length` 2, `untrack` 2, `latest` 3. Before the re-ask lands,
+`latest` is 2. The signal form: `detail().title` "New", `latest` "Old".
+
+**Found by** the round 8 timing fuzzer on the chain4 reference desk, regraded on rc.21 (2026-11-05): a tab count read
+with `latest issues` beside a list with a close in flight.
+
+---
+
+## solidjs/solid#4690 — a store read only by effects reverts at the action's end, before the action's refresh lands, once an outside re-ask has landed under it — no DV
+
+**Rule.** Spec 06 D-35: an action's `refresh` is authoritative work in flight; the guess waits for that answer.
+
+**Shape.** An optimistic store (object, array, keyed, or `createOptimistic` over a signal); an action guesses, awaits
+its write, then `refresh`es the store; the store is refreshed from outside the action and that answer lands while the
+guess is pending; the write lands.
+
+**Expected.** Every reader keeps the guess until the action's re-ask lands.
+
+**Observed on 2.0.0-rc.21.** A text node under `<Loading>` keeps it. An effect with nothing rendering the store sees
+the old truth once the write lands, until the re-ask lands. An effect beside a rendered reader keeps it. Without the
+outside re-ask every reader keeps it. No `.rx` program reaches the effect-only shape (a source on screen is read under
+a boundary), so S-guess-reask-refresh records no divergence.
+

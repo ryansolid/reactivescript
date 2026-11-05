@@ -351,6 +351,20 @@ repro in `ref/oracle/repros/` still reproduces on that commit.
   rows. A render effect reading the rows directly follows. The spec frames
   stand. Filed as solidjs/solid#4305; fixed on `next` 2026-10-27 (shows
   in no scenario at `2c9fdd9`).
+- **DV-19 (`latest` of a pending guess after a re-ask) — a Solid bug,
+  reproduced 2026-11-05** (`ref/oracle/repros/dv19-latest-reask.mjs`,
+  found by the round 8 fuzzer on the chain4 reference desk regraded on
+  rc.21; filed as solidjs/solid#4689). While a guess is pending and a
+  re-ask of its source from outside the action lands under it, the source
+  keeps showing the guess (as #4330 made it) but `latest(…)` over it
+  answers the re-asked truth: a count read with `latest issues` shows the
+  server's rows beside a list with a close in flight. H-7 says `latest x`
+  answers the guess; S-latest-reask instant 4 records `2 / 3` for `2 / 2`
+  on the oracle and the compiled runtime. `untrack` answers the guess
+  throughout. A related shape, a store read by effects alone reverting at
+  the body's end in this sequence, is solidjs/solid#4690
+  (`ref/oracle/repros/4690-guess-reask-refresh.mjs`); no `.rx` program
+  reaches it, so S-guess-reask-refresh records no divergence.
 - **DV-4 (S-37 row 2 under a boundary) — a Solid bug, reproduced
   2026-10-23; fixed on `next` 2026-10-26 (solidjs/solid#4269, fix #4278)** (`ref/oracle/repros/dv4-signals.mjs`). Under a
   `<Loading>` that has shown content, a derived store's per-key verdicts

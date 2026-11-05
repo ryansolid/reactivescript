@@ -54,7 +54,7 @@ let clientJs = "";   // the current table's client bundle (SV-3)
 const http = createServer((req, res) => { if (req.url?.startsWith("/_server")) { serverFunction(req, res).catch(e => { res.statusCode = 500; res.end(String(e)); }); return; } if (req.url === "/favicon.ico") { res.statusCode = 404; res.end(); return; } if (req.url === "/client.js") { res.writeHead(200, { "content-type": "text/javascript" }); res.end(clientJs); return; } res.writeHead(200, { "content-type": "text/html; charset=utf-8" }); const p = pending; pending = null; if (p) p(res); else res.end("no render"); });
 await new Promise<void>(r => http.listen(0, "127.0.0.1", () => r()));
 const port = (http.address() as { port: number }).port;
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {});   // CHROMIUM: a system browser (as eval/harness/driver.mjs)
 const page = await browser.newPage();
 const pageErrors: string[] = []; page.on("pageerror", (e: Error) => pageErrors.push(e.message)); page.on("console", (m: any) => { if (m.type() === "error" || (m.type() === "warning" && /hydrat/i.test(m.text()))) pageErrors.push(m.text()); });
 const textOf = () => page.evaluate(() => {

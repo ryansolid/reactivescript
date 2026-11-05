@@ -1,0 +1,52 @@
+== hidden
+build failed (compile):
+✗ base: a declined assignment reverts the row and shows the message
+    build failed (compile)
+✗ base: a new assignment clears the previous error at once
+    build failed (compile)
+✗ base: selecting another issue clears the assignment error
+    build failed (compile)
+✗ base: a filter answer landing late does not replace the current filter's list
+    build failed (compile)
+✗ base: a filter failing late shows no error
+    build failed (compile)
+✗ base: details landing out of order show the selected issue
+    build failed (compile)
+✗ base: selecting after not found shows loading, not the old message
+    build failed (compile)
+✗ base: retry after not found shows the issue
+    build failed (compile)
+✗ base: a failing list leaves the detail alone
+    build failed (compile)
+✗ base: a failing detail leaves the list alone
+    build failed (compile)
+✗ base: an accepted assignment survives switching filters and back
+    build failed (compile)
+✗ a declined rename reverts the row and the heading and shows the message
+    build failed (compile)
+✗ a new rename clears the previous error at once
+    build failed (compile)
+✗ selecting another issue clears the rename error
+    build failed (compile)
+✗ the title input is empty when another issue is selected
+    build failed (compile)
+✗ an accepted rename survives switching filters and back
+    build failed (compile)
+0/16 passed
+== overlap
+build failed (compile):
+✗ base: two issues assigned at once: declining one reverts only that row
+    build failed (compile)
+✗ base: a list that loads while an assignment is out keeps the new assignee
+    build failed (compile)
+✗ a declined assignment keeps a rename in flight on the same issue
+    build failed (compile)
+✗ a declined rename keeps an assignment in flight on the same issue
+    build failed (compile)
+✗ a list that loads while a rename is out keeps the new title
+    build failed (compile)
+✗ a detail that loads while a rename is out keeps the new title
+    build failed (compile)
+✗ an earlier rename declined after a later one was accepted keeps the later title
+    build failed (compile)
+0/7 passed

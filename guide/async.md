@@ -188,6 +188,14 @@ export action add(id: string, title: string) {
   server. Keep such a write off the action's sources, or make it an `onFlush` run.
 - **A failure stays up while its retry is in flight.** That's H-12. To show `loading…` instead, put
   `loading on(k)` above the `errored`.
+- **The server accepted, and the screen went back to the old value.** The action guessed on one question and
+  refreshed another, or none. A guess ends with its action; only a new answer for the question it guessed on shows
+  what the server took. Refresh every question you guessed on (`optimistic detail.title := t` needs `refresh detail`,
+  not only `refresh issues`).
+- **A write landed and nothing showed it until the reload answered.** A guess needs a value to guess on. A rename sent
+  while the detail is still loading, or for a row the list does not show yet (`findIndex` gave -1), guesses nothing,
+  so the accepted value appears only when the action's `refresh` lands. If that window matters, keep the accepted
+  write in the client-owned layer ("three layers" above) until the server's answer confirms it.
 
 ## 5. Plain handlers
 
