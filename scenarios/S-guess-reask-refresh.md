@@ -64,3 +64,4 @@ D-35): it logs the guess once and nothing after, since the re-ask confirms it.
 - oracle "Variant: read by an effect alone" instant 6: `x` effects `log(New)`
 
 Found reviewing PR #31: an effect over a source nothing renders is a legal `.rx` program, so #4690 is reachable.
+Fixed on `next` (2026-11-05); the divergence stays recorded until the repin.

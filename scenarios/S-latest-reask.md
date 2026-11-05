@@ -1,6 +1,6 @@
-# S-latest-reask — `latest` of a guessed list answers the guess after a re-ask lands under it
+# S-latest-reask — `latest` of a guessed list answers the truth once a re-ask lands under the guess
 
-Rules exercised: R-12, H-7, AC-3, AC-4, ST-4.
+Rules exercised: R-12, H-7, H-11, AC-3, AC-4, ST-4.
 
 ## Program
 
@@ -12,9 +12,12 @@ export default component App() {
 }
 ```
 
-`latest rows` reads past any hold on `rows` but answers what `rows` shows: the guess, while its action is out (H-7).
-A re-ask of the list from outside the action (instant 3) lands under the pending guess (instant 4); the guess stays,
-and `latest rows` still answers it.
+`latest rows` reads past the guess's hold and answers what the graph holds: the guess, until an answer of `rows`'s
+question lands that differs from it. A re-ask from outside the action (instant 3) lands under the pending guess
+(instant 4) with the rows the server still has: that is a new answer, different from the guess at the guessed key,
+so it corrects the graph now and `latest rows` is the truth (H-11, D-34), even though it equals the truth the guess
+was made over. The screen keeps the guess until the hold commits. So a count read with `latest` beside a guessed list
+is not the count the list shows; read the list where the list is read (under its boundary) for that.
 
 ## Frames
 
@@ -24,14 +27,12 @@ and `latest rows` still answers it.
 | 1 | resolve "l" [{"id":1},{"id":2},{"id":3}] | `3 / 3` |
 | 2 | handler `close(1)` | `2 / 2` |
 | 3 | handler `refresh rows` | `2 / 2` |
-| 4 | resolve "l" [{"id":1},{"id":2},{"id":3}] | `2 / 2` |
+| 4 | resolve "l" [{"id":1},{"id":2},{"id":3}] | `2 / 3` |
+| 5 | resolve "close" 0 | `2 / 3` |
+| 6 | resolve "l" [{"id":2},{"id":3}] | `2 / 2` |
 
-## Divergences (DV-19)
-
-- oracle "Frames" instant 4: `2 / 3`
-
-Found by the timing fuzzer on the chain4 reference desk (Solid 2.0.0-rc.21): a tab count read with `latest` showed the
-server's row count beside a list with a close in flight. Filed as solidjs/solid#4689.
+Found by the timing fuzzer on the chain4 reference desk (Solid 2.0.0-rc.21). The spec first said `latest` kept the
+guess here (DV-19, filed as solidjs/solid#4689); ruled 2026-11-05 by adopting Solid's position, as for DV-10.
 
 ## Variant: the outside answer differs, then the write lands under the action's refresh
 

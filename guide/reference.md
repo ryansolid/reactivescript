@@ -76,6 +76,8 @@ Expr      ::= TypeScript's, without assignment, `this`, `function`, `new` on rea
 - A `loading` region shows its fallback instead of holding while it is **armed**: before it first showed content,
   and again each time its `on(x)` value changes. Otherwise a change below it holds (H-5). Put a read that waits on
   `x` inside the `loading on(x)` region; a read of it outside holds the change (CN-3e).
+  To report what the region shows, guesses included, read it inside the region (a child component there can hold an
+  effect). `latest x` outside is the newest answer instead: an answer that lands replaces a pending guess there (H-11).
 - `pending? x` is true while a new answer for `x` is out; `latest x` is the value `x` is moving to (R-9). Use them to
   show work in progress without a fallback.
 - `await e -> v` gives `v` until the first answer, so there is no first-load wait (R-7).

@@ -343,7 +343,7 @@ class Checker {
     });
     for (const f of found) {
       this.line = f.line;
-      this.err("LOADING_ON_OUTSIDE_HOLD", "CN-3e", `\`${f.name}\` is read here, outside the \`loading on(${f.on})\` region that waits on it: when \`${f.on}\` changes this read holds the change, so the region's fallback never shows and the old content stays up with no sign of the wait — move the read under the region, or read \`latest ${f.name}\` here`);
+      this.err("LOADING_ON_OUTSIDE_HOLD", "CN-3e", `\`${f.name}\` is read here, outside the \`loading on(${f.on})\` region that waits on it: when \`${f.on}\` changes this read holds the change, so the region's fallback never shows and the old content stays up with no sign of the wait — move the read under the region (it then shows what the region shows, a guess included), or read \`latest ${f.name}\` here (the newest answer: once one lands it replaces a pending guess)`);
     }
   }
 

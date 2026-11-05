@@ -199,11 +199,13 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   its answer: while an action's re-ask of it is in flight, every reader of
   it waits for that action, a declined guess's revert included (ruled
   2026-10-31: by design, a re-ask can touch every row). When `x`'s own question
-  answers: an answer equal to the guess confirms silently — the held answer
+  answers — the action's re-ask or one from outside it, compared with
+  the guess, not with the truth the guess was made over (DV-19) — an
+  answer equal to the guess confirms silently — the held answer
   is not pending (S-solid-34 instant 5); a different answer **corrects the
   graph now** (derivations re-derive from the truth, `latest x` is the
   truth, `pending? x` is `true`) while the screen keeps what it showed
-  until the commit — and a guess the screen never showed is void
+  until the commit, and so do effects over it (S-guess-reask-refresh) — and a guess the screen never showed is void
   (S-solid-33). An older question's late answer is superseded (R-4) and
   moves nothing (S-solid-34). When the body returns and nothing
   authoritative is in flight for `x`, the guess is corrected by the truth
@@ -351,25 +353,17 @@ repro in `ref/oracle/repros/` still reproduces on that commit.
   rows. A render effect reading the rows directly follows. The spec frames
   stand. Filed as solidjs/solid#4305; fixed on `next` 2026-10-27 (shows
   in no scenario at `2c9fdd9`).
-- **DV-19 (`latest` of a pending guess after a re-ask) — a Solid bug,
-  reproduced 2026-11-05** (`ref/oracle/repros/dv19-latest-reask.mjs`,
-  found by the round 8 fuzzer on the chain4 reference desk regraded on
-  rc.21; filed as solidjs/solid#4689). While a guess is pending and a
-  re-ask of its source from outside the action lands under it, the source
-  keeps showing the guess (as #4330 made it) but `latest(…)` over it
-  answers the re-asked truth: a count read with `latest issues` shows the
-  server's rows beside a list with a close in flight. H-7 says `latest x`
-  answers the guess; S-latest-reask instant 4 records `2 / 3` for `2 / 2`
-  on the oracle and the compiled runtime. `untrack` answers the guess
-  throughout. **Open: this rests on reading H-11's correction narrowly.**
-  The outside answer `[1,2,3]` differs from the guess `[2,3]`, and H-11
-  says a different answer corrects the graph with `latest x` the truth;
-  the spec (and the interpreter) take it as no new answer because it
-  equals the truth the guess was made over. When the outside answer does
-  change the truth, the spec agrees with Solid (S-latest-reask variant:
-  `2 / 4`). If Solid declines #4689, instant 4 is `2 / 3`, and a count
-  read with `latest x` beside a guessed list is not the count the list
-  shows: the chain and count references would need another reader.
+- **DV-19 (`latest` of a pending guess after a re-ask) — Solid's
+  position adopted 2026-11-05** (solidjs/solid#4689, expected to be
+  declined; `ref/oracle/repros/dv19-latest-reask.mjs`, found by the round
+  8 fuzzer on the chain4 reference desk regraded on rc.21). A re-ask of a
+  guessed source from outside the action lands under the guess with the
+  truth the guess was made over. The spec said that was no new answer, so
+  `latest x` kept the guess; Solid compares the answer with the guess, so
+  it is a correction and `latest x` is the truth while the screen keeps
+  the guess. H-11 now says so, and S-latest-reask instant 4 is `2 / 3`.
+  So a count of a guessed list as shown is read under the list's region,
+  not with `latest` (CN-3e; the chain and count references).
 - **DV-20 (a guess read by effects alone reverts under the action's
   refresh) — a Solid bug, reproduced 2026-11-05** (solidjs/solid#4690,
   `ref/oracle/repros/4690-guess-reask-refresh.mjs`). With nothing
@@ -378,6 +372,7 @@ repro in `ref/oracle/repros/` still reproduces on that commit.
   action's re-ask answers. D-35 says the guess waits for that answer.
   S-guess-reask-refresh's effect-only variant records it at instants 5
   and 6; a rendered reader of the source holds the effect's view too.
+  Fixed on `next` (Ryan, 2026-11-05); recorded until the repin.
 - **DV-4 (S-37 row 2 under a boundary) — a Solid bug, reproduced
   2026-10-23; fixed on `next` 2026-10-26 (solidjs/solid#4269, fix #4278)** (`ref/oracle/repros/dv4-signals.mjs`). Under a
   `<Loading>` that has shown content, a derived store's per-key verdicts

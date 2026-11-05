@@ -59,7 +59,7 @@ export class Node {
   lane = false;                                        // R-10: read a probe during last compute
   lanes = new Set<Node>();                             // R-10 / H-7: which probed sources' lanes this value lives in
   inLanes = new Set<Node>();                           // H-7: the lanes it is held by: all but a guess's lane reached only through `latest` (DV-10)
-  flight: Flight | null = null; answered = false; firstPaint = false;   // R-1, R-7
+  flight: Flight | null = null; answered = false; firstPaint = false; landing = false;   // R-1, R-7; landing: its flight answered and it has not recomputed since
   heldBy: number | null = null;                        // the change (instant) whose uncommitted write / flight this value belongs to
   taint = new Set<number>();                           // open changes this value derives from (equations); empty for served reads
   heldOn: number | null = null;                        // readers: the group this reader holds (root), or null
@@ -361,7 +361,7 @@ export class Runtime {
     for (const c of this.pendingCleanups) c(); this.pendingCleanups = [];
     for (const e of [...this.effects]) {
       if (!e.alive) continue;
-      const settled = e.computes.every(c => !(c.value instanceof PendingVal) && ![...c.taint].some(t => this.openChanges.has(this.find(t))));   // E-12: an error is an answer
+      const settled = e.computes.every(c => !(c.value instanceof PendingVal) && ![...c.taint].some(t => this.openChanges.has(this.find(t))) && !this.laneHeld(c));   // E-12: an error is an answer; D-34: a corrected guess's effects wait for the commit, as its views do
       const differs = (c: Node, i: number) => { if (!e.ran) return true; const d = new Set<Path>(); diffPaths(e.last[i], c.value, "", d); return d.size > 0; };
       const fire = settled && (!e.ran || e.computes.some((c, i) => c.changedSinceCommit && differs(c, i)));   // EF-2: a value differing from the one last received (pending → equal is not a change)
       if (!fire) continue;
@@ -648,6 +648,7 @@ export class Runtime {
       let v: unknown;
       try { v = n.compute!(this); } catch (e) { if (e instanceof RuleError) throw e; v = new ErrVal(e); }
       this.tracking = prevTracking;
+      const landed = n.landing && !(v instanceof PendingVal); n.landing = false;   // a new answer, even one equal to the truth the guess was made over (DV-19: Solid's position)
       this.subscribe(n);
       if (n.deferred && n.answered && v instanceof PendingVal) { n.lagging = true; v = n.value; }   // D-40: a declared-lag re-ask keeps showing its last answer
       else if (n.deferred) n.lagging = false;
@@ -658,7 +659,7 @@ export class Runtime {
       if (!n.hasValue) ch.add(""); else diffPaths(n.value, v, "", ch);
       if (ch.size > 0) { if (n.hasValue) { n.prev = n.value; n.hasPrev = true; } n.value = v; n.changed = true; n.changedSinceCommit = true; }   // C-2: `pre` is the value before this change
       n.hasValue = true;
-      if (n.hasGuess && !isAbsent(v) && ch.size > 0) { const dg = new Set<Path>(); diffPaths(v, n.guess, "", dg); if (guessedAt(n, dg)) { for (const e of n.guessEntries) if (guessedAt({ guessPaths: [e.path] }, dg)) e.spent = true; if (n.guessEntries.some(e => !e.spent)) this.rebuildGuess(n, v); else n.guess = v; n.corrected = true; } }   // D-34: a new answer different from the guess at a guessed key corrects the graph now; equal there confirms silently (the screen keeps the guess's world until the commit)
+      if (n.hasGuess && !isAbsent(v) && (ch.size > 0 || landed)) { const dg = new Set<Path>(); diffPaths(v, n.guess, "", dg); if (guessedAt(n, dg)) { for (const e of n.guessEntries) if (guessedAt({ guessPaths: [e.path] }, dg)) e.spent = true; if (n.guessEntries.some(e => !e.spent)) this.rebuildGuess(n, v); else n.guess = v; n.corrected = true; } }   // D-34: a new answer different from the guess at a guessed key corrects the graph now (`latest x` the truth); equal there confirms silently (the screen keeps the guess's world until the commit)
       if (!(v instanceof PendingVal)) n.answered = true;   // H-12: an error is an answer (a first load ends with it — found by S-ai2-search)
       if (n.kind === "eq" && notified && v instanceof PendingVal && !(n.deferred && n.answered) && !n.quiet) n.heldBy = this.instant;   // a deferred node's first load holds like any   // R-4: a pass this change triggered asked a new question; its pending belongs to this change
       if (n.heldBy !== null) n.taint.add(n.heldBy);
@@ -964,7 +965,7 @@ export class Runtime {
   }
   private answer(f: Flight, state: "resolved" | "rejected", value: unknown) {
     f.state = state; f.value = value; f.first ??= { state, value };
-    for (const n of this.allNodes()) if (n.flight === f) this.markDirty(n);
+    for (const n of this.allNodes()) if (n.flight === f) { n.landing = true; this.markDirty(n); }   // landing: the next pass of n is this answer's (D-34)
     const resumed = this.suspended.filter(r => r.flight === f); this.suspended = this.suspended.filter(r => r.flight !== f);
     for (const r of resumed) { if (r.action && r.change !== null) this.pendingJoin.push(r.change); this.resume(r); }   // AC-1: a write after an `await` is still the action's
   }

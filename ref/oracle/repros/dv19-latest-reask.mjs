@@ -4,7 +4,8 @@
 //   the guess, while its action is out. After the re-ask lands: store.length 2, latest 2.
 // Observed on 2.0.0-rc.21 (next @ 2105ffb8): store.length 2, untrack 2, latest 3. Before the re-ask lands, latest is 2.
 //   The signal form (createOptimistic over createSignal(async)) does the same: detail().title "New", latest "Old".
-// Found by the timing fuzzer on the chain4 reference desk. Filed as solidjs/solid#4689.
+// Found by the timing fuzzer on the chain4 reference desk. Filed as solidjs/solid#4689; Solid's position adopted 2026-11-05
+//   (spec 05 DV-19, H-11): the outside answer is a correction, so `latest` answering the truth is the spec's frame now.
 import { createRoot, createSignal, createOptimistic, createOptimisticStore, action, refresh, latest, untrack, flush } from "solid-js";
 const tick = async () => { for (let i = 0; i < 4; i++) { await new Promise(r => setTimeout(r, 0)); flush(); } };
 const asks = []; const ask = key => new Promise((res, rej) => asks.push({ key, res, rej }));

@@ -8,6 +8,14 @@ export error NotFound(id: number) => `issue #${id} not found`
 
 fn found(it, id: number) => it == null ? throw NotFound(id) : it
 
+// the open list as shown (closes in flight already out of it) is the tab's count: it is read where the list is read,
+// under the list's boundary, so it holds and reveals with the rows; other lists, loads and failures leave it as it was
+component OpenCount(props: { n: number; onCount: (n: number) => void }) {
+  effect (props.n) {
+    props.onCount($0)
+  }
+}
+
 export component IssuesPage(props: { onOpenCount: (n: number) => void }) {
   source user: string := "guest"
   source filter: string := "open"
@@ -19,13 +27,6 @@ export component IssuesPage(props: { onOpenCount: (n: number) => void }) {
   source renameError: string = ""
   source closeError: string = ""
 
-  // the open list as shown (closes in flight already out of it) is the tab's count; other lists, loads and failures
-  // leave the count as it was
-  effect ((filter == "open" ? (latest issues).length : -1) catch (e) => -1) {
-    if ($0 >= 0) {
-      props.onOpenCount($0)
-    }
-  }
 
   action assignTo(id: number, who: string) {
     optimistic assignError := ""
@@ -82,6 +83,9 @@ export component IssuesPage(props: { onOpenCount: (n: number) => void }) {
     <div data-testid="list">
       {loading on(filter) fallback { <p>loading {latest filter} issues</p> } {
         {errored fallback(e) { <p>list error: {e.message}</p> } {
+          {if filter == "open" {
+            <OpenCount n={issues.length} onCount={n => { props.onOpenCount(n) }} />
+          }}
           <ul>
             {for it in issues {
               <li data-testid="issue" onClick={() => {
