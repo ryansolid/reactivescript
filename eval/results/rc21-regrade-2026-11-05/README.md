@@ -48,9 +48,13 @@ names ("refresh every question you guessed on"). Nothing in round 4's residue is
 
 ## Reference suites on rc.21
 
-Interpreter 113 pass, 1 fail (S-store-8 instant 4, failing on main before this change too); oracle 114 pass, 1
-recorded divergence (DV-19); compiled 114 pass, 1 recorded divergence; server render 107 pass, 7 skip; types 154
-pass; the crate agrees with ref/ on 319/319 programs.
+Interpreter 114 pass; oracle 114 pass, 1 recorded divergence (DV-19); compiled 114 pass, 1 recorded divergence;
+server render 107 pass, 7 skip; types 154 pass; the crate agrees with ref/ on 319/319 programs.
+
+S-store-8 (two actions' guesses on one row; a declined one reverts alone) had failed on the interpreter since the
+commit that added it (edb76be): the interpreter kept one guess per node with one owner, so the newer action's guess took
+the row and the older action's decline found nothing of its own to revert. Guesses are now entries per key and hold
+(`ref/src/runtime.ts`), as H-11 says; the same-key variant added to S-store-8 passes on all three runners.
 
 ## Setup
 
