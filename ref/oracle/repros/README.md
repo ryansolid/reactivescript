@@ -403,7 +403,7 @@ with `latest issues` beside a list with a close in flight.
 
 ---
 
-## solidjs/solid#4690 — a store read only by effects reverts at the action's end, before the action's refresh lands, once an outside re-ask has landed under it — no DV
+## DV-20 — a store read only by effects reverts at the action's end, before the action's refresh lands, once an outside re-ask has landed under it — filed as solidjs/solid#4690
 
 **Rule.** Spec 06 D-35: an action's `refresh` is authoritative work in flight; the guess waits for that answer.
 
@@ -415,6 +415,6 @@ guess is pending; the write lands.
 
 **Observed on 2.0.0-rc.21.** A text node under `<Loading>` keeps it. An effect with nothing rendering the store sees
 the old truth once the write lands, until the re-ask lands. An effect beside a rendered reader keeps it. Without the
-outside re-ask every reader keeps it. No `.rx` program reaches the effect-only shape (a source on screen is read under
-a boundary), so S-guess-reask-refresh records no divergence.
+outside re-ask every reader keeps it. An `effect` over a source nothing renders is a legal `.rx` program, so
+S-guess-reask-refresh's effect-only variant records it (instants 5 and 6).
 

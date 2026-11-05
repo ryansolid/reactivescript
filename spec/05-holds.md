@@ -361,10 +361,23 @@ repro in `ref/oracle/repros/` still reproduces on that commit.
   server's rows beside a list with a close in flight. H-7 says `latest x`
   answers the guess; S-latest-reask instant 4 records `2 / 3` for `2 / 2`
   on the oracle and the compiled runtime. `untrack` answers the guess
-  throughout. A related shape, a store read by effects alone reverting at
-  the body's end in this sequence, is solidjs/solid#4690
-  (`ref/oracle/repros/4690-guess-reask-refresh.mjs`); no `.rx` program
-  reaches it, so S-guess-reask-refresh records no divergence.
+  throughout. **Open: this rests on reading H-11's correction narrowly.**
+  The outside answer `[1,2,3]` differs from the guess `[2,3]`, and H-11
+  says a different answer corrects the graph with `latest x` the truth;
+  the spec (and the interpreter) take it as no new answer because it
+  equals the truth the guess was made over. When the outside answer does
+  change the truth, the spec agrees with Solid (S-latest-reask variant:
+  `2 / 4`). If Solid declines #4689, instant 4 is `2 / 3`, and a count
+  read with `latest x` beside a guessed list is not the count the list
+  shows: the chain and count references would need another reader.
+- **DV-20 (a guess read by effects alone reverts under the action's
+  refresh) — a Solid bug, reproduced 2026-11-05** (solidjs/solid#4690,
+  `ref/oracle/repros/4690-guess-reask-refresh.mjs`). With nothing
+  rendering a source and an outside re-ask landed under a pending guess,
+  an effect over it sees the old truth once the write lands, until the
+  action's re-ask answers. D-35 says the guess waits for that answer.
+  S-guess-reask-refresh's effect-only variant records it at instants 5
+  and 6; a rendered reader of the source holds the effect's view too.
 - **DV-4 (S-37 row 2 under a boundary) — a Solid bug, reproduced
   2026-10-23; fixed on `next` 2026-10-26 (solidjs/solid#4269, fix #4278)** (`ref/oracle/repros/dv4-signals.mjs`). Under a
   `<Loading>` that has shown content, a derived store's per-key verdicts

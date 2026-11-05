@@ -29,7 +29,38 @@ landing (instant 5) ends the body, and the action's own re-ask is what corrects 
 | 5 | resolve "save" 0 | `New` |
 | 6 | resolve "d" {"title":"New"} | `New` |
 
-Solid 2.0.0-rc.21 does this for a rendered reader. A store read by effects alone, with nothing rendering it, reverts
-at the body's end in this sequence and shows the old truth until the re-ask lands (`ref/oracle/repros/4690-guess-reask-refresh.mjs`,
-solidjs/solid#4690); any rendered reader of the store holds the effect's view too. No `.rx` program reaches it, so
-no divergence is recorded.
+Solid 2.0.0-rc.21 does this for a rendered reader. A source read by effects alone, with nothing rendering it, reverts
+at the body's end in this sequence and shows the old truth until the re-ask lands (the variant below;
+`ref/oracle/repros/4690-guess-reask-refresh.mjs`, solidjs/solid#4690); any rendered reader of the source holds the
+effect's view too.
+
+## Variant: read by an effect alone
+
+```
+export default component App() {
+  source detail = await fetch("d")
+  action rename(t) { try { optimistic detail.title := t; await fetch("save"); refresh detail } catch (e) {} }
+  effect (detail.title catch (e) => "err") { log($0) }
+  <p>x</p>
+}
+```
+
+The effect follows the graph's value, and the guess is the graph's value until the action's re-ask answers (H-11,
+D-35): it logs the guess once and nothing after, since the re-ask confirms it.
+
+| instant | action | frame | effect |
+| ------- | ------ | ----- | ------ |
+| 0 | mount | `x` | — |
+| 1 | resolve "d" {"title":"Old"} | `x` | log(Old) |
+| 2 | handler `rename("New")` | `x` | log(New) |
+| 3 | handler `refresh detail` | `x` | — |
+| 4 | resolve "d" {"title":"Old"} | `x` | — |
+| 5 | resolve "save" 0 | `x` | — |
+| 6 | resolve "d" {"title":"New"} | `x` | — |
+
+## Divergences (DV-20)
+
+- oracle "Variant: read by an effect alone" instant 5: `x` effects `log(Old)`
+- oracle "Variant: read by an effect alone" instant 6: `x` effects `log(New)`
+
+Found reviewing PR #31: an effect over a source nothing renders is a legal `.rx` program, so #4690 is reachable.

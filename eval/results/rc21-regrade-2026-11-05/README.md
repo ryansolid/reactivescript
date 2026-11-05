@@ -32,8 +32,13 @@ tasks' hidden and overlap tests (`graded/`). The count hole is the runtime's, re
 
 Reducing seed 15 turned up a second Solid bug, solidjs/solid#4690: with nothing rendering a store, an effect reading it
 sees a guess revert at the action's end, before the action's refresh lands, once an outside re-ask has landed under it.
-A rendered reader keeps the guess, and so does an effect beside one, so no `.rx` program reaches it
-(S-guess-reask-refresh records the D-35 hold and no divergence; `ref/oracle/repros/4690-guess-reask-refresh.mjs`).
+A rendered reader keeps the guess, and so does an effect beside one; an effect over a source nothing renders reaches
+it (DV-20, S-guess-reask-refresh's effect-only variant; `ref/oracle/repros/4690-guess-reask-refresh.mjs`).
+
+Seed 1's verdict rests on DV-19 being Solid's bug. H-11 says a new answer that differs from the guess corrects the
+graph with `latest x` the truth, and the outside answer here differs from the guess (it equals the truth the guess was
+made over). If Solid declines #4689, the reference's `latest issues` count is not the count the list shows, and the
+four references need another reader (see spec/05 DV-19).
 
 ## Round 4's .rx apps (18, `results/change-2026-10-28/runs`) on rc.21 and this `rxc`
 
@@ -48,13 +53,16 @@ names ("refresh every question you guessed on"). Nothing in round 4's residue is
 
 ## Reference suites on rc.21
 
-Interpreter 114 pass; oracle 114 pass, 1 recorded divergence (DV-19); compiled 114 pass, 1 recorded divergence;
-server render 107 pass, 7 skip; types 154 pass; the crate agrees with ref/ on 319/319 programs.
+Interpreter 114 pass; oracle and compiled 114 pass, 3 recorded divergences (DV-19, DV-20 at two instants);
+server render 107 pass, 7 skip (not rerun after the review fixes); types 156 pass; the crate agrees with ref/ on 321/321 programs.
 
 S-store-8 (two actions' guesses on one row; a declined one reverts alone) had failed on the interpreter since the
 commit that added it (edb76be): the interpreter kept one guess per node with one owner, so the newer action's guess took
 the row and the older action's decline found nothing of its own to revert. Guesses are now entries per key and hold
-(`ref/src/runtime.ts`), as H-11 says; the same-key variant added to S-store-8 passes on all three runners.
+(`ref/src/runtime.ts`), as H-11 says; the same-key variant added to S-store-8 passes on all three runners. A new answer that corrects a guess (D-34) marks
+the action's entry spent instead of dropping it, so the action's re-ask still holds the corrected guess (D-35): with
+the entry dropped, a closed row came back between the write landing and the re-ask (S-latest-reask's variant, `4 / 4`
+for `2 / 4`; Solid shows `2 / 4`).
 
 ## Setup
 

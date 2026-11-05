@@ -70,7 +70,7 @@ export class Node {
   deferred = false; lagging = false;                   // V-16 / D-40: declared lag — re-asks never hold; readers keep the shown answer
   question = false;                                    // ST-5: `source x = e` — an equation until written
   guess: unknown = undefined; hasGuess = false; guessBy: number | null = null; corrected = false; guessPaths: Path[] = [];
-  guessEntries: { path: Path; by: number; value: unknown }[] = [];   // H-11: each guess with the hold it was made over ("" = the root); `guess` is the truth with them applied in order   // guessPaths: the keys guessed ("" = the root; AC-3 path targets)   // AC-3 / H-11: a guess over the hold `guessBy`; corrected: the truth differed, display keeps what it showed
+  guessEntries: { path: Path; by: number; value: unknown; spent?: boolean }[] = [];   // H-11: each guess with the hold it was made over ("" = the root); `guess` is the truth with the live ones applied in order; `spent`: a new answer corrected it (D-34) — it shows the truth now but still belongs to its action, so the action's re-ask still holds it (D-35) and its end still ends it   // guessPaths: the keys guessed ("" = the root; AC-3 path targets)   // AC-3 / H-11: a guess over the hold `guessBy`; corrected: the truth differed, display keeps what it showed
   quiet = false; refreshBy: number | null = null; refreshInAction = false;      // AC-4: a quiet re-ask; its landing belongs to the change that asked (D-31)
   affectedBy: number | null = null;                    // AC-5: declared pending until that change lands
   heldKeys = new Map<string, number>();                // ST-2c: held path writes, per key ("" = the root)
@@ -658,7 +658,7 @@ export class Runtime {
       if (!n.hasValue) ch.add(""); else diffPaths(n.value, v, "", ch);
       if (ch.size > 0) { if (n.hasValue) { n.prev = n.value; n.hasPrev = true; } n.value = v; n.changed = true; n.changedSinceCommit = true; }   // C-2: `pre` is the value before this change
       n.hasValue = true;
-      if (n.hasGuess && !isAbsent(v) && ch.size > 0) { const dg = new Set<Path>(); diffPaths(v, n.guess, "", dg); if (guessedAt(n, dg)) { n.guessEntries = n.guessEntries.filter(e => !guessedAt({ guessPaths: [e.path] }, dg)); n.guess = v; n.corrected = true; } }   // D-34: a new answer different from the guess at a guessed key corrects the graph now; equal there confirms silently (the screen keeps the guess's world until the commit)
+      if (n.hasGuess && !isAbsent(v) && ch.size > 0) { const dg = new Set<Path>(); diffPaths(v, n.guess, "", dg); if (guessedAt(n, dg)) { for (const e of n.guessEntries) if (guessedAt({ guessPaths: [e.path] }, dg)) e.spent = true; if (n.guessEntries.some(e => !e.spent)) this.rebuildGuess(n, v); else n.guess = v; n.corrected = true; } }   // D-34: a new answer different from the guess at a guessed key corrects the graph now; equal there confirms silently (the screen keeps the guess's world until the commit)
       if (!(v instanceof PendingVal)) n.answered = true;   // H-12: an error is an answer (a first load ends with it — found by S-ai2-search)
       if (n.kind === "eq" && notified && v instanceof PendingVal && !(n.deferred && n.answered) && !n.quiet) n.heldBy = this.instant;   // a deferred node's first load holds like any   // R-4: a pass this change triggered asked a new question; its pending belongs to this change
       if (n.heldBy !== null) n.taint.add(n.heldBy);
@@ -1100,6 +1100,7 @@ export class Runtime {
     let g: unknown = truth !== undefined ? truth : n.demanded ? n.value : this.pull(n);
     const copy = (o: unknown) => Array.isArray(o) ? [...o] : { ...(o as object) } as Record<string, unknown>;
     for (const e of n.guessEntries) {
+      if (e.spent) continue;
       if (e.path === "") { g = e.value; continue; }
       const keys = e.path.split("."); const root = copy(g) as Record<string, unknown>; let o = root;
       for (const k of keys.slice(0, -1)) { o[k] = isObj(o[k]) ? copy(o[k]) : /^\d+$/.test(k) ? [] : {}; o = o[k] as Record<string, unknown>; }

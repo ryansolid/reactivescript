@@ -1,4 +1,4 @@
-// solidjs/solid#4690 (no DV: no .rx program reaches it): a guess reverts at the action's end, before the refresh it issued lands, once an outside
+// DV-20, solidjs/solid#4690 (S-guess-reask-refresh, effect-only variant): a guess reverts at the action's end, before the refresh it issued lands, once an outside
 // re-ask landed under it. Reader: a text node under <Loading> (view) vs an effect (no boundary).
 // node --conditions=browser --conditions=development repros/4690-guess-reask-refresh.mjs   (from ref/oracle)
 // Expected (spec 06 D-35): every reader keeps the guess until the action's re-ask lands.
