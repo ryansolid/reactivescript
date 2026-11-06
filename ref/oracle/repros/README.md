@@ -384,11 +384,10 @@ thunk makes, never its return value (RULES-DERIVED D-24, A23) — so it is
 
 ---
 
-## DV-19 — `latest()` over a pending guess answers the re-asked truth once a re-ask lands under it — filed as solidjs/solid#4689; Solid's position adopted 2026-11-05
+## DV-19 — `latest()` over a pending guess answers the re-asked truth once a re-ask lands under it — filed as solidjs/solid#4689; ruled a bug in #4695 (decision 3), not built
 
-**Rule (as it was).** Spec R-12 and H-7: `latest x` reads past a hold but answers what `x` shows, the guess while its
-action is out. **Now:** H-11 compares a landing answer with the guess, so the outside answer is a correction and `latest`
-is the truth (S-latest-reask instant 4 `2 / 3`, no divergence). The repro stays as the record of the shape.
+**Rule.** Spec H-11 and H-7: `latest x` of a guess the screen shows answers the guess until its hold commits, even after
+an answer corrected the graph (Solid D-22, D-34, decision 3 of #4695; S-latest-reask instants 4 and 5).
 
 **Shape.** A keyed `createOptimisticStore` over an async loader; an action guesses a row away and awaits; the store is
 refreshed from outside the action and that answer lands while the guess is pending. The same with `createOptimistic`

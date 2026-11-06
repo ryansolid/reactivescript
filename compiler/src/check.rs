@@ -3154,7 +3154,7 @@ impl<'a> Checker<'a> {
                 "LOADING_ON_OUTSIDE_HOLD",
                 "CN-3e",
                 format!(
-                    "`{}` is read here, outside the `loading on({})` region that waits on it: when `{}` changes this read holds the change, so the region's fallback never shows and the old content stays up with no sign of the wait — move the read under the region (it then shows what the region shows, a guess included), or read `latest {}` here (the newest answer: once one lands it replaces a pending guess)",
+                    "`{}` is read here, outside the `loading on({})` region that waits on it: when `{}` changes this read holds the change, so the region's fallback never shows and the old content stays up with no sign of the wait — move the read under the region, or read `latest {}` here",
                     name, on, on, name
                 ),
             );
