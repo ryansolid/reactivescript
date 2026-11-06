@@ -153,13 +153,23 @@ and where they may not go.
   the probing reader re-evaluates when `x` changes. The result of a probe of `x` carries row `lane(x)`. The
   row flows through equations like `pending`: `y = latest x * 2` has
   `lane(x)`; an expression over probes of two sources has both lanes. It
-  stops at readers: a reader of a lane-typed value renders in that lane. This
+  stops at readers: a reader of a lane-typed value renders in that lane (for
+  the probe-derived part of what it reads; its plain reads are R-11's). This
   is Solid F-6 ("a display-ahead read is a world of its own") as a type; what
   it means for the screen is 05.
-- **R-11 (Probes never hold).** A probe never holds the instant it reads ahead
-  of (F-6). A *plain* read beside a probe in the same reader still holds
-  (D-23): `[pending? x, x]` holds like `x` alone, and the two are atomic
-  because they are one reader (V-1).
+- **R-11 (Probes never hold; posture is per read).** A probe never holds the
+  instant it reads ahead of (F-6). Only the probe reads ahead: the row
+  `lane(x)` is the probe's, and every other read in the pass keeps its own
+  (Solid D-25, decision 1 of solidjs/solid#4695). A plain read of a source
+  the same pass also probes is the screen's: `[pending? x, x]` is `[true,
+  committed]` while `x`'s change is held, in either order, in a view reader
+  and in an equation alike, and the two are atomic because they are one
+  pass (D-23, V-1; S-solid-27). A plain read of any *other* held value makes
+  the pass the hold's work (H-3), whatever it probes beside it
+  (S-solid-27's equation variants; an `on` expression likewise, H-6,
+  S-solid-49). A pass's posture is decided by its reads in that pass: never
+  inherited from what created it or what it reads, never carried into its
+  next pass (S-solid-50).
 - **R-12 (Probes in imperative scope).** `latest x` and `pending? x` are
   readable in imperative scope as snapshots of the verdict / in-flight value
   at that moment. On a first load there is no owner to hold, so `pending?

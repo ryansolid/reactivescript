@@ -170,7 +170,7 @@ export action add(id: string, title: string) {
 - **Never keep your own copy of what the server accepted.** Don't append the answer of a write to a list
   (`posted := [...posted, await addComment(…)]`): when a read and a write cross, the read's answer already has the
   new item and your copy adds it again. End the action with `refresh` on the server's list instead. The action's
-  guesses stay up until that answer lands (D-35), so the row never blinks out and never shows twice.
+  guesses stay up until that answer lands (D-34), so the row never blinks out and never shows twice.
 - **A failure is the client's, not a guess.** A guess reverts when its action ends; a failure must outlast it, so it
   lives in the client's layer, and a successful retry removes it.
 - **Generate ids on the client** in the handler, before calling the action, so a declined add can be shown again

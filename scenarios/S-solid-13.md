@@ -1,4 +1,4 @@
-# S-solid-13 — the last on-screen reader leaving releases the hold (Solid S-13; D-11, O3)
+# S-solid-13 — the last on-screen reader leaving releases the hold (Solid S-13; D-9, O3)
 
 ## Program
 

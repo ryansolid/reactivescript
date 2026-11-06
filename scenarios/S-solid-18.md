@@ -1,4 +1,4 @@
-# S-solid-18 — `on` follows the frame of the change (Solid S-18; D-15)
+# S-solid-18 — `on` follows the frame of the change (Solid S-18; D-17)
 
 ## Program
 

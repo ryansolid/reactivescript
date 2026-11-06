@@ -1,4 +1,4 @@
-# S-solid-24 — an armed boundary lets a lane reveal immediately; a disarmed one forwards (Solid S-24; D-21, F-5, F-6)
+# S-solid-24 — an armed boundary lets a lane reveal immediately; a disarmed one forwards (Solid S-24; D-12, F-5, F-6)
 
 ## Program
 

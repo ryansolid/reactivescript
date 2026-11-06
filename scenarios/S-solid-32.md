@@ -1,4 +1,4 @@
-# S-solid-32 — an optimistic write shows from its instant; held writes beside it; one frame at the end (Solid S-32; D-32, D-33)
+# S-solid-32 — an optimistic write shows from its instant; held writes beside it; one frame at the end (Solid S-32; D-33)
 
 Rules: AC-1, AC-3, ST-5, H-11.
 
@@ -45,7 +45,7 @@ was a plain write and commits (AC-1, DV-2).
 | ------- | ----------------------------------- | ---------------------- |
 | 1       | handler `optimistic shown := "Zed"` | `Ann / unsaved / - -`  |
 
-A guess outside a hold does not exist (D-32). A handler with a guess is an
+A guess outside a hold does not exist (D-33). A handler with a guess is an
 action (AC-1b), so this compiles; the action's change opens and commits in
 the same instant, and the guess ends with it before any frame shows it.
 The `effect` form, which is never an action, is still rejected (S-check-1).

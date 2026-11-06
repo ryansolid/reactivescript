@@ -1,6 +1,6 @@
 # S-fail-1 — typed failures: a class becomes a value, a typed boundary takes its class, another class passes it
 
-Rules: R-f-1, R-f-3, R-f-4, R-f-5, H-12, D-39.
+Rules: R-f-1, R-f-3, R-f-4, R-f-5, H-12, D-41.
 
 ## Program
 
@@ -44,7 +44,7 @@ Instant 3: `NotFound` is caught into a value — the reader shows
 `(nobody)` and no boundary moves. Instant 4: `BadId` is thrown with no
 await; the typed boundary takes it in the same frame as `#0`. Instant 5:
 the content is pending behind an error fallback, which holds nothing
-(H-4) and stays until an answer replaces the error (D-39). Instant 6: the
+(H-4) and stays until an answer replaces the error (D-41). Instant 6: the
 rejection is an `Error`: the `BadId` boundary does not take it, the root
 does. Instants 7–8: a new question, then its answer recovers through both
 boundaries in one frame.

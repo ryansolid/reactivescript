@@ -1,4 +1,4 @@
-# S-solid-34 — provenance: an older action's late answer never corrects a newer guess (Solid S-34; D-35)
+# S-solid-34 — provenance: an older action's late answer never corrects a newer guess (Solid S-34; D-34)
 
 Rules: AC-3, R-4, H-11.
 

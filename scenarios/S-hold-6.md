@@ -1,6 +1,6 @@
 # S-hold-6 — a re-armed `loading` above an error fallback takes the next question (found by S-ai2-search)
 
-Rules: H-12, H-6, H-5, D-39.
+Rules: H-12, H-6, H-5, D-41.
 
 ## Program
 
@@ -27,7 +27,7 @@ export default component App() {
 | 3       | resolve item "pear" | `pear`             |
 
 Instant 2: the error fallback alone would stay up while the content under it
-is pending (D-39), showing item 4's failure while item 3 loads. But the
+is pending (D-41), showing item 4's failure while item 3 loads. But the
 `loading` above it is re-armed by `on(sel)`, and an armed boundary takes
 the pending content even behind an error fallback: its fallback replaces
 both (Solid's behaviour; the second AI test's search pane first wrapped its

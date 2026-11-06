@@ -1,6 +1,6 @@
-# S-solid-28 — Imperative probes: `pending?` of a first load is false; `latest` of it throws (Solid S-28; D-24)
+# S-solid-28 — Imperative probes: `pending?` of a first load is false; `latest` of it throws (Solid S-28; D-23)
 
-Rules: R-9, R-12, R-8; Solid D-24 (A16, A7).
+Rules: R-9, R-12, R-8; Solid D-23 (A16, A7).
 
 ## Program
 

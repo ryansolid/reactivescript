@@ -1,4 +1,4 @@
-# S-solid-15 — a boundary whose own mount is held appears at that hold's commit (Solid S-15; D-13)
+# S-solid-15 — a boundary whose own mount is held appears at that hold's commit (Solid S-15; D-12)
 
 Rules: AC-1, H-5, H-8, RG-1.
 

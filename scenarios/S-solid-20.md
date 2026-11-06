@@ -1,4 +1,4 @@
-# S-solid-20 — the action outlasts the data: a race the fallback lost (Solid S-20; D-16)
+# S-solid-20 — the action outlasts the data: a race the fallback lost (Solid S-20; D-17)
 
 Rules: AC-1, H-5, H-6.
 

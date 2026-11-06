@@ -1,4 +1,4 @@
-# S-solid-25 — nothing shows a write before its instant; then every channel at once (Solid S-25; D-22, D-32)
+# S-solid-25 — nothing shows a write before its instant; then every channel at once (Solid S-25; D-22, D-33)
 
 A write becomes visible at its instant's settle, to every channel (H-10).
 The in-run invisibility (Solid's "no flush" row) is W-4 and is exercised by

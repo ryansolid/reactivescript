@@ -1,4 +1,4 @@
-# S-solid-17 — after a reset the fallback stays until every reader under it settles (Solid S-17; D-14)
+# S-solid-17 — after a reset the fallback stays until every reader under it settles (Solid S-17; D-12)
 
 ## Program
 

@@ -65,7 +65,7 @@ export default component App() {
 
 Each guess lives with its own action (H-11), the newer on top. When the older is declined (instant 4) the newer
 still shows; when the newer ends with nothing authoritative in flight, the body's end corrects it by the truth at
-hand (D-35, instant 5).
+hand (D-34, instant 5).
 
 | instant | action                                                                                 | frame   |
 | ------- | -------------------------------------------------------------------------------------- | ------- |
