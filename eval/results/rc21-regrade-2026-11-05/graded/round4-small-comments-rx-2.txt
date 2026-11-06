@@ -1,0 +1,52 @@
+== hidden
+build failed (compile):
+✗ base: a declined assignment reverts the row and shows the message
+    build failed (compile)
+✗ base: a new assignment clears the previous error at once
+    build failed (compile)
+✗ base: selecting another issue clears the assignment error
+    build failed (compile)
+✗ base: a filter answer landing late does not replace the current filter's list
+    build failed (compile)
+✗ base: a filter failing late shows no error
+    build failed (compile)
+✗ base: details landing out of order show the selected issue
+    build failed (compile)
+✗ base: selecting after not found shows loading, not the old message
+    build failed (compile)
+✗ base: retry after not found shows the issue
+    build failed (compile)
+✗ base: a failing list leaves the detail alone
+    build failed (compile)
+✗ base: a failing detail leaves the list alone
+    build failed (compile)
+✗ base: an accepted assignment survives switching filters and back
+    build failed (compile)
+✗ a declined post removes the row and shows the message
+    build failed (compile)
+✗ a new post clears the previous error at once
+    build failed (compile)
+✗ selecting another issue clears the post error
+    build failed (compile)
+✗ comments landing out of order show the selected issue's
+    build failed (compile)
+✗ failing comments show their error and leave the issue
+    build failed (compile)
+✗ an accepted post stays after switching issues and back
+    build failed (compile)
+0/17 passed
+== overlap
+build failed (compile):
+✗ base: two issues assigned at once: declining one reverts only that row
+    build failed (compile)
+✗ base: a list that loads while an assignment is out keeps the new assignee
+    build failed (compile)
+✗ two posts at once: a declined one does not take the other with it
+    build failed (compile)
+✗ a post on one issue does not show on another
+    build failed (compile)
+✗ comments that load while a post is out keep the post
+    build failed (compile)
+✗ a post declined while an assignment is out leaves the assignment
+    build failed (compile)
+0/6 passed

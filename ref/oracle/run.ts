@@ -48,7 +48,7 @@ async function runTable(sc: Scenario, t: Scenario["tables"][number], base: Scena
       const prefixed = rows.indexOf(r) < own;
       if (prefixed && t.program) continue;
       const div = sc.divergences.find(d => d.runner === "oracle" && d.table === t.title && d.instant === last.instant);
-      const want = norm(div ? div.frame : last.frame); const wantEff = chain.flatMap(c => c.effects);
+      const want = norm(div ? div.frame : last.frame); const wantEff = chain.flatMap(c => sc.divergences.find(d => d.runner === "oracle" && d.table === t.title && d.instant === c.instant && d.effects)?.effects ?? c.effects);   // a recorded divergence may name the effects Solid runs there
       const effOk = prefixed || effects.join("; ") === wantEff.join("; ");
       if (got === want && effOk) { if (div) divergent++; lines.push(`  ${div ? "≠" : "✓"} ${t.title} instant ${last.instant}: ${got}${effects.length ? "  [" + effects.join("; ") + "]" : ""}${div ? `   (spec: '${norm(last.frame)}')` : ""}`); }
       else { ok = false; lines.push(`  ✗ ${t.title} instant ${last.instant}: expected '${want}' effects [${wantEff.join("; ")}], got '${got}' effects [${effects.join("; ")}]`); }

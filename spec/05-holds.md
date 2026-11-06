@@ -149,8 +149,8 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   it lands. A lane hold and the instant's hold are independent on both sides.
   One reader is not held by a guess's lane: `latest x` of an optimistic
   guess (H-11) reads ahead of the guess's held lane, as every probe reads
-  ahead of the instant's hold. It shows the guess — after a correction, the
-  truth — beside the lane's held readers (S-solid-35 variant instant 2:
+  ahead of the instant's hold. It shows the guess — after a correction of a
+  guess the screen never showed, the truth — beside the lane's held readers (S-solid-35 variant instant 2:
   `1 x1 / 5`; ruled 2026-10-26 by adopting Solid's position, DV-10). A lane
   of `latest` readers is not a guess's lane: there pending work inside it
   still holds its probes (S-solid-24).
@@ -199,11 +199,15 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   its answer: while an action's re-ask of it is in flight, every reader of
   it waits for that action, a declined guess's revert included (ruled
   2026-10-31: by design, a re-ask can touch every row). When `x`'s own question
-  answers: an answer equal to the guess confirms silently — the held answer
+  answers — the action's re-ask or one from outside it, compared with
+  the guess, not with the truth the guess was made over (DV-19) — an
+  answer equal to the guess confirms silently — the held answer
   is not pending (S-solid-34 instant 5); a different answer **corrects the
-  graph now** (derivations re-derive from the truth, `latest x` is the
-  truth, `pending? x` is `true`) while the screen keeps what it showed
-  until the commit — and a guess the screen never showed is void
+  graph now** (derivations re-derive from the truth, `pending? x` is
+  `true`) while the screen keeps what it showed until the commit, and so do
+  effects over it (S-guess-reask-refresh) and `latest x` of a guess the
+  screen shows: a slot displaying a guess has the guess as its newest value
+  (S-latest-reask; Solid D-22, decision 3 of solidjs/solid#4695) — and a guess the screen never showed is void
   (S-solid-33). An older question's late answer is superseded (R-4) and
   moves nothing (S-solid-34). When the body returns and nothing
   authoritative is in flight for `x`, the guess is corrected by the truth
@@ -351,6 +355,28 @@ repro in `ref/oracle/repros/` still reproduces on that commit.
   rows. A render effect reading the rows directly follows. The spec frames
   stand. Filed as solidjs/solid#4305; fixed on `next` 2026-10-27 (shows
   in no scenario at `2c9fdd9`).
+- **DV-19 (`latest` of a pending guess after a re-ask) — a Solid bug,
+  ruled not built** (solidjs/solid#4689; ruled in #4695, decision 3:
+  D-22 "a slot that is displaying a guess has the guess as its newest
+  value", D-34 "the screen, untracked reads and `latest` of the displayed
+  slot keep the guess until the commit"). Found by the round 8 fuzzer on
+  the chain4 reference desk regraded on rc.21
+  (`ref/oracle/repros/dv19-latest-reask.mjs`). A re-ask from outside the
+  action lands under a shown guess and corrects the graph; Solid's
+  `latest(…)` answers the truth there, so a count read with `latest
+  issues` shows the server's rows beside a list with a close in flight.
+  S-latest-reask records `2 / 3` for `2 / 2` (and `2 / 4` in its variant)
+  on the oracle and the compiled runtime. `untrack` answers the guess
+  throughout.
+- **DV-20 (a guess read by effects alone reverts under the action's
+  refresh) — a Solid bug, reproduced 2026-11-05** (solidjs/solid#4690,
+  `ref/oracle/repros/4690-guess-reask-refresh.mjs`). With nothing
+  rendering a source and an outside re-ask landed under a pending guess,
+  an effect over it sees the old truth once the write lands, until the
+  action's re-ask answers. D-35 says the guess waits for that answer.
+  S-guess-reask-refresh's effect-only variant records it at instants 5
+  and 6; a rendered reader of the source holds the effect's view too.
+  Fixed on `next` (Ryan, 2026-11-05); recorded until the repin.
 - **DV-4 (S-37 row 2 under a boundary) — a Solid bug, reproduced
   2026-10-23; fixed on `next` 2026-10-26 (solidjs/solid#4269, fix #4278)** (`ref/oracle/repros/dv4-signals.mjs`). Under a
   `<Loading>` that has shown content, a derived store's per-key verdicts

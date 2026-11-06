@@ -5,7 +5,7 @@ import { Runtime, RuleError, CheckError } from "./runtime.ts";
 type Row = { instant: number; action: string; frame: string; effects: string[] };
 type Table = { title: string; program: string | null; rows: Row[] };
 type Rejected = { rule: string; program: string; handlers: string[]; warn: boolean; types?: boolean };   // types: refused by the type layer (TY, types/run.ts)
-export type Divergence = { table: string; instant: number; frame: string; runner: "oracle" | "server" | "hydrated"; ruled?: true };   // what Solid 2.0 shows where the spec rules otherwise (the client's, or the server render's)
+export type Divergence = { table: string; instant: number; frame: string; effects?: string[]; runner: "oracle" | "server" | "hydrated"; ruled?: true };   // effects: the effect log Solid gives at that instant, when it differs too   // what Solid 2.0 shows where the spec rules otherwise (the client's, or the server render's)
 export type Scenario = { name: string; program: string; tables: Table[]; rejected: Rejected[]; divergences: Divergence[];
   entry: string; modules: Map<string, string>;
   server: Row[];     // 10: `## Server frames` — what a browser shows from the server's stream (ref/ssr/run.ts only)
@@ -74,7 +74,7 @@ export function parseScenario(name: string, md: string, baseDir = "."): Scenario
     else if (s.title === "Frames") tables.push({ title: "Frames", program: null, rows: table(s.body) });
     else if (s.title.startsWith("Variant")) tables.push({ title: s.title, program: fence(s.body), rows: table(s.body) });
     else if (s.title.startsWith("Divergences")) {
-      for (const m of s.body.matchAll(/^- (oracle|server|hydrated) "([^"]*)" instant (\d+): `([^`]*)`/gm)) divergences.push({ runner: m[1] as Divergence["runner"], table: m[2], instant: Number(m[3]), frame: m[4] });
+      for (const m of s.body.matchAll(/^- (oracle|server|hydrated) "([^"]*)" instant (\d+): `([^`]*)`(?: effects `([^`]*)`)?/gm)) divergences.push({ runner: m[1] as Divergence["runner"], table: m[2], instant: Number(m[3]), frame: m[4], ...(m[5] !== undefined ? { effects: m[5] === "—" || m[5] === "" ? [] : m[5].split(";").map(x => x.trim()) } : {}) });
     }
     else if (s.title === "Hydration window") {                     // SV-3b: frames of a client that took over before the server answered — ruled, not divergences
       for (const m of s.body.matchAll(/^- "([^"]*)" instant (\d+): `([^`]*)`/gm)) divergences.push({ runner: "hydrated", table: m[1], instant: Number(m[2]), frame: m[3], ruled: true });

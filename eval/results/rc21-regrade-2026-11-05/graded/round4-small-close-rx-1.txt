@@ -1,0 +1,48 @@
+== hidden
+build failed (compile):
+✗ base: a declined assignment reverts the row and shows the message
+    build failed (compile)
+✗ base: a new assignment clears the previous error at once
+    build failed (compile)
+✗ base: selecting another issue clears the assignment error
+    build failed (compile)
+✗ base: a filter answer landing late does not replace the current filter's list
+    build failed (compile)
+✗ base: a filter failing late shows no error
+    build failed (compile)
+✗ base: details landing out of order show the selected issue
+    build failed (compile)
+✗ base: selecting after not found shows loading, not the old message
+    build failed (compile)
+✗ base: retry after not found shows the issue
+    build failed (compile)
+✗ base: a failing list leaves the detail alone
+    build failed (compile)
+✗ base: a failing detail leaves the list alone
+    build failed (compile)
+✗ base: an accepted assignment survives switching filters and back
+    build failed (compile)
+✗ a declined close brings the row back in place and shows the message
+    build failed (compile)
+✗ a new close clears the previous error at once
+    build failed (compile)
+✗ selecting another issue clears the close error
+    build failed (compile)
+✗ an accepted close survives switching filters and back
+    build failed (compile)
+0/15 passed
+== overlap
+build failed (compile):
+✗ base: two issues assigned at once: declining one reverts only that row
+    build failed (compile)
+✗ base: a list that loads while an assignment is out keeps the new assignee
+    build failed (compile)
+✗ a declined close keeps an assignment in flight on another issue
+    build failed (compile)
+✗ a declined assignment keeps a close in flight on another issue
+    build failed (compile)
+✗ a list that loads while a close is out keeps the row out
+    build failed (compile)
+✗ two closes at once: a declined one does not undo the other
+    build failed (compile)
+0/6 passed

@@ -1,0 +1,10 @@
+== hidden
+77/77 passed
+== overlap
+38/38 passed
+== fuzz
+chain4-rx: 2/20 seeds found a hole
+  seed 11 step 33: row title: #4 shows "Typo in footer", server "Delta"
+    tab help ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; focus ; tab help ; tab issues ; land fetchIssues:open ; row-assign 1 ; land assign:3,guest ; filter closed ; user ann ; row-assign 0 ; focus ; land fetchIssues:open ; land assign:1,ann ; select #4 ; close ; land fetchIssues:closed ; close ; land fetchComments:4 ; fail fetchLabels:4 ; row-assign 0 ; close ; land fetchIssue:
+  seed 15 step 24: detail title: "#2 Old buglong gonesaving filescrash reportsretryassign to g", server "Bravo"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; fail fetchIssues:open ; tab help ; tab issues ; land fetchIssues:open ; focus ; filter closed ; land fetchIssues:closed ; select #2 ; land fetchComments:2 ; rename Bravo ; select #2 ; assign ; land fetchIssue:2 ; row-assign 0 ; select #2 ; land fetchLabels:2 ; assign ; remove-label 0 ; land search:Old bug ; land renameIssue:2

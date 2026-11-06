@@ -22,7 +22,8 @@ export async function serve(dist) {
   return { url: `http://127.0.0.1:${http.address().port}/`, close: () => http.close() };
 }
 
-export async function launch() { return chromium.launch(); }
+/** CHROMIUM=/path/to/chromium drives a system browser (NixOS and the like, where Playwright's download does not run). */
+export async function launch() { return chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}); }
 
 /** One test: a fresh page on the app, `run(app)` with the helpers below. Returns { ok, error }. */
 export async function runTest(browser, url, test) {
