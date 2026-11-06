@@ -12,7 +12,7 @@ import {
 import { getContext, setContext, $TARGET } from "@solidjs/signals";
 import { hydrate, render } from "@solidjs/web";
 
-// 05 H-9 / Solid D-24: `isPending(fn)` judges the reads fn makes, never its return value, so `pending? x` over a structured
+// 05 H-9 / Solid D-23: `isPending(fn)` judges the reads fn makes, never its return value, so `pending? x` over a structured
 // value (a store, a keyed projection) reads its keys — Solid's "whole-store questions are asked through reads"
 const readWhole = (v: unknown) => { if (v !== null && typeof v === "object") Reflect.ownKeys(v); return v; };
 /** `latest x` (R-12) of a store is its whole value, read inside `latest` and handed out as a snapshot: a later read of a

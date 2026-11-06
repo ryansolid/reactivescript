@@ -1,6 +1,6 @@
 # S-fail-4 — a pane that borrows another pane's data catches the borrowed read
 
-Rules: R-f-4, R-f-5, R-6, D-39.
+Rules: R-f-4, R-f-5, R-6, D-41.
 
 ## Program
 

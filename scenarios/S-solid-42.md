@@ -1,4 +1,4 @@
-# S-solid-42 — a held rejection reveals with its frame; a held recovery keeps the shown error (Solid S-42, S-43; D-41, D-39)
+# S-solid-42 — a held rejection reveals with its frame; a held recovery keeps the shown error (Solid S-42, S-43; D-41)
 
 ## Program
 
@@ -36,6 +36,6 @@ be a snapshot, and a snapshot of an error throws it (R-f-7).
 Instant 4: the error settled `data` but is staged like a value would be —
 the frame is still held on `slow(2)`. Instant 5: one frame — input, error
 fallback, sibling — and the effect's arm runs then. Instants 6–7: the error
-stays the display through the retry (D-39); the recovery to `1` is settled,
+stays the display through the retry (D-41); the recovery to `1` is settled,
 not shown. Instant 8: `1` equals the last good value and is still a new
 answer — the arm runs.

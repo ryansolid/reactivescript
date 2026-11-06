@@ -1,6 +1,6 @@
 # S-fail-2 — failures through components: a prop's failures are checked where it is read, children's where they are rendered
 
-Rules: R-f-4, R-f-5, R-f-6, R-2, RG-4c, H-4, D-39.
+Rules: R-f-4, R-f-5, R-f-6, R-2, RG-4c, H-4, D-41.
 
 ## Program
 
@@ -54,7 +54,7 @@ Instant 3: `Missing` is thrown with no await, but `other` re-asks and its
 reader holds the change; the three error fallbacks are staged with it (an
 error is an answer, H-12). Instant 4: the rejection is caught into `none`
 and the frame commits as one. Instants 5–7: behind their fallbacks the
-readers of `value` hold nothing (H-4) and recover with the answer (D-39);
+readers of `value` hold nothing (H-4) and recover with the answer (D-41);
 `other`'s reader holds the change until `q` lands.
 
 ## Rejected variants

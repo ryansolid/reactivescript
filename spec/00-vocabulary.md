@@ -106,11 +106,14 @@ requires `peek`, with one exception: a source's initializer is a snapshot (E-4).
 
 Solid: `untrack`; reads inside an effect's apply half.
 
-## V-12. Probe [Solid: display-ahead reader]
+## V-12. Probe [Solid: display-ahead read]
 
 `latest x` and `pending? x`: reads that show a held instant, or the verdict about
 it, ahead of its commit. A probe never holds the instant it reads ahead of
-(H-6). What is derived from a probe lives in a **lane** (V-14).
+(H-7). What is derived from a probe lives in a **lane** (V-14). A probe is a
+read, not a kind of reader: a plain read beside it in the same pass is still a
+plain read (R-11; Solid renamed "display-ahead reader" to "display-ahead read"
+in #4695 for this reason).
 
 Solid: `latest()`, `isPending()`.
 
@@ -125,7 +128,9 @@ committed version; holds, `05-holds.md`, add the second.)
 
 The world a probe opens: the committed screen plus what the probe shows ahead.
 Equations derived from a probe belong to its lane; pending work in a lane holds
-the lane, never the parent instant (H-6).
+the lane, never the parent instant (H-7). A branch a probe merely gates is not
+derived from it: it is a mainline mount whose plain reads are the screen's
+(H-7, Solid D-25).
 
 ## V-15. Draft
 

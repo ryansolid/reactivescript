@@ -1,4 +1,4 @@
-# S-solid-30 — a `latest` reader mounted mid-hold shows the committed value and reveals with the lane (Solid S-30; D-26)
+# S-solid-30 — a `latest` reader mounted mid-hold shows the committed value and reveals with the lane (Solid S-30; D-25)
 
 ## Program
 

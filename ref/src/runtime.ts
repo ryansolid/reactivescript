@@ -67,11 +67,16 @@ export class Node {
   served = new Set<Node>();                            // readers: held values this pass was served σ for (D-3); re-run while any is still in flight
   triggered = false;                                   // readers: this instant's pass was caused by a notification (D-4: membership is the tick's)
   kept = new Map<Target, Set<string>>();               // D-10: inputs of the committed pass, kept while the value is held
+  questionMoved = false;                               // H-11: the question changed under the guess (S-solid-44): answers to it do not correct the guess
+  plainTaint = new Set<number>();                      // R-11: the open changes this pass's plain reads derive from (a lane value carries these, not its lane's)
+  probed = new Set<Node>();                            // R-11 / Solid D-25: the nodes this pass read ahead (`latest`, `pending?`)
+  plainAhead = new Set<Node>();                        // R-11: held nodes this pass read plainly and was given the in-flight value
+  screenFor: Set<Node> | null = null;                  // R-11: a re-run pass's probed nodes — a plain read of one is the screen's
   deferred = false; lagging = false;                   // V-16 / D-40: declared lag — re-asks never hold; readers keep the shown answer
   question = false;                                    // ST-5: `source x = e` — an equation until written
   guess: unknown = undefined; hasGuess = false; guessBy: number | null = null; corrected = false; guessPaths: Path[] = [];
   shownGuess: unknown = undefined; guessShown = false; answerCorrected = false;   // D-22/D-34 (Solid decision 3, #4695): the guess as the screen last showed it; `latest x` keeps it after an answer corrects the graph, until the hold commits
-  guessEntries: { path: Path; by: number; value: unknown; spent?: boolean }[] = [];   // H-11: each guess with the hold it was made over ("" = the root); `guess` is the truth with the live ones applied in order; `spent`: a new answer corrected it (D-34) — it shows the truth now but still belongs to its action, so the action's re-ask still holds it (D-35) and its end still ends it   // guessPaths: the keys guessed ("" = the root; AC-3 path targets)   // AC-3 / H-11: a guess over the hold `guessBy`; corrected: the truth differed, display keeps what it showed
+  guessEntries: { path: Path; by: number; value: unknown; spent?: boolean }[] = [];   // H-11: each guess with the hold it was made over ("" = the root); `guess` is the truth with the live ones applied in order; `spent`: a new answer corrected it (D-34) — it shows the truth now but still belongs to its action, so the action's re-ask still holds it (D-34) and its end still ends it   // guessPaths: the keys guessed ("" = the root; AC-3 path targets)   // AC-3 / H-11: a guess over the hold `guessBy`; corrected: the truth differed, display keeps what it showed
   quiet = false; refreshBy: number | null = null; refreshInAction = false;      // AC-4: a quiet re-ask; its landing belongs to the change that asked (D-31)
   affectedBy: number | null = null;                    // AC-5: declared pending until that change lands
   heldKeys = new Map<string, number>();                // ST-2c: held path writes, per key ("" = the root)
@@ -148,7 +153,7 @@ export class Runtime {
   private tracking: Node | null = null;
   private demandMode = true;
   private probing = 0;                                  // inside `latest`: reads σ′, never served
-  private committedView = false;                        // D-26: evaluate a lane reader against the committed world
+  private committedView = false;                        // D-25: evaluate a lane reader against the committed world
   private probeReads: Set<Node> | null = null;          // `pending?` over a composite: nodes read inside
   private heldLanes = new Set<Node>();                  // H-7: lanes with pending work this instant
   private bornHeldOwn: { reader: Node; lb: BoundaryItem }[] = [];
@@ -326,7 +331,7 @@ export class Runtime {
       for (const n of holding) if (n.heldOn !== null) heldRoots.add(this.find(n.heldOn));
       for (const r of this.allNodes()) if (r.kind === "reader" && r.demanded) for (const b of r.served) if (b.value instanceof PendingVal) { if (b.heldBy !== null) heldRoots.add(this.find(b.heldBy)); for (const t of b.taint) heldRoots.add(this.find(t)); }   // a flight a display still waits on keeps every change in its question open (F-2)
       for (const a of this.openActions) if (a.change !== null) heldRoots.add(this.find(a.change));          // AC-1: an action holds its change until its body returns
-      for (const n of this.allNodes()) if (n.quiet && n.refreshInAction && n.refreshBy !== null && n.flight?.state === "pending" && this.allNodes().some(m => this.guessedBy(m, this.find(n.refreshBy!)))) heldRoots.add(this.find(n.refreshBy));   // D-35, AC-4: a re-ask issued by an action that guessed is authoritative work in flight — the change waits for its answer, so every guess of the action (on that source or another) stays until the truth that confirms or corrects it lands
+      for (const n of this.allNodes()) if (n.quiet && n.refreshInAction && n.refreshBy !== null && n.flight?.state === "pending" && this.allNodes().some(m => this.guessedBy(m, this.find(n.refreshBy!)))) heldRoots.add(this.find(n.refreshBy));   // D-34, AC-4: a re-ask issued by an action that guessed is authoritative work in flight — the change waits for its answer, so every guess of the action (on that source or another) stays until the truth that confirms or corrects it lands
       for (const l of this.heldLanes) { if (l.heldBy !== null) heldRoots.add(this.find(l.heldBy)); for (const t of l.taint) heldRoots.add(this.find(t)); }   // H-7: a held lane keeps its change staged (S-solid-33: the landing stays uncommitted)
       let any = false;
       if (process.env.RS_TRACE) console.log(`[instant ${this.instant} pass ${pass}] holding=${holding.map(h => h.name + "@" + h.heldOn).join(",")} heldRoots=${[...heldRoots]} roots=${[...roots()]} parent=${[...this.parent.entries()].map(e => e.join(">"))} actions=${[...this.openActions].map(a => a.change)} lanes=${[...this.heldLanes].map(l => l.name + ":" + l.heldBy + "/" + [...l.taint])}`);
@@ -342,7 +347,7 @@ export class Runtime {
       for (const h of holding) if (!nearest(h.region.boundary, "loading")) this.diagnostics.push(`ASYNC_OUTSIDE_LOADING_BOUNDARY: ${h.name} is pending at mount with no loading boundary; the mount is held`);
     }
     if (!this.committedOnce && !this.openChanges.has(this.find(0)) && committedSome) this.committedOnce = true;   // the view attaches when the mount's change commits
-    if (this.openChanges.has(this.find(this.instant))) for (const { reader, lb } of this.bornHeldOwn) { lb.caught.push(reader); lb.showingFallback = true; reader.heldOn = null; }   // D-27: born held under a fresh boundary → the boundary's
+    if (this.openChanges.has(this.find(this.instant))) for (const { reader, lb } of this.bornHeldOwn) { lb.caught.push(reader); lb.showingFallback = true; reader.heldOn = null; }   // D-25: born held under a fresh boundary → the boundary's
     else for (const { lb } of this.bornHeldOwn) { lb.bornCandidates = 0; lb.showingFallback = lb.caught.length > 0; if (!lb.showingFallback) lb.armed = false; }
     // Verdicts are final only after the decision (H-9): lane readers re-settle against the decided world, then show ahead (H-7).
     for (const n of this.allNodes()) if (n.hasGuess && !n.corrected && !this.heldLanes.has(n)) { n.guessShown = true; n.shownGuess = n.guess; }   // D-22: the guess the screen shows now (a held lane's guess is not shown: S-solid-33)
@@ -393,7 +398,7 @@ export class Runtime {
       if (n.heldOn !== null && this.find(n.heldOn) === g) n.heldOn = null;
       if (n.hasGuess && (this.guessedBy(n, g) || (n.guessBy !== null && this.find(n.guessBy) === g))) {   // H-11: a guess lives as long as its hold; another action's guesses on the node stay
         n.guessEntries = n.guessEntries.filter(e => this.find(e.by) !== g); n.corrected = false;
-        if (n.guessEntries.length === 0) { n.hasGuess = false; n.guess = undefined; n.guessBy = null; n.guessPaths = []; n.guessShown = false; n.shownGuess = undefined; n.answerCorrected = false; } else this.rebuildGuess(n);
+        if (n.guessEntries.length === 0) { n.questionMoved = false; n.hasGuess = false; n.guess = undefined; n.guessBy = null; n.guessPaths = []; n.guessShown = false; n.shownGuess = undefined; n.answerCorrected = false; } else this.rebuildGuess(n);
         this.notify(n, "");
       }
       for (const [k, c] of n.heldKeys) if (this.find(c) === g) n.heldKeys.delete(k);
@@ -412,7 +417,7 @@ export class Runtime {
         const v = this.pull(i.node);
         if (v instanceof ViewValue) return this.settle(v, holding, boundary);
         { const eb = erroredShowing(boundary); const above = eb && v instanceof PendingVal ? armedAbove(eb) : null; if (above) { above.caught.push(i.node); i.node.heldOn = null; return; }   // H-12: an armed `loading` above the error fallback takes the pending content (found by S-ai2-search)
-          if (eb && (i.node.served.size || v instanceof PendingVal)) { eb.stillWaiting = true; i.node.served.clear(); i.node.heldOn = null; return; } }   // behind an error fallback: not the display (H-4); pending is not an answer (D-39)
+          if (eb && (i.node.served.size || v instanceof PendingVal)) { eb.stillWaiting = true; i.node.served.clear(); i.node.heldOn = null; return; } }   // behind an error fallback: not the display (H-4); pending is not an answer (D-41)
         if (v instanceof ErrVal) {                                                                                         // H-12 / D-41: an error is an answer; it reveals with its frame
           const eb = catching(boundary, v.err); if (eb) eb.caught.push(i.node);
           const openE = [...i.node.taint].filter(c => c !== this.instant && this.openChanges.has(this.find(c)));
@@ -424,13 +429,13 @@ export class Runtime {
         const plainHeld = ownServed || openPlain.length > 0 || i.node.taint.has(this.instant) || (v instanceof PendingVal && i.node.served.size > 0);
         if (i.node.lane && !plainHeld && !(v instanceof PendingVal)) {                                                     // H-7: a pure lane reader never holds the instant
           i.node.heldOn = null;
-          if (i.shown === null && [...i.node.lanes].some(l => this.heldLanes.has(l))) {                                   // D-26: mounted mid-hold: shows the committed world
+          if (i.shown === null && [...i.node.lanes].some(l => this.heldLanes.has(l))) {                                   // D-25: mounted mid-hold: shows the committed world
             this.committedView = true; i.node.evaluated = false; i.node.state = "dirty";
             try { i.shown = fmt(this.pull(i.node)); } finally { this.committedView = false; i.node.evaluated = false; i.node.state = "dirty"; }
           }
           return;
         }
-        if (i.node.lane && v instanceof PendingVal && !plainHeld && this.committedOnce && i.shown !== null) {              // pending only through the lane (at the mount there is no committed world to show: the reader is the mount's — H-7). A reader that has never shown anything has no display to keep: its read throws and holds the pass like a plain one (Solid D-28, S-solid-39)
+        if (i.node.lane && v instanceof PendingVal && !plainHeld && this.committedOnce && i.shown !== null) {              // pending only through the lane (at the mount there is no committed world to show: the reader is the mount's — H-7). A reader that has never shown anything has no display to keep: its read throws and holds the pass like a plain one (Solid D-25, S-solid-39)
           i.node.heldOn = null;
           const lb = nearest(boundary, "loading"); if (lb && lb.armed) lb.caught.push(i.node); else for (const l of i.node.lanes) this.heldLanes.add(l);
           return;
@@ -456,7 +461,7 @@ export class Runtime {
         }
         if (i.node.taint.has(this.instant)) {                                                                              // consumed this instant's writes: shows at its commit (F-2)
           const lb = nearest(boundary, "loading");
-          if (lb && lb.armed && !i.node.hasCommitted) { this.bornHeldOwn.push({ reader: i.node, lb }); lb.bornCandidates++; }   // D-27: born held if this instant ends up held — decided after the hold decision
+          if (lb && lb.armed && !i.node.hasCommitted) { this.bornHeldOwn.push({ reader: i.node, lb }); lb.bornCandidates++; }   // D-25: born held if this instant ends up held — decided after the hold decision
           i.node.heldOn = this.find(this.instant); return;
         }
         if (ownServed) { i.node.heldOn = this.find(this.instant); holding.push(i.node); i.shown = fmt(v); return; }        // served this change's own flight: publishes committed-derived text, holds the change (S-solid-27)
@@ -515,7 +520,7 @@ export class Runtime {
         i.caught = []; i.stillWaiting = false;
         const was = i.showingFallback;
         this.settle(i.content, holding, i);
-        i.showingFallback = i.caught.length > 0 || (i.showingFallback && i.stillWaiting);   // H-12: fallback until a new *answer* (D-39)
+        i.showingFallback = i.caught.length > 0 || (i.showingFallback && i.stillWaiting);   // H-12: fallback until a new *answer* (D-41)
         if (i.showingFallback !== was) {                                                      // D-41: the change belongs to the frame of the answer that caused it
           const owners = (i.caught.length ? i.caught : this.contentReaders(i.content)).flatMap(r => [...r.taint]).filter(t => this.openChanges.has(this.find(t)) || t === this.instant);
           i.armedBy = owners.length ? owners[0] : this.instant;
@@ -587,6 +592,17 @@ export class Runtime {
     const walk = (i: VItem) => { switch (i.k) { case "read": out.push(i.node); if (i.node.value instanceof ViewValue) v2(i.node.value); break; case "el": i.children.forEach(walk); break; case "comp": v2(i.inst); break; case "mif": if (i.inflight) v2(i.inflight.inst); break; case "mfor": i.inflightRows.forEach(r => v2(r.inst)); break; case "loading": case "errored": v2(i.content); break; } };
     const v2 = (x: ViewInst) => x.items.forEach(walk); v2(v); return out;
   }
+  /** D-1 (decision 4 of #4695): a mount whose content read a held value plainly, with no boundary catching it, is born held. */
+  private bornHeld(v: ViewInst): boolean {
+    const walk = (i: VItem): boolean => { switch (i.k) {
+      case "read": return i.node.heldOn !== null || (i.node.value instanceof ViewValue && this.bornHeld(i.node.value));
+      case "el": return i.children.some(walk); case "comp": return this.bornHeld(i.inst);
+      case "mif": return !!i.inflight && this.bornHeld(i.inflight.inst); case "mfor": return i.inflightRows.some(r => this.bornHeld(r.inst));
+      case "loading": return !i.armed && this.bornHeld(i.content);   // an armed boundary catches what is born held under it (D-12)
+      case "errored": return this.bornHeld(i.content);
+      default: return false; } };
+    return v.items.some(walk);
+  }
   /** H-7: during a hold, lane readers in the committed structure show σ′ unless their own lane is pending. */
   private patchLanes(v: ViewInst) { for (const i of v.items) this.patchItem(i); }
   private patchItem(i: VItem) {
@@ -596,13 +612,13 @@ export class Runtime {
       case "el": { for (const c of i.children) this.patchItem(c); return; }
       case "comp": return this.patchLanes(i.inst);
       case "mif": {
-        if (i.cond.lane && i.inflight !== i.committed && i.inflight && ![...i.cond.lanes].some(l => this.heldLanes.has(l))) {   // D-27: a verdict-opened branch is a mainline mount: attaches now
+        if (i.cond.lane && i.inflight !== i.committed && i.inflight && ![...i.cond.lanes].some(l => this.heldLanes.has(l)) && !this.bornHeld(i.inflight.inst)) {   // D-25: a verdict-opened branch is a mainline mount: attaches now — unless its content is born held (D-1, decision 4 of #4695; S-solid-46): then the old arm stays until the landing
           i.committed?.inst.region.dispose(); i.committed = i.inflight; this.commit(i.committed.inst, null);
         }
         if (i.committed) this.patchLanes(i.committed.inst); return;
       }
       case "mfor": {
-        if (i.xs.lane && ![...i.xs.lanes].some(l => this.heldLanes.has(l) || this.frozen(l)) && (i.inflightRows.length !== i.committedRows.length || i.inflightRows.some((r, k) => r !== i.committedRows[k]))) {   // D-27 for rows: a lane-opened row set is a mainline mount
+        if (i.xs.lane && ![...i.xs.lanes].some(l => this.heldLanes.has(l) || this.frozen(l)) && (i.inflightRows.length !== i.committedRows.length || i.inflightRows.some((r, k) => r !== i.committedRows[k])) && !i.inflightRows.some(r => !i.committedRows.includes(r) && this.bornHeld(r.inst))) {   // D-25 for rows: a lane-opened row set is a mainline mount, unless a fresh row is born held
           for (const r of i.committedRows) if (!i.inflightRows.includes(r)) r.region.dispose();
           const fresh = i.inflightRows.filter(r => !i.committedRows.includes(r)); i.committedRows = i.inflightRows;
           for (const r of fresh) this.commit(r.inst, null);
@@ -611,7 +627,7 @@ export class Runtime {
       }
       case "loading": case "errored": {
         // D-17: `on` read a probe → the fallback shows now; otherwise the display follows settle once nothing under it is held on an open change
-        if ((i.k === "loading" && i.onNode?.lane) || i.laneAttached || !this.openChanges.has(this.find(i.armedBy))) i.committedFallback = i.showingFallback;
+        if ((i.k === "loading" && i.onNode?.lane && this.onAhead(i.onNode)) || i.laneAttached || !this.openChanges.has(this.find(i.armedBy))) i.committedFallback = i.showingFallback;
         this.patchLanes(i.content); if (i.committedFallback) this.patchLanes(i.fallback); return;
       }
       case "text": return;
@@ -637,18 +653,27 @@ export class Runtime {
     const notified = n.state !== "clean" || !n.hasValue;
     if (n.kind === "reader" && (n.heldOn !== null || n.value instanceof PendingVal || n.served.size > 0)) recompute = true;   // a held or served display re-runs its pass each instant
     if (!recompute) {
-      n.taint = new Set();
-      for (const d of n.deps.keys()) if (d instanceof Node) { this.pull(d); if (n.taintFrom.has(d)) for (const t of d.taint) n.taint.add(t);   /* only what the last pass took taint from: a probe's target is the lane's, not the instant's (F-6; found by S-solid-28) */ if (n.state === "check" && d.changed) { recompute = true; break; } }
+      n.taint = new Set(); n.plainTaint = new Set();
+      for (const d of n.deps.keys()) if (d instanceof Node) { this.pull(d); if (n.taintFrom.has(d)) for (const t of (d.lane ? d.plainTaint : d.taint)) { n.taint.add(t); n.plainTaint.add(t); }   /* only what the last pass took taint from: a probe's target is the lane's, not the instant's (F-6; found by S-solid-28) */ if (n.state === "check" && d.changed) { recompute = true; break; } }
       if (!recompute && n.state === "check") recompute = true;
     }
     if (process.env.RS_TRACE_PULL) console.log(`  pull ${n.name}#${n.id} state=${n.state} recompute=${recompute} evaluated=${n.evaluated} value=${fmt(n.value)}`);
     if (recompute) {
       const oldDeps = new Map([...n.deps].map(([t, ks]) => [t, new Set(ks)] as const));
       this.unsubscribe(n);
-      const prevTracking = this.tracking; this.tracking = n; n.lane = false; n.lanes = new Set(); n.inLanes = new Set(); const prevFlight = n.flight; n.flight = null; n.taint = new Set(); n.taintFrom = new Set(); n.served = new Set();
+      const prevTracking = this.tracking; this.tracking = n; const prevFlight = n.flight;
       n.triggered = notified;
       let v: unknown;
-      try { v = n.compute!(this); } catch (e) { if (e instanceof RuleError) throw e; v = new ErrVal(e); }
+      n.screenFor = null;
+      for (;;) {
+        n.lane = false; n.lanes = new Set(); n.inLanes = new Set(); n.flight = null; n.taint = new Set(); n.plainTaint = new Set(); n.taintFrom = new Set(); n.served = new Set(); n.probed = new Set(); n.plainAhead = new Set();
+        try { v = n.compute!(this); } catch (e) { if (e instanceof RuleError) throw e; v = new ErrVal(e); }
+        // R-11 (Solid D-25, decision 1 of #4695): posture is per read. A plain read of a node this same pass also read ahead is
+        // the screen's (`[x, pending? x]` in an equation is `[committed, true]` now, either order: Solid S-27's memo case). The pass
+        // learns what it probes only by running, so a pass that did both is run once more with those nodes on the screen.
+        if (n.screenFor || n.kind !== "eq" || ![...n.plainAhead].some(b => n.probed.has(b))) break;
+        n.screenFor = new Set(n.probed); this.unsubscribe(n);
+      }
       this.tracking = prevTracking;
       const landed = n.landing && !(v instanceof PendingVal); n.landing = false;   // a new answer, even one equal to the truth the guess was made over: it is compared with the guess (D-34)
       this.subscribe(n);
@@ -661,8 +686,11 @@ export class Runtime {
       if (!n.hasValue) ch.add(""); else diffPaths(n.value, v, "", ch);
       if (ch.size > 0) { if (n.hasValue) { n.prev = n.value; n.hasPrev = true; } n.value = v; n.changed = true; n.changedSinceCommit = true; }   // C-2: `pre` is the value before this change
       n.hasValue = true;
-      if (n.hasGuess && !isAbsent(v) && (ch.size > 0 || landed)) { const dg = new Set<Path>(); diffPaths(v, n.guess, "", dg); if (guessedAt(n, dg)) { for (const e of n.guessEntries) if (guessedAt({ guessPaths: [e.path] }, dg)) e.spent = true; if (n.guessEntries.some(e => !e.spent)) this.rebuildGuess(n, v); else n.guess = v; n.corrected = true; n.answerCorrected = true; } }   // D-34: a new answer different from the guess at a guessed key corrects the graph now (derivations; `latest x` of a shown guess keeps it, D-22); equal there confirms silently (the screen keeps the guess's world until the commit)
+      if (n.hasGuess && !n.questionMoved && !isAbsent(v) && (ch.size > 0 || landed)) { const dg = new Set<Path>(); diffPaths(v, n.guess, "", dg); if (guessedAt(n, dg)) { for (const e of n.guessEntries) if (guessedAt({ guessPaths: [e.path] }, dg)) e.spent = true; if (n.guessEntries.some(e => !e.spent)) this.rebuildGuess(n, v); else n.guess = v; n.corrected = true; n.answerCorrected = true; } }   // D-34: a new answer different from the guess at a guessed key corrects the graph now (derivations; `latest x` of a shown guess keeps it, D-22); equal there confirms silently (the screen keeps the guess's world until the commit)
       if (!(v instanceof PendingVal)) n.answered = true;   // H-12: an error is an answer (a first load ends with it — found by S-ai2-search)
+      if (n.hasGuess && n.question && notified && v instanceof PendingVal && !n.quiet && !n.guessEntries.some(e => !e.spent && this.find(e.by) === this.find(this.instant))) {   // H-11 (Solid D-34, S-44): a new question under a guess is held with the guess's hold; its answer is not the guess's truth
+        for (const e of n.guessEntries) if (!e.spent && this.groupOpen(e.by)) { this.union(this.instant, e.by); n.questionMoved = true; }
+      }
       if (n.kind === "eq" && notified && v instanceof PendingVal && !(n.deferred && n.answered) && !n.quiet) n.heldBy = this.instant;   // a deferred node's first load holds like any   // R-4: a pass this change triggered asked a new question; its pending belongs to this change
       if (n.heldBy !== null) n.taint.add(n.heldBy);
       // D-10: while this value is held by an open change, the committed pass's inputs stay subscribed.
@@ -709,6 +737,12 @@ export class Runtime {
   evalExpr(e: Expr, region: Region, env?: Map<string, unknown>): unknown { return this.ev(e, region, env); }
   private latestOfGuess = 0;                            // DV-10: evaluating `latest g` of a guess: its reads join g's lane without being held by it
   private addLane(l: Node, held = true) { const t = this.tracking!; t.lanes.add(l); if (held && !this.latestOfGuess) t.inLanes.add(l); }
+  /** H-6, R-11 (Solid D-17, decision 1 of #4695): a re-arm shows its fallback now iff every held value its `on` pass read, it read
+   *  ahead. A plain read of another held value — served, or derived from an open change — makes the pass the hold's work. */
+  private onAhead(n: Node) {
+    if ([...n.served].some(b => !n.probed.has(b))) return false;
+    return ![...n.taint].some(t => t === this.instant || this.groupOpen(t));
+  }
   /** H-7: a reader keeps what it showed while one of the lanes it is in is held or frozen. */
   private laneHeld(n: Node) { return [...n.inLanes].some(l => this.heldLanes.has(l) || this.frozen(l)); }
   /** A tracked read of a reactive node from reactive scope: guesses (H-11), lanes (R-10), serving (D-3), taint. */
@@ -725,7 +759,12 @@ export class Runtime {
         const future = ((b.kind === "source" || b.question) && b.heldBy !== this.instant && !(b.value instanceof PendingVal)) || b.value instanceof PendingVal;   // a landed answer is consumed, not served; own writes are read
         const armed = this.tracking.kind === "reader" && nearest(this.tracking.region.boundary, "loading")?.armed;   // F-4: an armed boundary's catch beats serving
         if (this.tracking.kind === "reader" && held && future && b.hasCommitted && !armed && !this.probing && !b.lane) { this.tracking.served.add(b); return b.committed; }   // D-3: served the committed value
-        if (!b.lane && !this.probing) { this.tracking.taintFrom.add(b); for (const t of b.taint) this.tracking.taint.add(t); }   // lane work and probes are the lane's, not the instant's (F-6)
+        if (this.probing) this.tracking.probed.add(b);
+        else if (b.hasCommitted && (held || [...b.taint].some(t => t === this.instant || this.groupOpen(t)))) {
+          if (this.tracking.screenFor?.has(b)) return b.committed;                                   // R-11: the plain twin of a probe in this pass reads the screen
+          this.tracking.plainAhead.add(b);
+        }
+        if (!this.probing) { this.tracking.taintFrom.add(b); for (const t of (b.lane ? b.plainTaint : b.taint)) { this.tracking.taint.add(t); this.tracking.plainTaint.add(t); } }   // probes and lane work are the lane's, not the instant's (F-6); a lane value carries the holds of its plain reads (R-11, Solid D-25)
       }
       return v;
   }
@@ -779,8 +818,8 @@ export class Runtime {
       case "latest": {                                                 // R-9 probe: the value an update is moving toward, else the committed value
         const ln = this.nodeOf(e.e, region, env);
         const ahead = !!ln?.hasGuess;                                  // DV-10: `latest` of a guess reads ahead of the guess's held lane (Solid #4284)
-        if (this.tracking) { this.tracking.lane = true; if (ln) this.addLane(ln, !ahead); }
-        if (this.committedView && ln && ln.hasCommitted) { this.track(ln, ""); return ln.committed; }   // D-26: an outsider shows what is on screen
+        if (this.tracking) { this.tracking.lane = true; if (ln) { this.addLane(ln, !ahead); this.tracking.probed.add(ln); } }
+        if (this.committedView && ln && ln.hasCommitted) { this.track(ln, ""); return ln.committed; }   // D-25: an outsider shows what is on screen
         if (ln && e.e.k === "id" && ln.hasGuess && ln.answerCorrected && ln.guessShown && this.frozen(ln)) { this.track(ln, ""); return ln.shownGuess; }   // D-22, D-34 (Solid decision 3; DV-19): an answer corrected the graph, but the slot still displays the guess: `latest` keeps it until the hold commits
         this.probing++; if (ahead) this.latestOfGuess++; let v: unknown; try { v = this.ev(e.e, region, env); } finally { this.probing--; if (ahead) this.latestOfGuess--; }
         if (v instanceof PendingVal && ln && ln.hasCommitted && e.e.k === "id") return ln.committed;
@@ -797,17 +836,18 @@ export class Runtime {
           if (v instanceof PendingVal) return true;
           return [...reads].some(r => r.value instanceof PendingVal || (r.heldBy !== null && (r.heldBy === this.instant || this.groupOpen(r.heldBy))));
         }
-        if (this.tracking) this.addLane(n);
+        if (this.tracking) { this.addLane(n); this.tracking.probed.add(n); }
         this.track(n, ""); if (n.kind !== "source") this.pull(n);     // a probe is a (lane) dependency
         if (e.e.k === "latest") return n.value instanceof PendingVal;  // the latest channel's own verdict: x's own async is up (S-solid-27)
         if (n.lagging) return true;                                    // D-40: lagging behind a new question
         if (n.firstPaint) return false;                                // R-7
         if (n.affectedBy !== null && (n.affectedBy === this.instant || this.groupOpen(n.affectedBy))) return true;   // AC-5: a declared new question
+        if (n.questionMoved && n.guessEntries.some(e => this.groupOpen(e.by))) return true;   // H-9 / H-11 (Solid S-44): the new question's answer waits in the guess's hold, re-asked or not
         if (n.quiet) return false;                                     // AC-4 / D-31: a re-ask of the same question is quiet, even landed into a hold
-        if (n.kind !== "source" && !n.hasCommitted && !n.answered) return this.demandMode ? PENDING : false;   // first load: no verdict (R-9 / D-24)
+        if (n.kind !== "source" && !n.hasCommitted && !n.answered) return this.demandMode ? PENDING : false;   // first load: no verdict (R-9 / D-23)
         const open = (c: number | null) => c !== null && (c === this.instant || this.groupOpen(c));
         if (n.value instanceof PendingVal) return true;
-        if (n.hasGuess && !n.corrected && open(n.heldBy)) { const dg = new Set<Path>(); diffPaths(n.value, n.guess, "", dg); if (dg.size === 0) return false; }   // D-35: a held answer equal to the guess is a silent confirm (S-solid-34)
+        if (n.hasGuess && !n.corrected && open(n.heldBy)) { const dg = new Set<Path>(); diffPaths(n.value, n.guess, "", dg); if (dg.size === 0) return false; }   // D-34: a held answer equal to the guess is a silent confirm (S-solid-34)
         if (e.e.k === "member" || e.e.k === "index") {                   // ST-2c / D-30: pending is per key — a held path write pends exactly its key
           const path: string[] = []; let x: Expr = e.e; while (x.k === "member" || x.k === "index") { path.unshift(x.k === "member" ? x.p : String(this.ev(x.i, region, env))); x = x.o; }
           if (n.changedSinceCommit && n.heldKeys.size === 0 && open(n.heldBy)) return true;   // a re-derived family: every key re-asks
@@ -1079,16 +1119,16 @@ export class Runtime {
     this.openActions.delete(run);
     if (run.change === null) return;                                        // ended before its first instant: nothing to revert or correct
     // AC-1 (ruled 2026-10-22, DV-2): a rejection ends the body like a return — the held writes commit, the guesses
-    // revert to the truth at hand (the body-end correction, D-35). Only optimistic state is provisional.
+    // revert to the truth at hand (the body-end correction, D-34). Only optimistic state is provisional.
     this.pendingBodyEnds.push(this.find(run.change));
   }
-  /** D-35: the body's end corrects a guess nothing authoritative is answering — by the truth at hand. */
+  /** D-34: the body's end corrects a guess nothing authoritative is answering — by the truth at hand. */
   private bodyEndCorrections(): boolean {
     let any = false;
     for (const g0 of this.pendingBodyEnds) { const g = this.find(g0);
       for (const n of this.allNodes()) if (n.hasGuess && this.guessedBy(n, g)) {
         const truth = n.demanded ? n.value : this.pull(n);
-        if (truth instanceof PendingVal || (n.quiet && n.flight?.state === "pending") || this.refreshPending(g)) continue;   // its own source is still answering — a first load or a re-ask (`refresh x`) — or the action re-asked a question the guess's truth may follow: that answer corrects (D-34, D-35, AC-4)
+        if (truth instanceof PendingVal || (n.quiet && n.flight?.state === "pending") || this.refreshPending(g)) continue;   // its own source is still answering — a first load or a re-ask (`refresh x`) — or the action re-asked a question the guess's truth may follow: that answer corrects (D-34, AC-4)
         const mine = n.guessEntries.filter(e => this.find(e.by) === g);
         const dg = new Set<Path>(); diffPaths(truth, n.guess, "", dg);
         if (guessedAt({ guessPaths: mine.map(e => e.path) }, dg)) {   // this action's keys differ from the truth at hand: corrected; another action's keys keep their guesses
@@ -1115,7 +1155,7 @@ export class Runtime {
   }
   /** H-11: whether change `g` (a group root) made a guess on `n` that is still live. */
   private guessedBy(n: Node, g: number) { return n.guessEntries.some(e => this.find(e.by) === g); }
-  /** AC-4, D-35: a re-ask issued by the action of change `g` is still answering. */
+  /** AC-4, D-34: a re-ask issued by the action of change `g` is still answering. */
   private refreshPending(g: number) { return this.allNodes().some(n => n.quiet && n.refreshInAction && n.refreshBy !== null && this.find(n.refreshBy) === g && n.flight?.state === "pending"); }
   /** D-34: a corrected guess's readers keep what they showed until the hold commits (the lane is frozen, not held). */
   private frozen(n: Node) { return n.hasGuess && n.corrected && n.guessBy !== null && (n.guessBy === this.instant || this.groupOpen(n.guessBy)); }

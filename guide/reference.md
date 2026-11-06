@@ -78,6 +78,9 @@ Expr      ::= TypeScript's, without assignment, `this`, `function`, `new` on rea
   `x` inside the `loading on(x)` region; a read of it outside holds the change (CN-3e).
 - `pending? x` is true while a new answer for `x` is out; `latest x` is the value `x` is moving to (R-9). Use them to
   show work in progress without a fallback.
+- Only the probe reads ahead. Beside it, a plain read of the same `x` shows what is on screen, and a plain read of
+  another held value waits for its change, probe or not (R-11). `loading on(latest x)` shows its fallback at once;
+  `loading on(x)` shows it with `x`'s change (H-6).
 - `await e -> v` gives `v` until the first answer, so there is no first-load wait (R-7).
 
 ## Failures
@@ -86,7 +89,7 @@ Expr      ::= TypeScript's, without assignment, `this`, `function`, `new` on rea
 - Every reader of a value that can fail needs an `errored` region above it or a `catch` on the read
   (UNHANDLED_FAILURE, R-f-5). `errored fallback(e: NotFound) { … }` takes only that class (R-f-4).
 - An error stays on screen until a new answer replaces it: `refresh x` (quiet) retries; changing an input asks a new
-  question (H-12, D-39).
+  question (H-12, D-41).
 - A value borrowed from another section (a list passed into a detail) carries that section's failures: catch the
   read, or the other section's error shows in this one.
 - `throw NotFound(id)` in an equation's arm is a failure value: `found(it, id) => it == null ? throw NotFound(id) : it`.

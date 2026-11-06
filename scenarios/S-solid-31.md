@@ -1,4 +1,4 @@
-# S-solid-31 — a verdict reader's mount is mainline: a boundary it opens shows its fallback (Solid S-31; D-27, #3851)
+# S-solid-31 — a verdict reader's mount is mainline: a boundary it opens shows its fallback (Solid S-31; D-1, D-25, #3851)
 
 ## Program
 

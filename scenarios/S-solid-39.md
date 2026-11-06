@@ -1,6 +1,6 @@
-# S-solid-39 — A later unread value still throws: one reader, either order (Solid S-39; D-28)
+# S-solid-39 — A later unread value still throws: one reader, either order (Solid S-39; D-25)
 
-Rules: R-11, H-5, F-4; Solid D-28 (ruled 2026-10-09).
+Rules: R-11, H-5, F-4; Solid D-25 (ruled 2026-10-09).
 
 ## Program
 
@@ -32,7 +32,7 @@ Instant 1: the action holds `s = 1`; `n0` follows `latest s`, so `n0(1)` is
 asked. Instant 2: the new branch's reader reads `n0`, which has never shown
 a value: the read throws, and a throw holds the pass — so the mount is held
 (control stays `off`). `latest s` read first does not stop the throw;
-publishing the branch with an empty slot is the violation (D-28).
+publishing the branch with an empty slot is the violation (D-25).
 Instant 3: `n0(1)` lands; control and `[1, 1]` reveal together.
 
 ## Variant: the other order

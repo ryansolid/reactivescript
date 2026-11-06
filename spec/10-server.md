@@ -154,7 +154,7 @@ by default — see the list at the end.
   the shell or in a later chunk — is streamed with its fallback rendered:
   the browser shows the client's frame (`no user 7`, S-server-1 instant 1),
   and the client adopts it and keeps tracking the failed content, so it
-  recovers like any boundary (D-39). DV-9 and DV-12 are Solid's.
+  recovers like any boundary (D-41). DV-9 and DV-12 are Solid's.
 
 ---
 

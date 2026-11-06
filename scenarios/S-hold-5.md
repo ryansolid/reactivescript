@@ -27,5 +27,5 @@ export default component App() {
 Instant 1: the rejection ends the wait like a value (R-6) and reaches the
 `errored` region, which becomes the display (H-12). Instant 2: a new
 question; the reader behind the error fallback holds nothing (H-4), so the
-instant commits and the fallback stays (Solid D-39). Instant 3: the answer
+instant commits and the fallback stays (Solid D-41). Instant 3: the answer
 replaces the error; content returns.

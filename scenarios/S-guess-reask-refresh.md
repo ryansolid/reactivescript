@@ -1,6 +1,6 @@
 # S-guess-reask-refresh — a guess stays until the action's refresh lands, even after an outside re-ask landed under it
 
-Rules exercised: AC-3, AC-4, H-11, D-35.
+Rules exercised: AC-3, AC-4, H-11, D-34.
 
 ## Program
 
@@ -13,7 +13,7 @@ export default component App() {
 ```
 
 An action's `refresh` is authoritative work in flight: the guess waits for that answer before the body-end correction
-(06 D-35; S-remount-refresh instants 3 and 8). That holds whether or not the question was re-asked from outside the
+(06 D-34; S-remount-refresh instants 3 and 8). That holds whether or not the question was re-asked from outside the
 action while the guess was pending: the outside answer (instant 4) lands under the guess and leaves it; the write
 landing (instant 5) ends the body, and the action's own re-ask is what corrects the guess (instant 6).
 
@@ -46,7 +46,7 @@ export default component App() {
 ```
 
 The effect follows the graph's value, and the guess is the graph's value until the action's re-ask answers (H-11,
-D-35): it logs the guess once and nothing after, since the re-ask confirms it.
+D-34): it logs the guess once and nothing after, since the re-ask confirms it.
 
 | instant | action | frame | effect |
 | ------- | ------ | ----- | ------ |

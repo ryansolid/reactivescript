@@ -1,4 +1,4 @@
-# S-solid-38 — an error is a boundary returning to its fallback; a write beside an old error (Solid S-38; D-39)
+# S-solid-38 — an error is a boundary returning to its fallback; a write beside an old error (Solid S-38; D-41)
 
 ## Program
 

@@ -1,4 +1,4 @@
-# S-solid-6 — a new async memo a reader consumes waits with the hold (Solid S-6; D-2, F-2, #3800)
+# S-solid-6 — a new async memo a reader consumes waits with the hold (Solid S-6; D-1, F-2, #3800)
 
 ## Program
 
