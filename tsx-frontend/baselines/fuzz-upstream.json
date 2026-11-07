@@ -1,0 +1,26 @@
+{
+  "note": "At fdbcad92 / Solid rc.21: handwritten RX interpreter differs from compiled RX; TSX agrees with RX on each backend and native Solid agrees with compiled RX. See docs/FUZZ.md U1/U2. Not frontend parity. New upstream differences fail the gate until reviewed.",
+  "seeds": [
+    14,
+    17,
+    40,
+    42,
+    44,
+    88,
+    90,
+    92,
+    103,
+    107,
+    117,
+    125,
+    145,
+    149,
+    150,
+    152,
+    164,
+    182,
+    189,
+    193,
+    199
+  ]
+}
