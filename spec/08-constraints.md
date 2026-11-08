@@ -103,7 +103,8 @@ runtime check.
   on `selected`). Checked within a component: a read through a prop in
   another component is left to Solid's run-time report. The fix is
   structural: move the read under the region, or read `latest x` outside
-  it. (Ryan: "if you can make a reasonable static check we should do it";
+  it. Both show a guess the screen shows until its hold commits (H-11,
+  S-latest-reask; on Solid rc.21 `latest` does not yet, DV-19). (Ryan: "if you can make a reasonable static check we should do it";
   found by the round 9 eval, where a tab count's effect outside the list's
   `loading on(filter)` froze the old list on a filter switch in 39 of 82
   `.rx` apps.) Checked by `rxc` and `ref/`.

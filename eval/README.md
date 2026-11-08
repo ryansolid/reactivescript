@@ -98,7 +98,10 @@ mutants/   naive React drafts the hidden tests must catch
 results/   scored runs
 ```
 
-Setup: `npm install` here (Solid 2.0.0-rc.21 from npm); `cargo build --release --bin rxc` in `../compiler` (its Solid pin is d2323b0, rc.19).
+Setup: `npm install` here (Solid 2.0.0-rc.21 and Playwright from npm; set `CHROMIUM=/path/to/chromium` to drive a
+system browser instead of Playwright's download); `cargo build --release --bin rxc` in `../compiler` (its Solid pin
+is `ref/SOLID_NEXT`). A round is regradable only if its runs' sources are committed under `results/<round>/runs/`
+(rounds 5, 7, 10 and 11 kept theirs in the session that ran them and cannot be regraded).
 `RXC` and `RT_WEB` override the paths to the binary and `ref/compile/rt-web.ts`. (The pilot itself ran on PR #6's
 crate before it merged, built with the same pin.)
 
