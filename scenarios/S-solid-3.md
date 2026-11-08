@@ -1,4 +1,4 @@
-# S-solid-3 — a mount during a hold: a derivation born held holds the mount (Solid S-3; D-2, D-3)
+# S-solid-3 — a mount during a hold: a derivation born held holds the mount (Solid S-3; D-1, D-3)
 
 The branch is opened by a write instead of a click; `title` is the
 unrelated mainline write of Solid's row 3.

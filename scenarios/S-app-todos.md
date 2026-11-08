@@ -1,6 +1,6 @@
 # S-app-todos — TodoMVC against a server, in layers: server → failures → guesses
 
-Rules exercised: ST-4, ST-5, AC-1, AC-3, AC-4, AC-7, H-11, R-f-6, W-6, D-35.
+Rules exercised: ST-4, ST-5, AC-1, AC-3, AC-4, AC-7, H-11, R-f-6, W-6, D-34.
 
 The layering of solid next's `examples/todos` (server → failures → guesses), written in .rx. Nothing keeps a copy of
 what the server accepted: every action ends with `refresh server`, and its guesses stay until that answer lands.
@@ -28,7 +28,7 @@ file: ../examples/todos.rx
 - 2: the add guesses `adding`, a list of its own, so it never joins a toggle's change (H-11).
 - 3: the toggle guesses one row of `todos` (AC-3); `clear done` opens with the guess (a lane branch attaches now, H-7).
 - 4: the save is declined. The catch records the failure (AC-7) and the body re-asks `server`. A re-ask issued by an
-  action that guessed holds its change (D-35, AC-4): the guess stays up until the server's list lands, so the screen
+  action that guessed holds its change (D-34, AC-4): the guess stays up until the server's list lands, so the screen
   never shows the row reverted and then corrected.
 - 5: the add is accepted. Its re-ask is the same question, still out: nothing moves.
 - 6: the list lands. Both changes commit in one frame: `eggs` comes from the server (the add's guess goes in the same
@@ -40,7 +40,7 @@ file: ../examples/todos.rx
 
 1. `ref/` corrected an action's guesses at the end of its body even when the action had re-asked a question with
    `refresh` that was still out, unless the guess was on that question's own source. Solid holds the action's
-   transition until the refresh lands. Fixed in `ref/src/runtime.ts`; AC-3's D-35 sentence now says so.
+   transition until the refresh lands. Fixed in `ref/src/runtime.ts`; AC-3's D-34 sentence now says so.
 2. A guessed keyed source derived synchronously from a loaded equation (`source todos key id = server.map(…)`) was
    rebuilt instead of adopted on hydration: the runtime always handed `createOptimisticStore` an async derive. Fixed in
    `ref/compile/rt*.ts` (and so `@reactivescript/runtime`): the derive is async only when its value is.

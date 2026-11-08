@@ -1,4 +1,4 @@
-# S-solid-19 — a same-source outside read: the fallback is armed off screen and never seen (Solid S-19; D-16)
+# S-solid-19 — a same-source outside read: the fallback is armed off screen and never seen (Solid S-19; D-17)
 
 ## Program
 

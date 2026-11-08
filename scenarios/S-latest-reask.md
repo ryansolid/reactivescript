@@ -16,7 +16,7 @@ A re-ask of the list from outside the action (instant 3) lands under the pending
 guess's own question and differs from the guess, so it corrects the graph now (H-11, D-34): derivations re-derive from
 the truth. But the slot still displays the guess, and `latest rows` answers what the slot displays: the guess, until
 the hold commits (H-11; Solid D-22 and D-34, decision 3 of solidjs/solid#4695). The write landing (instant 5) ends the
-body with the action's `refresh rows` in flight, so nothing commits yet (D-35); the re-ask's answer commits it all
+body with the action's `refresh rows` in flight, so nothing commits yet (D-34); the re-ask's answer commits it all
 (instant 6).
 
 ## Frames

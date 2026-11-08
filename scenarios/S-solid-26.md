@@ -1,4 +1,4 @@
-# S-solid-26 — `pending?` is about a new question (Solid S-26; D-23, D-24)
+# S-solid-26 — `pending?` is about a new question (Solid S-26; D-23)
 
 Rules: R-9, H-9, AC-4, AC-5, AC-3.
 
@@ -31,7 +31,7 @@ export default component App() {
 | 8       | resolve "gate" 0               | `Bob3 `          |
 
 Instant 0: the probe's own read suspends with the first load — no verdict,
-nothing observable (D-24). Instant 2: an input changed — a new question.
+nothing observable (D-23). Instant 2: an input changed — a new question.
 Instant 4: a re-ask of the same question is quiet; the fresh value reveals
 silently (5). Instant 6: `affects` declares a reload: pending. Instant 7:
 the re-ask lands into the action's hold (D-31) and reveals at its commit.
@@ -59,4 +59,4 @@ export default component App() {
 | 3       | resolve "gate" 0               | `Ann `           |
 
 The guess shows; `pending? shown` stays `false`. The body's end corrects
-it by the truth at hand (D-35).
+it by the truth at hand (D-34).

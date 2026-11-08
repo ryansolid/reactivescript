@@ -27,7 +27,7 @@ AC-1…AC-5 (S-store-1…5, S-solid-8/9/15/20/26/32…35/37). Optimistic path wr
   path with its previous value (E-6): equal → cut, keep old identity;
   otherwise the root changed. With a key (ST-4) the result is reconciled
   instead.
-- **ST-2c (Pending is per key).** [Solid D-30, S-37] A held path write makes
+- **ST-2c (Pending is per key).** [Solid F-9, D-30, S-37] A held path write makes
   `pending? x.a` true and leaves `pending? x.b` false; a root write or a
   re-ask of a source with a question (ST-5) makes the whole family pending
   (S-solid-37 and its variant).
@@ -232,7 +232,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
   guess, a new answer corrects only where it differs at a guessed key, and
   equal there it confirms silently (S-store-6). A question re-asked by an
   action that guessed (`refresh x`) is authoritative work in flight: the
-  change waits for that answer before the body-end correction (D-35) — for
+  change waits for that answer before the body-end correction (D-34) — for
   a guess on `x` itself, and for a guess on another source whose truth may
   follow `x` (S-app-todos: an add guessed in its own list stays until the
   re-asked server list brings the row; a declined toggle's revert and its

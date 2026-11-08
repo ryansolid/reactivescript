@@ -1,4 +1,4 @@
-# S-solid-16 — a reset ends the hold on writes only its readers observed; an outside reader keeps it (Solid S-16; D-14)
+# S-solid-16 — a reset ends the hold on writes only its readers observed; an outside reader keeps it (Solid S-16; D-12)
 
 ## Program
 

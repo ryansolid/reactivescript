@@ -6,6 +6,17 @@ F-1…F-12, `solidjs/solid@next`) over the calculus of 02–04. Each H-rule
 cites the F-rule it restates and must agree with it; an open question there
 (Q-n) is open here. This document does not rule on Solid's open questions.
 
+Aligned 2026-11-06 with solidjs/solid#4695 (Ryan's decisions 1–4, and the
+derived rules collapsed: sixteen folded into nine). Solid keeps every D-id
+and leaves a stub where a rule folded, so an old citation still resolves;
+this spec cites the rule each one folded into: D-2 → D-1, D-11 → D-9,
+D-13/D-14/D-21 → D-12, D-15/D-16 → D-17, D-24 → D-23, D-26/D-27/D-28 →
+D-25, D-32 → D-33, D-35 → D-34, D-39 → D-41; D-36 and D-37 are retired as
+rules (consequences of the glossary's *Guess* and *Lane*). The one change
+of behaviour is decision 1, **posture is per read** (R-11, H-6, H-7): a
+probe reads ahead at its own site, and a plain read beside it in the same
+pass is a plain read.
+
 ---
 
 ## The model: two versions of state
@@ -125,11 +136,27 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   change's frame — *if* a reader under it is pending in that change's
   settle; with nothing pending the re-arm is a no-op and the content
   updates in place (S-ai-grid). The value `on` yields is never compared;
-  children are not recreated.
+  children are not recreated. The `on` expression is a pass like any other
+  (Solid D-17, decision 1 of #4695): when every held value it read, it read
+  through a probe, its frame has landed and the fallback shows now (H-7,
+  S-solid-21); when it read a held value plainly — one it did not also
+  probe (R-11) — it is that hold's work and the swap lands with the hold's
+  frame (`on(id)`, S-solid-48), even beside a probe (`on([latest id,
+  filter])` with `filter` held waits, S-solid-49).
 
-- **H-7 (Lanes).** [F-6] A reader whose equation carries `lane(x)` (R-10)
+- **H-7 (Lanes).** [F-6, Solid D-25] A reader whose equation carries `lane(x)` (R-10)
   renders from `σ′` for `x` and what is derived from it, beside the held
-  screen, and never holds the instant — except at the mount: a lane reader
+  screen, and never holds the instant on its account. Only the probe sites
+  read ahead (R-11): in the same pass a plain read of a source the pass also
+  probes is the screen's (`x = 1 + n + (pending? n ? 1 : 0)` shows `1 + 0 +
+  1` now while an action holds `n := 5`: S-solid-27's equation variant), and a
+  plain read of any other held value makes the pass the hold's work — it
+  joins the hold like any reader of a held change (H-3), probe or no probe
+  (S-solid-27's second equation variant). What a pass probed is never carried
+  into its next pass: an equation that probed last time and probes nothing
+  this time is an ordinary reader of the held value, and the instant that
+  re-ran it joins the hold (S-solid-50, H-3a). The exception is at the
+  mount: a lane reader
   with no committed value has no committed world to show, so it is the
   mount's and holds instant 0 like any reader (S-hold-4; found by the
   oracle). A lane has identity — the probed
@@ -140,10 +167,14 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   now, beside the held frame (D-17, S-solid-21). `latest x` while `x`'s
   flight is pending is `x`'s committed value (the value an update is moving
   toward does not exist yet). A lane reader mounted mid-hold shows the
-  committed world and reveals with the lane (D-26, S-solid-30). A branch a
-  lane condition opens is a mainline mount and attaches now; content under
-  it that read a write the instant holds is born held — a fresh boundary
-  there shows its fallback (D-27, S-solid-31). But pending work *inside* the lane —
+  committed world and reveals with the lane (D-25, S-solid-30). A branch a
+  lane condition opens is a mainline mount, not derived from the probe: it
+  attaches now — unless its content is born held, having read a write an
+  open change holds plainly in its first pass (Solid D-1, decision 4 of
+  #4695): then a fresh boundary there catches it and shows its fallback
+  (S-solid-31), and with no boundary the branch does not attach until the
+  landing and the old arm stays (S-solid-46; `latest x` inside the branch
+  shows ahead at its own site). But pending work *inside* the lane —
   an `await` over `latest x`, a derivation of it that is pending — holds the
   lane: the lane's readers keep what they showed and reveal together when
   it lands. A lane hold and the instant's hold are independent on both sides.
@@ -182,7 +213,7 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   not `σ`, not `σ′`, not a probe. The instant begins when the run ends
   (W-3); from then `v` is in `σ′` (probes see it) and in `σ` at commit.
 
-- **H-11 (Optimistic).** [F-11, D-32…D-35] `optimistic x := e`, legal only
+- **H-11 (Optimistic).** [F-11, D-33, D-34] `optimistic x := e`, legal only
   inside an action body, declared or inferred (AC-3, AC-1b), and only on a source with a question (ST-5),
   writes a *guess* for `x`: from the instant's settle it is the graph's
   value (equations derive from it — S-solid-33: `related` re-asks from the
@@ -190,9 +221,17 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   identity is `x` (H-7), so they show now unless pending work inside that
   lane holds it — and `latest x` shows the guess even then (H-7, DV-10).
   It is verdict-inert: `pending? x` is unaffected by the
-  guess alone (S-solid-32, S-solid-35); `latest x` answers the guess
+  guess alone (S-solid-32, S-solid-35). A guess is an edit over the answers
+  to the question it was written over: a write to an input of `x` from
+  outside the guess's hold asks a new question, and that instant is held
+  with the guess's hold until it commits (Solid D-34, S-44; ruled
+  2026-10-28): the screen keeps the guess and the old input, `pending? x` is
+  `true`, and the new question's answer is not the guess's truth — it neither
+  confirms nor corrects the guess; it commits with the hold (S-solid-44). An
+  input the guess's own action writes is the guess's question
+  (S-solid-34). `latest x` answers the guess
   (S-solid-33, S-solid-34 — the first draft said "unaffected"; Solid's
-  D-26 and S-33 say otherwise). It lives as long as the hold it was made
+  D-25 and S-33 say otherwise). It lives as long as the hold it was made
   over: the hold's commit ends it and reveals the truth in the same frame;
   the hold ending without a commit reverts it. A path guess's hold is its own action's
   (per key), except that a keyed source with a question is a projection of
@@ -230,7 +269,7 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   error value like any answer (E-12); only pending withholds the apply. Pending is never an error: `errored` does not
   catch it — and it is not an answer either: an `errored` region on its
   fallback stays there while the content under it is pending, and leaves
-  only when a value replaces the error (Solid D-39; found by `ref/`:
+  only when a value replaces the error (Solid D-41; found by `ref/`:
   S-hold-5 instant 2) — unless a `loading` above it is armed (re-armed by
   its `on`): that boundary takes the pending content behind the error
   fallback and shows its own fallback over both (S-hold-6; found by
@@ -247,7 +286,8 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
 ## Divergences from the oracle (Solid's `next`, `ref/oracle/`)
 
 Every scenario is also run through the real runtime — Solid's `next` branch
-built from source at the commit in `ref/SOLID_NEXT` (`0847122`, 2026-10-26;
+built from source at the commit in `ref/SOLID_NEXT` (`2105ffb`, 2.0.0-rc.21;
+`0847122` on 2026-10-26;
 before that `2f7dc84` and `2a0da2f`, 2026-10-24;
 the records before that date were found on the published rc.16 and all
 re-run there): the oracle lowers the abstract syntax onto `solid-js` +
@@ -323,7 +363,7 @@ repro in `ref/oracle/repros/` still reproduces on that commit.
   newly mounted reader that reads `latest s` before `n0` — a lane
   derivation that has never shown a value — publishes its branch with the
   slot empty instead of holding the mount; the `n0`-first order holds.
-  Solid's own ruling (D-28) names the empty slot the violation. The spec
+  Solid's own ruling (D-25) names the empty slot the violation. The spec
   frames stand; the interpreter holds in both orders (a reader that has
   never shown anything has no lane display to keep, so a read that throws
   holds the pass).
@@ -341,7 +381,7 @@ repro in `ref/oracle/repros/` still reproduces on that commit.
   `ref/oracle/repros/dv8b-projection-pending.mjs`): `pending? results`
   lowered to `isPending(() => proj)`, and Solid's probe judges the reads
   its thunk makes, never its return value — `isPending(() => store)` reads
-  nothing and is `false` by design (D-24, A23). `pending?` over a
+  nothing and is `false` by design (D-23, A23). `pending?` over a
   structured value now reads its keys (`__rt.isPending`, the oracle's
   `pending` case), Solid's "whole-store questions are asked through
   reads"; S-ai2-search matches on every runner.
@@ -373,10 +413,28 @@ repro in `ref/oracle/repros/` still reproduces on that commit.
   `ref/oracle/repros/4690-guess-reask-refresh.mjs`). With nothing
   rendering a source and an outside re-ask landed under a pending guess,
   an effect over it sees the old truth once the write lands, until the
-  action's re-ask answers. D-35 says the guess waits for that answer.
+  action's re-ask answers. D-34 says the guess waits for that answer.
   S-guess-reask-refresh's effect-only variant records it at instants 5
   and 6; a rendered reader of the source holds the effect's view too.
   Fixed on `next` (Ryan, 2026-11-05); recorded until the repin.
+- **DV-21 (posture is per read) — Solid's ruling, not built** (solidjs/solid#4695,
+  decision 1: D-17, D-25; Solid's S-49 and S-50 `it.fails`). Today one probe in a
+  pass makes the whole pass a display-ahead reader, and a probe on its last
+  run is carried into the next: a mixed `on([latest id, filter])` with
+  `filter` held re-arms now (S-solid-49 instants 3–4), an equation that
+  probes one source and reads another held one plainly shows now
+  (S-solid-27's second equation variant), and an equation that probed once
+  publishes the plain write that re-ran it beside the held value (S-solid-50
+  instant 2: `m 2 k 1`). The spec frames are Solid's ruled ones.
+- **DV-22 (`pending?` under a new question under a guess) — Solid's ruling,
+  not built** (#4695, S-44). An outside input change under a guess reads
+  `pending? x` `false` (S-solid-44 instant 3); the ruled verdict is `true`.
+  The screen is the ruled one; `latest x` there is DV-19.
+- **DV-23 (a born-held branch under a display-ahead condition) — Solid's
+  ruling, not built** (#4695, decision 4: D-1; S-46's plain row). A branch a
+  probe opens whose content read the held write plainly attaches with its
+  slot empty and removes the old arm (S-solid-46 instant 2: `0 d0`); ruled:
+  it is born held and the old arm stays until the landing.
 - **DV-4 (S-37 row 2 under a boundary) — a Solid bug, reproduced
   2026-10-23; fixed on `next` 2026-10-26 (solidjs/solid#4269, fix #4278)** (`ref/oracle/repros/dv4-signals.mjs`). Under a
   `<Loading>` that has shown content, a derived store's per-key verdicts
@@ -412,8 +470,13 @@ S-26, S-27, S-29, S-30, S-31, S-36, S-38, S-40, S-41,
 S-42+S-43, and with 06: S-8, S-9 (inverted — no escape), S-15, S-20,
 S-26 rows 4–7, S-32, S-33, S-34, S-35, S-37, and with 03 RG-8: S-23;
 S-28 (imperative probes, R-12), S-39 (one reader, two orders; DV-16) and
-S-5 (two roots as two branches of one app — MO-1c; DV-17). Every scenario
-of Solid's `SCENARIOS.md` is now ported. Divergences found and fixed
+S-5 (two roots as two branches of one app — MO-1c; DV-17); since #4695
+(2026-11-06): S-27's memo case (S-solid-27's equation variants), S-44,
+S-46, S-48, S-49 and S-50. Two of Solid's rows are not ported: S-45 (a
+first answer and an action landing in one tick — a scenario instant carries
+one event) and S-47 (`try/catch` around a reactive read, D-42 — `.rx` has
+no such form: a reactive `catch` (R-f-4) lowers to an error boundary,
+which is a channel, and `try` is imperative only). Divergences found and fixed
 by porting are recorded in the rule they changed. Solid's probe columns
 (`latest(x)`, `isPending(x)` beside a screen) are untracked reads; an
 on-screen probe in a held lane of `latest` readers keeps what it showed

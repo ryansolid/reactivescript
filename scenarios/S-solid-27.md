@@ -32,3 +32,58 @@ through `latest`, so it follows `x`'s own async.
 Instant 4: `x(1)` landed but `y(1)` is still up, so the frame is held: the
 atomic pair shows `[true, x0]` (a landed answer awaiting reveal); the
 `latest` form saw `x`'s own answer — `[false, x1]`. Never `[true, x1]`.
+
+## Variant: an equation probes `n` and reads it plainly
+
+```
+export default component App() {
+  source n := 0
+  x = 1 + n + (pending? n ? 1 : 0)
+  action save() { try { n := 5; await fetch("save") } catch {} }
+
+  <div><p>x {x}</p></div>
+}
+```
+
+| instant | action              | frame     |
+| ------- | ------------------- | --------- |
+| 0       | mount               | `x 1`     |
+| 1       | handler `save()`    | `x 2`     |
+| 2       | resolve "save" 0    | `x 6`     |
+
+Solid S-27's memo case (D-25, decision 1 of solidjs/solid#4695): posture is
+per read. The plain read of `n` beside its probe in the same pass is the
+screen's `0`, in either order, and the probe is `true`: `x 2` shows now and
+the equation is not the hold's work (R-11). `x 7` (the plain read seeing the
+held `5`) and `x 1` (the equation held with the write it probed) are both
+wrong.
+
+## Variant: an equation probes `n` and reads another held value plainly
+
+```
+export default component App() {
+  source n := 0
+  source k := 0
+  x = 1 + k + (pending? n ? 1 : 0)
+  action save() { try { n := 5; k := 1; await fetch("save") } catch {} }
+
+  <div><p>x {x}</p></div>
+}
+```
+
+| instant | action              | frame     |
+| ------- | ------------------- | --------- |
+| 0       | mount               | `x 1`     |
+| 1       | handler `save()`    | `x 1`     |
+| 2       | resolve "save" 0    | `x 2`     |
+
+The plain read of `k`, which the action holds, makes the pass the hold's
+work (R-11; Solid D-25): the probe beside it does not let it show ahead.
+
+## Divergences (DV-21)
+
+- oracle "Variant: an equation probes `n` and reads another held value plainly" instant 1: `x 2`
+
+Solid ruled this in #4695 (D-25, S-49 and S-50, ruled, not built): today one
+probe in a pass makes the whole pass a display-ahead reader, so the plain read
+of `k` is served the screen's `0` and the equation shows now.

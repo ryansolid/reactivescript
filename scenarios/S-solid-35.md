@@ -1,4 +1,4 @@
-# S-solid-35 — the body's end corrects a guess nothing authoritative is answering (Solid S-35; D-35)
+# S-solid-35 — the body's end corrects a guess nothing authoritative is answering (Solid S-35; D-34)
 
 Rules: AC-1, AC-3, H-11.
 
@@ -81,7 +81,7 @@ export default component App() {
 | 3       | resolve "save" 0         | `a+mine`    |
 | 4       | resolve list "a,mine"    | `a,mine`    |
 
-The other side of D-35, for a guess over a whole value (`createOptimistic`,
+The other side of D-34, for a guess over a whole value (`createOptimistic`,
 not a store): instant 3, `refresh list` re-asks the guess's own question,
 so the body's end does not correct the guess; the change commits when the
 new answer lands (instant 4). Lowered, `refresh` must re-ask the question

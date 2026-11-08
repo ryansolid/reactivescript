@@ -1,7 +1,7 @@
 # S-store-6 — An optimistic path write: a guess per key, confirmed by the re-ask
 
 Rules exercised: AC-3 (path targets), ST-2c, ST-4, ST-5, AC-4, H-11; Solid
-D-34, D-35 (`createOptimisticStore`).
+D-34 (`createOptimisticStore`).
 
 ## Program
 
@@ -37,7 +37,7 @@ export default component App() {
 
 Instant 2: the guess shows at once and is verdict-inert (`pending?` stays
 false). Instant 3: the body has returned, but the guess's own question is
-being re-asked, so nothing corrects it yet (D-35: a guess whose source is
+being re-asked, so nothing corrects it yet (D-34: a guess whose source is
 still answering waits for that answer). The re-ask is quiet (AC-4).
 Instant 4: the truth agrees at the guessed key — a silent confirm — and
 brings `B` done as well (another tab); everything the action held reveals
@@ -57,7 +57,7 @@ in one frame.
 
 The catch takes the rejection inside the action; the body returns without
 re-asking, and nothing authoritative is in flight, so the guess is
-corrected by the truth it was made over (D-35).
+corrected by the truth it was made over (D-34).
 
 ## Variant: a path guess on a record
 
