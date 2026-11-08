@@ -57,7 +57,8 @@ Result (2026-11-08): on 2789ca9c one desk had a new deterministic hole (round 10
 during another action's refresh, then the refresh fails). It came from the lowering, not from the app: a whole guess
 (`optimistic rows := rs => rs.map(...)`) was written into the draft row by row, which replaces each matched row. It now
 lowers to the setter's return, which Solid diffs shallowly against the view as guesses (its default). With that, the
-12 desks grade as on rc.21 (total 52 defects), except that seed 3 is gone. The plain Solid case is solidjs/solid#4724.
+other 11 desks grade as before the change (52 defects over the 12; round 10 rx-9 fuzz seed 8, a known hole, is
+deterministic on both lowerings and was missed once by timing), and seed 3 is gone. The plain Solid case is solidjs/solid#4724.
 
 ## Cost
 
