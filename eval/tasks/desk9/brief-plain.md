@@ -67,7 +67,8 @@ Elements the tests look for carry these `data-testid`s. Text in quotes must appe
    - The selected issue comes from `fetchIssue(id)`. While it loads: `loading #<id>`.
    - An issue: `#<id> <title>` and its body.
    - `null`: `detail error: issue #<id> not found`. A failure: `detail error: <message>`.
-   - A button `retry` (`data-testid="retry"`) calls `fetchIssue(id)` again and shows its answer.
+   - While an issue is selected, the detail always has a button `retry` (`data-testid="retry"`), whether it shows the
+     issue, `not found` or a failure. It calls `fetchIssue(id)` again and shows its answer.
 5. **Assign.** While an issue is selected, the detail has a button `assign` (`data-testid="assign"`) reading
    `assign to <current user>`. Clicking it:
    - shows the current user as the issue's assignee in its list row straight away;
