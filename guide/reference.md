@@ -41,6 +41,8 @@ Expr      ::= TypeScript's, without assignment, `this`, `function`, `new` on rea
   declares `x` or one nested in it. Others get an action to call (W-5, O-4).
 - All the writes of one run (one handler call, one apply block) are one **instant**. Nothing sees `v` until the run
   ends, the run itself included: after `x := v`, `x` still reads the old value (W-3, W-4, H-10).
+- An instant is held while anything downstream of it is loading, with or without an `await` (H-2): in
+  `open := false; page := 2`, the menu closes when page 2 lands. To land a write on its own, `onFlush` (EF-8).
 - An `effect (a, b) { … }` runs after an instant in which `a` or `b` changed, once, with `$0`, `$1` the values; its
   writes are a new instant; `return () => …` is its cleanup (EF-2, EF-3, EF-5). It may not write what it reads (C-3).
 

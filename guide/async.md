@@ -10,6 +10,26 @@ or lists of pending requests. In .rx those are bugs waiting to happen, and they 
 already knows which question is current and which change a write belongs to. If you're reaching for a counter, you
 want one of the moves below.
 
+## What lands together, and what waits
+
+Everything one run writes (one handler call, one apply block) lands together, as one **instant** (W-3). An instant
+waits, or is **held**, while anything downstream of it is still loading (H-2). You don't need an `await` for that:
+`page := 2` in a plain handler holds if a fetch reads `page`. An action is the other way in: it keeps its change open
+across its awaits, and the handler that launches it joins it (AC-1). Then every other write in that instant waits
+too, so `open := false; page := 2` closes the menu only when page 2 arrives (S-flush-1).
+
+Usually that's right: the screen changes in one frame. When a write must not wait (clear the input you just
+submitted, close a menu, clear an error), give it its own instant: `onFlush(() => { text := "" })` (EF-8). The
+compiler can't tell a reset from a write that should wait with the rest, such as a tab highlight that moves with its
+page, so it's your call. Decide it for each write that sits next to work that loads.
+
+```
+// submit a todo: the input clears now, the row shows as a guess until the server answers
+let t = text
+onFlush(() => { text := "" })
+addTodo(t)
+```
+
 ## 1. Reading from the server: an equation
 
 ```
