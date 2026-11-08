@@ -53,6 +53,12 @@ The direction is the claim being tested. A null or reversed result is reported a
 The 12 existing .rx desks (round 10 1-9, cost check 1-3) are regraded on the pinned Solid. A regression against
 rc.21 is filed upstream and fixed or recorded before the round starts.
 
+Result (2026-11-08): on 2789ca9c one desk had a new deterministic hole (round 10 rx-8, fuzz seed 3: a close guess
+during another action's refresh, then the refresh fails). It came from the lowering, not from the app: a whole guess
+(`optimistic rows := rs => rs.map(...)`) was written into the draft row by row, which replaces each matched row. It now
+lowers to the setter's return, which Solid diffs shallowly against the view as guesses (its default). With that, the
+12 desks grade as on rc.21 (total 52 defects), except that seed 3 is gone. The plain Solid case is solidjs/solid#4724.
+
 ## Cost
 
 About $30 at round 10's prices: frontier $2.90 (.rx), $1.35 (React), $1.24 (plain), $3.56 (Foldkit) per run;
