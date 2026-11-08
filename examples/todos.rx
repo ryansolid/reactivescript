@@ -110,8 +110,8 @@ export default component App() {
         let title = draft.trim()
         if (title === "") return
         let id = "t" + str(nextId)
-        nextId := nextId + 1
-        draft := ""
+        // `add` holds this handler's writes until the server answers (AC-1); these must land now (EF-8)
+        onFlush(() => { draft := ""; nextId := n => n + 1 })
         add(id, title)
       }}>
         <input value={draft} onInput={e => { draft := e.target.value }} placeholder="What needs to be done?" />
