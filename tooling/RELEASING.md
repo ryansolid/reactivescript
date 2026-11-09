@@ -33,7 +33,7 @@ environment `release`. (The repository moved from `ryansolid` to `solidjs` befor
 any publisher was set up; if it moves again, change the owner here.) Every
 later version is published by the workflow, with provenance.
 
-**VS Marketplace.** Create the `reactivescript` publisher
+**VS Marketplace.** Create the `solidjs` publisher (shared with Solid's other extensions)
 (marketplace.visualstudio.com/manage). Then either:
 
 - a token: an Azure DevOps personal access token with **Marketplace › Manage**
@@ -49,7 +49,7 @@ later version is published by the workflow, with provenance.
   signs in with `azure/login` and runs `vsce publish --azure-credential`.
 
 **Open VSX.** Sign in at open-vsx.org with GitHub, sign the publisher
-agreement, create a token, run `npx ovsx create-namespace reactivescript -p
+agreement, create a token, run `npx ovsx create-namespace solidjs -p
 <token>`, and store the token as the secret `OVSX_PAT` on the `release`
 environment. (Open VSX's trusted publishing is server-side work in progress,
 eclipse-openvsx/openvsx#1980; switch when `ovsx` supports it.)

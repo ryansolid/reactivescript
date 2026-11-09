@@ -143,7 +143,7 @@ app.mount(main(app));
 ```
 
 **In an editor.** Install the ReactiveScript extension (publisher
-`reactivescript`) from the VS Code Marketplace, or from Open VSX for Cursor
+`solidjs`) from the VS Code Marketplace, or from Open VSX for Cursor
 and VSCodium. It brings highlighting and the language server. Other editors
 can run the language server on its own: `npx @reactivescript/language-server
 --stdio` ([`tooling/rx-language-server`](tooling/rx-language-server)).
