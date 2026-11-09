@@ -305,10 +305,15 @@ export class Runtime {
       }
     }
     for (const { node, path, value: v0 } of this.pendingGuesses) {   // AC-3: a guess shows from this instant's settle
-      const base = node.hasGuess ? node.guess : node.demanded ? node.value : this.pull(node);   /* a guess over a source nothing on screen reads (found by S-app-notes: the list was unmounted) */
+      const at0 = node.hasGuess ? node.guess : node.demanded ? node.value : this.pull(node);   /* a guess over a source nothing on screen reads (found by S-app-notes: the list was unmounted) */
+      const open = (c: number | null) => c !== null && (c === this.instant || this.groupOpen(c));
+      const held = !node.hasGuess && node.hasCommitted && (open(node.heldBy) || [...node.taint].some(open));
+      const base = held ? node.committed : at0;   // a functional guess applies to what the screen shows: an input still held (the handler's own write, adopted by the action, AC-1) is not the screen's yet (#33 U1)
       let cur: unknown = base; for (const k of path) cur = isObj(cur) ? cur[k] : undefined;
       const value = typeof v0 === "function" ? (v0 as (x: unknown) => unknown)(cur) : v0;   // W-6 applies to guesses too
-      node.guessEntries.push({ path: path.join("."), by: this.instant, value });   // its own hold's, per key (H-11): two actions' guesses on one row live and end apart
+      const at = path.join(".");
+      for (const e of node.guessEntries) if (!e.spent && this.groupOpen(e.by) && guessedAt({ guessPaths: [e.path] }, new Set([at]))) this.union(this.instant, e.by);   // H-2 / D-8: a guess on a slot another open change guesses is a second proposal for it — the two holds are one (#33 U2)
+      node.guessEntries.push({ path: at, by: this.instant, value });   // its own hold's, per key (H-11): two actions' guesses on one row live and end apart
       node.corrected = false; this.rebuildGuess(node); this.notify(node, "");
     }
     this.pendingGuesses = [];

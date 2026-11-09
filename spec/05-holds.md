@@ -229,11 +229,17 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   `true`, and the new question's answer is not the guess's truth — it neither
   confirms nor corrects the guess; it commits with the hold (S-solid-44). An
   input the guess's own action writes is the guess's question
-  (S-solid-34). `latest x` answers the guess
+  (S-solid-34). A functional guess (`optimistic x := v => …`, W-6) applies
+  to `x` as the screen shows it: an input its action holds, the launching
+  handler's own write included (AC-1), is not shown yet, so the updater
+  sees the old answer (S-action-3; #33). `latest x` answers the guess
   (S-solid-33, S-solid-34 — the first draft said "unaffected"; Solid's
   D-25 and S-33 say otherwise). It lives as long as the hold it was made
   over: the hold's commit ends it and reveals the truth in the same frame;
-  the hold ending without a commit reverts it. A path guess's hold is its own action's
+  the hold ending without a commit reverts it. Two actions' guesses at one
+  slot (the same key, or the whole value) are a second proposal for it, as
+  two writes are (H-2): their holds are one, and neither action's writes
+  reveal until both have returned (S-action-4; #33). A path guess's hold is its own action's
   (per key), except that a keyed source with a question is a projection of
   its answer: while an action's re-ask of it is in flight, every reader of
   it waits for that action, a declined guess's revert included (ruled
