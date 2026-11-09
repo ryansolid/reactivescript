@@ -2,7 +2,7 @@
   "name": "reactivescript",
   "displayName": "ReactiveScript",
   "description": "ReactiveScript (.rx, .d.rx): highlighting, and TypeScript's types, hover, go to definition, completion and errors through the .rx language server, with the compiler's own diagnostics.",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "publisher": "reactivescript",
   "license": "MIT",
   "engines": {

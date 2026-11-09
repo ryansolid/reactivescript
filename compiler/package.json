@@ -1,7 +1,7 @@
 {
   "name": "@reactivescript/compiler",
   "description": "ReactiveScript's compiler, in process through Node-API, and its front end for @solidjs/vite-plugin",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -57,10 +57,10 @@
     "@napi-rs/cli": "^3.10.6"
   },
   "optionalDependencies": {
-    "@reactivescript/compiler-darwin-x64": "0.0.0",
-    "@reactivescript/compiler-darwin-arm64": "0.0.0",
-    "@reactivescript/compiler-linux-x64-gnu": "0.0.0",
-    "@reactivescript/compiler-linux-arm64-gnu": "0.0.0",
-    "@reactivescript/compiler-win32-x64-msvc": "0.0.0"
+    "@reactivescript/compiler-darwin-x64": "0.1.0",
+    "@reactivescript/compiler-darwin-arm64": "0.1.0",
+    "@reactivescript/compiler-linux-x64-gnu": "0.1.0",
+    "@reactivescript/compiler-linux-arm64-gnu": "0.1.0",
+    "@reactivescript/compiler-win32-x64-msvc": "0.1.0"
   }
 }
