@@ -1,0 +1,28 @@
+{
+  "name": "@reactivescript/compiler-wasm32-wasi",
+  "version": "0.1.0",
+  "main": "compiler.wasi.cjs",
+  "browser": "compiler.wasi-browser.js",
+  "files": [
+    "compiler.wasm32-wasi.wasm",
+    "compiler.wasi.cjs",
+    "compiler.wasi-browser.js",
+    "wasi-worker.mjs",
+    "wasi-worker-browser.mjs"
+  ],
+  "description": "ReactiveScript's compiler as WebAssembly (wasm32-wasip1-threads), for platforms without a native binary: WebContainers (StackBlitz), musl, Windows on ARM",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/solidjs/reactivescript.git",
+    "directory": "compiler"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "@napi-rs/wasm-runtime": "^1.1.6",
+    "@emnapi/core": "1.11.3",
+    "@emnapi/runtime": "1.11.3"
+  }
+}

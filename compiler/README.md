@@ -48,7 +48,14 @@ RX_CRATE=1 npm --prefix ../ref run ssr           # … served and hydrated from 
 The crate's Node-API build (`--features node`, `src/node.rs`) is the npm
 package `@reactivescript/compiler`, with one binary per platform
 (`@reactivescript/compiler-<platform>`, in `npm/`) as `@solidjs/compiler`
-ships. Its `/vite` export (`vite.mjs`) is ReactiveScript's front end for
+ships, plus `@reactivescript/compiler-wasm32-wasi`, the same build for
+`wasm32-wasip1-threads`, which loads wherever no binary fits (WebContainers
+such as StackBlitz, musl, Windows on ARM). Build it with
+`RUSTC="$(rustup which rustc)" npx napi build --platform --release --strip
+--features node --target wasm32-wasip1-threads -- --lib`, and test it with
+`NAPI_RS_FORCE_WASI=1 npm test`. `build.rs` sets up emnapi for it as
+`@solidjs/compiler`'s does, and the napi crates are held at the versions that
+setup works with. Its `/vite` export (`vite.mjs`) is ReactiveScript's front end for
 Solid's Vite plugin, which loads it on its own: an app installs the package
 and keeps `solid()` as it is (spec/11 CP-7, decision 7).
 
@@ -82,8 +89,7 @@ The app mounts a program with `createApp` from `@reactivescript/runtime`
 (`../runtime`, CP-4a), as the examples do.
 
 Not yet: hot updates of `.rx` modules are untested; server rendering in Vite
-needs a request-scoped app for server functions to run in; no WebAssembly
-fallback for platforms without a binary.
+needs a request-scoped app for server functions to run in.
 
 ### Releasing
 
@@ -99,11 +105,11 @@ tags it `compiler-v<version>`.
 `runtime` workflow, tagged `runtime-v<version>`.
 
 Once, by hand: npm sets up trusted publishing only on a package that
-exists, so each of the seven packages needs a placeholder first,
+exists, so each of the eight packages needs a placeholder first,
 
 ```sh
 npm login
-for p in runtime compiler compiler-darwin-x64 compiler-darwin-arm64 compiler-linux-x64-gnu compiler-linux-arm64-gnu compiler-win32-x64-msvc; do
+for p in runtime compiler compiler-darwin-x64 compiler-darwin-arm64 compiler-linux-x64-gnu compiler-linux-arm64-gnu compiler-win32-x64-msvc compiler-wasm32-wasi; do
   npx setup-npm-trusted-publish "@reactivescript/$p"
 done
 ```
