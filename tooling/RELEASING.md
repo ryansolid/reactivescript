@@ -28,8 +28,9 @@ It publishes `0.0.0`, marked as a placeholder; the workflow's first release is
 `0.1.0`.
 
 Then, on the package's **Settings › Trusted publishing**, add GitHub Actions:
-owner `ryansolid`, repository `reactivescript`, workflow `editor.yml`,
-environment `release`. (If the repository moves, change the owner here.) Every
+owner `solidjs`, repository `reactivescript`, workflow `editor.yml`,
+environment `release`. (The repository moved from `ryansolid` to `solidjs` before
+any publisher was set up; if it moves again, change the owner here.) Every
 later version is published by the workflow, with provenance.
 
 **VS Marketplace.** Create the `reactivescript` publisher
@@ -41,7 +42,7 @@ later version is published by the workflow, with provenance.
 - no token: a Microsoft Entra managed identity (or app registration) with a
   federated credential for GitHub Actions (issuer
   `https://token.actions.githubusercontent.com`, subject
-  `repo:ryansolid/reactivescript:environment:release`), added to an Azure
+  `repo:solidjs/reactivescript:environment:release`), added to an Azure
   DevOps organization in the same tenant (so that it has a Marketplace
   profile) and to the publisher's **Members** as a Contributor; then the
   repository variables `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`. The workflow
