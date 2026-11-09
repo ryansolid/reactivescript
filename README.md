@@ -121,7 +121,7 @@ You need Node 22 or later. The checker and the interpreter run straight from
 the repo with no install:
 
 ```sh
-git clone https://github.com/ryansolid/reactivescript && cd reactivescript
+git clone https://github.com/solidjs/reactivescript && cd reactivescript
 node --experimental-strip-types ref/check.ts examples/todo.rx   # check a program
 node --experimental-strip-types ref/run.ts                      # run every scenario
 ```

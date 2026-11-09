@@ -109,7 +109,7 @@ done
 ```
 
 then, on each package's **Settings › Trusted publishing**, GitHub Actions:
-owner `ryansolid`, repository `reactivescript`, workflow `compiler.yml`
+owner `solidjs`, repository `reactivescript`, workflow `compiler.yml`
 (`runtime.yml` for the runtime), environment `release`.
 
 `ref/` stays the specification: a change of behaviour lands there first (with
