@@ -3,7 +3,7 @@
 ReactiveScript is TypeScript's expressions and JSX, plus a few reactive forms spelled with words. It compiles to
 Solid 2.0. This page is the whole working language; `async.md` is how to talk to a server; `reference.md` is the
 grammar and the rules on one page. The rules cited (E-1, AC-3, …) are in full in `spec/`; you don't need them to write
-code.
+code. When the compiler reports an error, `diagnostics.md` has its code: why, and the fix.
 
 ## Modules
 

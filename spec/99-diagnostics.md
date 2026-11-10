@@ -150,6 +150,22 @@ equation written the long way, with a one-instant tear, but also how a
 source is synced into a JS-owned one) stays advisory. `DYNAMIC_ASYNC_COMPONENT` is a type question for the type layer (13);
 `UNRECOGNIZED_INSERT_VALUE` stays Solid's, at run time (13 TY-3b). `LOADING_ON_OUTSIDE_HOLD` was one; since 2026-10-30 (Ryan) it is an error, 08 CN-3e: the old content stays up with no sign of the wait, a silent hold, which is a defect, not advice. (`SERVER_WRITE` was one; 12 SF-4 makes it a row rule.)
 
+## Parse errors that name a habit
+
+Not Solid codes: a parse error (U by construction) whose line reads like JavaScript, React or Solid carries the code of
+the habit and the `.rx` it most likely meant, appended to the parser's own message (`hint` in `ref/src/parse.ts` and
+`compiler/src/parse.rs`; scenario S-parse-hints). Any other parse error is `PARSE`. Every code, here and above, has a
+section with a fix in `guide/diagnostics.md`, and the compiler's tests check its examples.
+
+| Code         | What it looks like                                       |
+| ------------ | -------------------------------------------------------- |
+| `JS_LOCAL`   | `const` / `let` / `var` in a component or at top level   |
+| `JS_FUNCTION`| `function f() { … }`                                     |
+| `JS_RETURN`  | `return <div>…</div>` in a component                     |
+| `JS_API`     | `createSignal(…)`, `useState(…)`, … on a failing line    |
+| `ASSIGNMENT` | `x = …`, `x += …`, `x++` where a write `x := …` was meant (W-1) |
+| `REACTIVE_WRITE_IN_OWNED_SCOPE` | `() => x := …`: the arrow needs a braced body (W-2, SC-3) |
+
 ## Counting
 
 | bin | codes |

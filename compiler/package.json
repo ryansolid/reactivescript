@@ -25,6 +25,7 @@
     "index.d.ts",
     "vite.mjs",
     "vite.d.mts",
+    "guide/",
     "README.md"
   ],
   "scripts": {
@@ -33,6 +34,7 @@
     "artifacts": "napi artifacts",
     "create-npm-dirs": "napi create-npm-dirs",
     "version": "napi version && node scripts/sync-optional-deps.mjs",
+    "prepack": "node scripts/guide.mjs",
     "test": "node test/node.mjs"
   },
   "napi": {

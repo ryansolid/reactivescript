@@ -8,7 +8,7 @@
 // every `.rx` module in the program: a module that does not parse has no projection, so TypeScript alone would pass it.
 const path = require("node:path");
 const { runTsc } = require("@volar/typescript/lib/quickstart/runTsc");
-const { rxLanguagePlugin, analyses } = require("../src/index.js");
+const { rxLanguagePlugin, analyses, guideUrl } = require("../src/index.js");
 
 const tsc = require.resolve("typescript/lib/tsc");
 
@@ -16,15 +16,18 @@ process.on("exit", code => {
   const watching = process.argv.includes("--watch") || process.argv.includes("-w");
   if (watching) return;
   let errors = 0;
+  const codes = new Set();
   for (const { file, result } of analyses()) {
     for (const d of result.diagnostics ?? []) {
       errors++;
+      codes.add(d.code);
       const where = d.range ? `${d.range.start.line}:${d.range.start.column + 1}` : "1:1";
       process.stdout.write(`${path.relative(process.cwd(), file)}:${where} - error ${d.code}: ${d.message} (${d.rule})\n`);
     }
   }
   if (errors) {
     process.stdout.write(`\nFound ${errors} ReactiveScript error${errors === 1 ? "" : "s"}.\n`);
+    for (const c of codes) process.stdout.write(`${c}: why, and the fix — ${guideUrl(c)}\n`);
     if (!code) process.exitCode = 1;
   }
 });

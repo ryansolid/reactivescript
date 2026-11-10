@@ -10,3 +10,4 @@ compiler/compiler.wasi.d.cts
 compiler/compiler.wasi-browser.js
 compiler/wasi-worker.mjs
 compiler/wasi-worker-browser.mjs
+compiler/guide/

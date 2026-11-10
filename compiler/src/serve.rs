@@ -26,8 +26,15 @@ pub fn diagnostic_json(set: &crate::modules::ModuleSet, d: &crate::check::Diagno
     v
 }
 
+/// A parse error's message without the `file: line n:` it carries (the diagnostic's own fields say where).
+pub fn parse_message(e: &crate::parse::ParseError) -> &str {
+    e.0.split_once("line ").filter(|(pre, _)| pre.is_empty() || pre.ends_with(": ")).and_then(|(_, r)| r.split_once(": ")).map(|(_, m)| m).unwrap_or(&e.0)
+}
+
 pub fn parse_error_in(file: &str, e: &crate::parse::ParseError, src: Option<&str>) -> Value {
-    let mut v = json!({ "file": file, "code": "PARSE", "rule": "07", "message": e.0 });
+    static RULE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| regex::Regex::new(r"\b([A-Z]+-\d+[a-z]?)\b").unwrap());
+    let rule = RULE.captures(&e.0).map(|c| c[1].to_string()).unwrap_or_else(|| "07".into());
+    let mut v = json!({ "file": file, "code": e.3, "rule": rule, "message": parse_message(e) });
     if let (Some(at), Some(src)) = (e.1, src) {
         let at = at.min(src.len());
         let end = src[at..].find('\n').map(|j| at + j).unwrap_or(src.len());

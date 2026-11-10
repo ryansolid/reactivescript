@@ -27,12 +27,12 @@ export function loadModules(entry: string, read: (path: string) => string | unde
     const src = read(path);
     if (src === undefined) return;                                    // reported at the import that names it
     let p: Program;
-    try { p = parseProgram(src); } catch (e) { if (e instanceof ParseError) throw new ParseError(`${path}: ${e.message}`); throw e; }
+    try { p = parseProgram(src); } catch (e) { if (e instanceof ParseError) throw Object.assign(new ParseError(`${path}: ${e.message}`), { code: e.code }); throw e; }
     programs.set(path, p); state.set(path, "busy");
     for (const d of p.decls) {
       if (d.k === "import" && !isRx(d.from) && d.from.startsWith(".")) {             // MO-8: a JS module with a declaration file beside it
         const dts = joinPath(path, d.from.replace(/\.(m?js|ts)$/, "") + ".d.rx");
-        if (!declarations.has(dts)) { const src = read(dts); if (src !== undefined) { try { declarations.set(dts, parseDeclarations(src)); } catch (e) { if (e instanceof ParseError) throw new ParseError(`${dts}: ${e.message}`); throw e; } } }
+        if (!declarations.has(dts)) { const src = read(dts); if (src !== undefined) { try { declarations.set(dts, parseDeclarations(src)); } catch (e) { if (e instanceof ParseError) throw Object.assign(new ParseError(`${dts}: ${e.message}`), { code: e.code }); throw e; } } }
         const ds = declarations.get(dts);
         if (ds) { d.declared = dts; d.declaredErrors = ds.filter(x => x.kind === "error").map(x => x.name); d.declaredPure = ds.filter(x => x.kind === "fn" && x.pure).map(x => x.name); d.declaredSide = Object.fromEntries(ds.flatMap(x => x.kind === "fn" && x.side ? [[x.name, x.side]] : [])); }
         continue;
