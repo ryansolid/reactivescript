@@ -161,7 +161,7 @@ export function runScenario(sc: Scenario): Result {
         continue;
       }
       const rule = e instanceof RuleError ? e.rule : e instanceof ParseError ? (/([A-Z]+-\d+)/.exec(e.message)?.[1] ?? "parse") : "crash";
-      if (rule === rj.rule) lines.push(`  ✓ rejected(${rj.rule}): ${(e as Error).message}`);
+      if (rule === rj.rule || (e instanceof ParseError && e.code === rj.rule)) lines.push(`  ✓ rejected(${rj.rule}): ${(e as Error).message}`);
       else { ok = false; lines.push(`  ✗ rejected(${rj.rule}): got ${rule}: ${(e as Error).message}`); }
     }
   }

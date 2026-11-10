@@ -7,8 +7,9 @@ use std::collections::HashSet;
 use std::sync::LazyLock;
 
 #[derive(Debug, Clone, PartialEq)]
-/// What failed to parse; where (a byte offset), and in which file, when known.
-pub struct ParseError(pub String, pub Option<usize>, pub Option<String>);
+/// What failed to parse; where (a byte offset), and in which file, when known; and its code: the habit `hint` recognised
+/// (guide/diagnostics.md), else `PARSE`.
+pub struct ParseError(pub String, pub Option<usize>, pub Option<String>, pub &'static str);
 impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&self.0)
@@ -151,7 +152,11 @@ impl<'a> Cursor<'a> {
     }
     pub fn fail<T>(&self, msg: &str) -> R<T> {
         let near: String = self.rest().chars().take(20).collect();
-        Err(ParseError(format!("line {}: {} near '{}'", self.line(), msg, near), Some(self.i), None))
+        let near = near.split('\n').next().unwrap_or("");
+        let near = if near.trim().is_empty() { "at the end of the line".to_string() } else { format!("near '{}'", near) };
+        let h = hint(self.src, self.i, msg);
+        let tail = h.as_ref().map(|(_, t)| format!(" — {}", t)).unwrap_or_default();
+        Err(ParseError(format!("line {}: {} {}{}", self.line(), msg, near, tail), Some(self.i), None, h.map(|(c, _)| c).unwrap_or("PARSE")))
     }
     pub fn ident(&mut self) -> Option<String> {
         let m = IDENT.find(self.rest())?;
@@ -253,6 +258,47 @@ fn parse_classes(c: &mut Cursor) -> R<Option<Vec<String>>> {
     Ok(Some(out))
 }
 
+re!(JS_APIS, r"\b(useState|useReducer|useMemo|useCallback|useEffect|useRef|createSignal|createMemo|createEffect|createStore|createResource|createAsync)\s*\(");
+re!(JS_FUNCTION, r"^(export\s+)?(default\s+)?(async\s+)?function\b");
+re!(JS_LOCAL, r"^(const|let|var)\b");
+re!(JS_RETURN, r"^return\b");
+re!(NAME_BEFORE, r"([A-Za-z_$][A-Za-z0-9_$.]*)\s*$");
+re!(ARROW_BEFORE, r"=>\s*[A-Za-z_$][A-Za-z0-9_$.]*\s*$");
+re!(OP_ASSIGN, r"^(\+\+|--|(\*\*|\|\||&&|\?\?|[-+*/%])=)");
+
+/// What a parse failure at `i` most likely meant, when the line reads like JavaScript, React or Solid: its code and the
+/// text appended to the message. `ref/src/parse.ts` `hint` is the same function.
+pub fn hint(src: &str, i: usize, msg: &str) -> Option<(&'static str, String)> {
+    let i = i.min(src.len());
+    let rest = &src[i..];
+    let at = if !rest.is_empty() && !rest.split('\n').next().unwrap_or("").trim().is_empty() { i as i64 } else { src[..i].trim_end().len() as i64 - 1 };
+    let p = at.max(0) as usize;
+    let start = if p == 0 { 0 } else { src[..p].rfind('\n').map(|j| j + 1).unwrap_or(0) };
+    let end = src[p..].find('\n').map(|j| p + j).unwrap_or(src.len());
+    let line = src[start..end].trim();
+    let before = &src[src[..i].rfind('\n').map(|j| j + 1).unwrap_or(0)..i];
+    let name = NAME_BEFORE.captures(before).map(|c| c[1].to_string()).unwrap_or_else(|| "x".into());
+    if msg.starts_with("W-2") && rest.starts_with(":=") && ARROW_BEFORE.is_match(before) {
+        return Some(("REACTIVE_WRITE_IN_OWNED_SCOPE", format!("an arrow that writes takes a braced body, `() => {{ {} := … }}`: an expression-bodied arrow is a pure function (SC-3)", name)));
+    }
+    if OP_ASSIGN.is_match(rest) || (rest.starts_with('=') && !rest[1..].starts_with('=') && !rest[1..].starts_with('>')) {
+        return Some(("ASSIGNMENT", format!("a source is written with `:=`, as a statement in a handler or action: `{n} := {n} + 1`, or `{n} := v => v + 1` (W-1, W-6); .rx has no `=`, `+=` or `++` on state", n = name)));
+    }
+    if JS_FUNCTION.is_match(line) {
+        return Some(("JS_FUNCTION", "`function` is not .rx: a pure function is `fn f(x) => …`, one that writes or awaits is `action f(x) { … }`, one that renders is `component F(props) { … }`".into()));
+    }
+    if let Some(c) = JS_LOCAL.captures(line) {
+        return Some(("JS_LOCAL", format!("`{}` declares a local only in a handler or action body: in a component or at a module's top level, state is `source x := …` and a value computed from others is an equation, `x = …`", &c[1])));
+    }
+    if JS_RETURN.is_match(line) {
+        return Some(("JS_RETURN", "a component has no `return`: its body is declarations, then its markup".into()));
+    }
+    if let Some(c) = JS_APIS.captures(line) {
+        return Some(("JS_API", format!("`{}` is not .rx: state is `source x := …`, a value computed from others is `x = …`, a side effect is `effect (x) {{ … }}`", &c[1])));
+    }
+    None
+}
+
 pub fn parse_program(src: &str) -> R<Program> {
     let mut c = Cursor::new(src);
     let mut decls = vec![];
@@ -266,7 +312,7 @@ pub fn parse_program(src: &str) -> R<Program> {
     let view = parse_markup(&mut c, Close::Top)?;
     c.ws(true);
     if !c.eof() {
-        return c.fail("declaration or markup");
+        return c.fail("expected a declaration or markup");
     }
     let dflt: Vec<&Decl> = decls.iter().filter(|d| matches!(d, Decl::Component { is_default: true, .. })).collect();
     if dflt.len() > 1 {
@@ -298,7 +344,7 @@ pub fn parse_program_recovering(src: &str) -> (Program, Vec<ParseError>) {
             match parse_markup(&mut c, Close::Top) {
                 Ok(view) if !view.is_empty() => {
                     let mut errors = c.errors;
-                    errors.push(ParseError("line 1: markup at a module's top level (MO-1c)".into(), Some(at), None));
+                    errors.push(ParseError("line 1: markup at a module's top level (MO-1c)".into(), Some(at), None, "PARSE"));
                     return (Program { decls, view, legacy_view: Some(true) }, errors);
                 }
                 Ok(_) => break,
@@ -1564,14 +1610,14 @@ fn parse_markup(c: &mut Cursor, close: Close) -> R<Vec<Markup>> {
                 }
                 if c.i == start {
                     // the reference loops here forever (a stray `}`); this ends it
-                    return c.fail("declaration or markup");
+                    return c.fail("expected a declaration or markup");
                 }
                 continue;
             }
             if s.contains(":=") {
                 return c.fail("W-2: write in reactive scope (no statement position)");
             }
-            return c.fail("declaration or markup");
+            return c.fail("expected a declaration or markup");
         }
         if broke && matches!(out.last(), Some(Markup { kind: MarkupKind::Text(_), .. })) {
             out.push(Markup { kind: MarkupKind::Text(" ".into()), line: None, span: Span::NONE });
@@ -1582,7 +1628,7 @@ fn parse_markup(c: &mut Cursor, close: Close) -> R<Vec<Markup>> {
         }
         if c.i == start {
             // the reference loops here forever (a stray `}` in an element); this ends it
-            return c.fail("declaration or markup");
+            return c.fail("expected a declaration or markup");
         }
     }
 }

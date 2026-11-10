@@ -13,12 +13,23 @@
 // changes. The crate's output imports its dependencies as `./x.rx?rx-dep`, and a dependency is served from the build
 // of a program that contains it. A module several programs share is one module: its instance is keyed by its factory
 // (11 CP-4b `module`), not by its place in a program.
-import { statSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const { app } = createRequire(import.meta.url)("./index.js");
 const DEP = "rx-dep";
+// the page each code points to: the package's copy (scripts/guide.mjs), else the repository's
+const GUIDE = [path.join(path.dirname(fileURLToPath(import.meta.url)), "guide/diagnostics.md"), path.join(path.dirname(fileURLToPath(import.meta.url)), "../guide/diagnostics.md")].find(existsSync)
+  ?? "https://github.com/solidjs/reactivescript/blob/main/guide/diagnostics.md";
+const at = d => d.range ? `${d.range.start.line}:${d.range.start.column + 1}` : `${d.line}`;
+/** The diagnostics as `rxc check` prints them, then, once per code, where its fix is explained. */
+const report = ds => [
+  ...ds.map(d => `${d.file}:${at(d)}: error ${d.code} [${d.rule}] ${d.msg}`),
+  "",
+  ...[...new Set(ds.map(d => d.code))].map(c => `${c}: why, and the fix — ${GUIDE}#${c.toLowerCase()}`),
+].join("\n");
 const mtime = file => { try { return statSync(file).mtimeMs; } catch { return -1; } };
 const isDep = moduleId => new URLSearchParams(moduleId.split("?")[1] ?? "").has(DEP);
 // `import __m0 from "./catalog.rx";` → `"./catalog.rx?rx-dep"` (one line each: the module's map is by line, CP-1c)
@@ -55,7 +66,7 @@ export default function rx() {
       const spa = target === "dom" && solid.hydratable === false;
       const dep = isDep(moduleId);
       const { entry, out } = dep ? containing(file, target, moduleName, spa) : build(file, target, moduleName, spa);
-      if (out.diagnostics) throw new Error(out.diagnostics.map(d => `${d.file}:${d.line}: error ${d.code} [${d.rule}] ${d.msg}`).join("\n"));
+      if (out.diagnostics) throw new Error(report(out.diagnostics));
       if (out.error) throw new Error(out.error);
       const m = out.modules[file];
       for (const p of Object.keys(out.modules)) if (p !== file) addWatchFile(p);

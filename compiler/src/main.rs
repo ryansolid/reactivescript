@@ -153,6 +153,17 @@ fn lower_one(r: &Value) -> Value {
     v
 }
 
+/// A parse error as `rxc check` prints a diagnostic: `file:line:column: error CODE [rule] message`, the message without the
+/// `file: line n:` it carries.
+fn parse_error_text(f: &str, e: &reactivescript::parse::ParseError) -> String {
+    let v = parse_error_json(f, e);
+    let msg = serve::parse_message(e);
+    let at = match (v["range"]["start"]["line"].as_i64(), v["range"]["start"]["column"].as_i64()) {
+        (Some(l), Some(c)) => format!("{}:{}", l, c + 1),
+        _ => "1".into(),
+    };
+    format!("{}:{}: error {} [{}] {}", v["file"].as_str().unwrap_or(f), at, e.3, v["rule"].as_str().unwrap_or("07"), msg)
+}
 /// A parse error as `diagnostic_json` writes a diagnostic: from where the parser stopped to the end of that line.
 fn parse_error_json(f: &str, e: &reactivescript::parse::ParseError) -> Value {
     let file = e.2.clone().unwrap_or_else(|| abs(f));
@@ -264,7 +275,7 @@ fn main() {
             let set = match load_modules(&abs(file), &read_disk) {
                 Ok(s) => s,
                 Err(e) => {
-                    eprintln!("{}: parse error: {}", file, e.0);
+                    eprintln!("{}", parse_error_text(file, &e));
                     std::process::exit(1);
                 }
             };
@@ -318,7 +329,7 @@ fn main() {
                         if as_json {
                             found.push(parse_error_json(f, &e));
                         } else {
-                            eprintln!("{}: parse error: {}", f, e.0);
+                            eprintln!("{}", parse_error_text(f, &e));
                         }
                         continue;
                     }
