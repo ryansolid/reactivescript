@@ -109,7 +109,7 @@ jobs:
       - run: npm install -g npm@latest # trusted publishing needs npm 11.5.1 or later
       - name: Platform packages
         run: |
-          node scripts/sync-optional-deps.mjs
+          node scripts/sync-optional-deps.mjs --publish
           npx napi artifacts --output-dir artifacts --npm-dir npm
           for d in npm/*/; do npm publish "$d" --access public; done
       - run: npm publish --access public
