@@ -148,6 +148,19 @@ and VSCodium. It brings highlighting and the language server. Other editors
 can run the language server on its own: `npx @reactivescript/language-server
 --stdio` ([`tooling/rx-language-server`](tooling/rx-language-server)).
 
+**In CI.** Vite compiles `.rx` without type-checking it, as it does `.ts`.
+`rx-tsc` is `tsc` with `.rx` in the program: the same check the editor runs,
+plus the checker's errors with their rules.
+
+```sh
+npm i -D @reactivescript/language-server typescript
+npx rx-tsc --noEmit
+```
+
+It reads `tsconfig.json`, whose `include` must name the `.rx` files
+(`"include": ["src"]` or `["src/**/*.rx", "src/**/*.ts"]`), with Solid's JSX:
+`"jsx": "preserve"`, `"jsxImportSource": "@solidjs/web"`.
+
 How releases are made: [`tooling/RELEASING.md`](tooling/RELEASING.md) and
 [`compiler/README.md`](compiler/README.md).
 
