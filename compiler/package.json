@@ -70,13 +70,5 @@
     "@napi-rs/cli": "^3.10.6",
     "@napi-rs/wasm-runtime": "^1.1.6",
     "emnapi": "^1.11.3"
-  },
-  "optionalDependencies": {
-    "@reactivescript/compiler-darwin-x64": "0.1.0",
-    "@reactivescript/compiler-darwin-arm64": "0.1.0",
-    "@reactivescript/compiler-linux-x64-gnu": "0.1.0",
-    "@reactivescript/compiler-linux-arm64-gnu": "0.1.0",
-    "@reactivescript/compiler-win32-x64-msvc": "0.1.0",
-    "@reactivescript/compiler-wasm32-wasi": "0.1.0"
   }
 }

@@ -94,8 +94,11 @@ needs a request-scoped app for server functions to run in.
 ### Releasing
 
 A release is a version bump merged to `main`: `npm version <patch|minor>
---no-git-tag-version` here, whose `version` script brings `npm/*` and
-`optionalDependencies` along. The `compiler` workflow builds and tests
+--no-git-tag-version` here, whose `version` script brings `npm/*` along. The
+`optionalDependencies` on the platform packages are written by the publish
+job, never committed: committed, they would put the platform packages in the
+lock once they are on npm, and the next version bump would leave the lock out
+of sync until the new ones were published. The `compiler` workflow builds and tests
 every platform on every change; on `main`, once the repository variable
 `RELEASES` is `on`, it publishes a version npm does not have, platform
 packages first, by trusted publishing from the `release` environment, and
