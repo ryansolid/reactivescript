@@ -4,7 +4,7 @@ Rules exercised: TY-1–TY-5 (08 §TY), 07 §2, 04 R-1a.
 
 ## Modules
 
-```
+```rx
 -- module: ./api.d.rx
 export type User = { id: number; name: string; email: string | null }
 export error NotFound
@@ -13,7 +13,7 @@ export pure fn fetchUser(id: number): Promise<User> rejects(NotFound)
 
 ## Program
 
-```
+```rx
 import { fetchUser, User, NotFound } from "./api"
 error TooShort(min: number) => `at least ${min}`
 context accent: string = "blue"
@@ -70,7 +70,7 @@ badge shows its length.
 
 (`-- types: CODE`: refused by the type layer — TypeScript over the projection.)
 
-```
+```rx
 -- types: TS2345
 export default component App() {
   source count := 0
@@ -81,7 +81,7 @@ export default component App() {
 
 A write is checked against the source (TY-2): `0` makes it a number.
 
-```
+```rx
 -- types: TS2322
 component Badge(props: { label: string }) { <span>{props.label}</span> }
 
@@ -92,7 +92,7 @@ export default component App() {
 
 A component's props are checked where it is applied (TY-3).
 
-```
+```rx
 -- types: TS2322
 component Badge(props: { label: string }) { <span>{props.label}</span> }
 
@@ -105,7 +105,7 @@ A missing prop, likewise. (What a reader may insert is Solid's `JSX.Element`,
 which takes any object — a renderer's value — so a record shown by mistake
 is still Solid's `UNRECOGNIZED_INSERT_VALUE`, at run time.)
 
-```
+```rx
 -- types: TS18047
 import { fetchUser, NotFound } from "./api"
 export default component App() {
@@ -118,7 +118,7 @@ export default component App() {
 `user` may be `null`: read it under `if user { … }`, which narrows it
 (RG-1c).
 
-```
+```rx
 -- types: TS2339
 error TooShort(min: number) => `at least ${min}`
 export default component App() {
@@ -133,7 +133,7 @@ export default component App() {
 
 A typed catch binds its classes (R-f-4); `TooShort` has no `max`.
 
-```
+```rx
 -- types: TS2345
 context accent: string = "blue"
 component Panel(props) {
@@ -148,7 +148,7 @@ export default component App() {
 
 A provision is checked against its context's type (RG-7).
 
-```
+```rx
 -- types: TS2345
 export default component App() {
   fn shout(s: string): string => s.toUpperCase()
@@ -157,7 +157,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- types: WIRE_VALUE
 type Row = { id: number; at: Date }
 server fn rows(): Row[] { return [] }
@@ -171,7 +171,7 @@ export default component App() {
 SF-6a, statically: a `Date` is an instance of a class, so the result is
 not data. (Untyped, the check is the run time's, S-sf-1.)
 
-```
+```rx
 -- types: MISSING_AWAIT
 import { fetchUser } from "./api"
 export default component App() {
@@ -187,7 +187,7 @@ its function returns, so `user` would be pending at run time while the
 source says it is a value. The value is never a promise: write
 `await fetchUser(id)`.
 
-```
+```rx
 -- types: MISSING_AWAIT
 import { fetchUser } from "./api"
 export default component App() {

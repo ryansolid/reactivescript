@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source count := 1
   source child := false
@@ -34,7 +34,7 @@ hold is live — the answer does not show beside the parent on the old value.
 
 ## Variant: `fast` slower than `slow`
 
-```
+```rx
 export default component App() {
   source count := 1
   source child := false

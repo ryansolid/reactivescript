@@ -4,7 +4,7 @@ Rules: R-1, E-11, R-7, R-f-4, AC-1, AC-7, R-f-6.
 
 ## Program
 
-```
+```rx
 error Declined(reason: string) => `declined: ${reason}`
 component Badge(props: { v: string }) {
   <b>{props.v}</b>
@@ -50,7 +50,7 @@ action's end. Instant 5: the reader re-asks with `more` true; the held
 
 ## Variant: a typed catch passes other classes to the `try` around it
 
-```
+```rx
 error Declined(reason: string) => `declined: ${reason}`
 export default component App() {
   source status := ""
@@ -79,7 +79,7 @@ the statement catches it.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: AWAIT_IN_EXPRESSION
 export default component App() {
   source status := ""
@@ -94,7 +94,7 @@ AC-1: a run suspends only at a statement — `await e`, `let v = await e`,
 either with a `catch`. An `await` inside an imperative expression is
 refused: bind it first (`let r = await fetch("checkout")`).
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 error Declined(reason: string) => `declined: ${reason}`
 export default component App() {

@@ -4,7 +4,7 @@ Rules: AC-7, AC-1, AC-3, W-6, R-f-6.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source cart = [1, 2]
   source status := ""
@@ -45,7 +45,7 @@ a failed action: the action handled it.
 
 ## Variant: a panic ends the body — the held writes still commit
 
-```
+```rx
 export default component App() {
   source cart = [1, 2]
   source status := ""
@@ -76,7 +76,7 @@ rejection or a `throw` the body does not catch is a compile error (below).
 
 ## Variant: throw caught in a plain handler
 
-```
+```rx
 export default component App() {
   source status := ""
 
@@ -90,7 +90,7 @@ export default component App() {
 
 ## Rejected variants
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 export default component App() {
   source cart = [1, 2]
@@ -111,7 +111,7 @@ R-f-6: the rejection of `fetch("checkout")` (a JS promise: `fails(Error)`)
 leaves the body uncaught, and nothing can catch it after — the handler
 that launched the action does not await it.
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 error Declined(reason)
 export default component App() {

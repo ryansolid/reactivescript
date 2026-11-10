@@ -4,7 +4,7 @@ Rules exercised: EF-7, EF-4, AC-1, H-2; Solid `onSettled` (unowned form).
 
 ## Program
 
-```
+```rx
 export default component App() {
   source status := "idle"
   action save() {
@@ -41,7 +41,7 @@ in the same instant.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: IO_IN_REACTIVE
 export default component App() {
   source n := 0
@@ -52,7 +52,7 @@ export default component App() {
 
 In a component body the mount hook is `effect () { … }` (EF-4).
 
-```
+```rx
 -- reject: SETTLED_CLEANUP_UNOWNED
 export default component App() {
   source n := 0

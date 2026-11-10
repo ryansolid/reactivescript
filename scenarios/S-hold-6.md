@@ -4,7 +4,7 @@ Rules: H-12, H-6, H-5, D-41.
 
 ## Program
 
-```
+```rx
 error NotFound(id) => `item ${id} not found`
 source sel := 4
 item = await fetch("i:" + sel)

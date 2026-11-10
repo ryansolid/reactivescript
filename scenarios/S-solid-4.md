@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source a := 0
   source b := 0
@@ -35,7 +35,7 @@ stale-but-committed `detailsA`, which is not derived from `b` (H-1 intact).
 
 ## Variant: through a shared derivation the write waits
 
-```
+```rx
 export default component App() {
   source a := 0
   source b := 0

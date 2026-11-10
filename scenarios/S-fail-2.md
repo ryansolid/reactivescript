@@ -4,7 +4,7 @@ Rules: R-f-4, R-f-5, R-f-6, R-2, RG-4c, H-4, D-41.
 
 ## Program
 
-```
+```rx
 error Missing(key) => `missing ${key}`
 source key := "a"
 value = key == "" ? throw Missing(key) : await fetch("v:" + key)
@@ -59,7 +59,7 @@ readers of `value` hold nothing (H-4) and recover with the answer (D-41);
 
 ## Rejected variants
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 error Missing(key) => `missing ${key}`
 source key := "a"
@@ -75,7 +75,7 @@ export default component App() {
 
 R-f-5: `Safe` renders its children with no boundary above them.
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 error Missing(key) => `missing ${key}`
 source key := "a"
@@ -92,7 +92,7 @@ export default component App() {
 Passing is not reading (R-2): the failure is found where `Panel` reads
 `props.body`, and followed out through this application to the root.
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 error Missing(key) => `missing ${key}`
 source key := "a"
@@ -108,7 +108,7 @@ export default component App() {
 
 `Line` discharges `Missing`; the fetch's `Error` passes its catch.
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 component Btn(props) {
   action go() { log(props.v) }
@@ -125,7 +125,7 @@ export default component App() {
 R-f-6, R-f-7: the action's snapshot of `props.v` throws when the argument
 is an error — the boundary at the caller cannot catch inside an action.
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 error Missing(key) => `missing ${key}`
 export default component App() {

@@ -5,7 +5,7 @@ compiled .rx show `1` at instant 1; the interpreter showed `3`.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source n := 0
   source guess = n

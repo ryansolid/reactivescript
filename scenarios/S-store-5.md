@@ -8,7 +8,7 @@ with `await*` (07); a plain `await` takes the flight's first answer only.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source room := "a"
   msgs = await* fetch("room:" + room)

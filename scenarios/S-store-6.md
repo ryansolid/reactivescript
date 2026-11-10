@@ -5,7 +5,7 @@ D-34 (`createOptimisticStore`).
 
 ## Program
 
-```
+```rx
 export default component App() {
   source todos key id = await fetch("todos")
   action toggle(i) {
@@ -61,7 +61,7 @@ corrected by the truth it was made over (D-34).
 
 ## Variant: a path guess on a record
 
-```
+```rx
 export default component App() {
   source id := 1
   source state = await fetch("s:" + str(id))
@@ -86,7 +86,7 @@ body's end the guess reverts to the truth.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: OPTIMISTIC_NO_QUESTION
 export default component App() {
   source todos: { done: boolean }[] := [{ done: false }]

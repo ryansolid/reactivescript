@@ -4,7 +4,7 @@ Rules exercised: RG-2a, RG-2b, RG-2c, E-4.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source a := { id: "a" }
   source b := { id: "b" }

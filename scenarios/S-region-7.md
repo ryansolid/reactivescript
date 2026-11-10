@@ -18,7 +18,7 @@ RG-7c, and a field wrote `use fields := …` with any value it liked.)
 
 ## Program
 
-```
+```rx
 type Row = { ok: boolean }
 context fields: { add: (r: Row) => void; remove: (r: Row) => void }   // RG-7: declared; it carries the writes the form allows (O-4)
 component Form(props) {
@@ -73,7 +73,7 @@ keep `add` and `remove` in step: nothing calls one without the other.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: RG-7b
 context fields: { add: (r: unknown) => void }
 component Field(props) {

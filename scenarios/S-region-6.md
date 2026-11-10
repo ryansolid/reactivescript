@@ -4,7 +4,7 @@ Rules exercised: E-9, E-10 (diagnostic), RG-6a, RG-6b, RG-6c.
 
 ## Program
 
-```
+```rx
 export default component App() {
   fn double(v) => v * 2
   fn counter(ref base, step) {
@@ -36,7 +36,7 @@ of `n` — the body did not re-run (instant 3 shows 3 + 5 + 10).
 
 ## Rejected variants
 
-```
+```rx
 -- reject: SNAPSHOT_ARGUMENT
 export default component App() {
   fn watch(v) {
@@ -50,7 +50,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: E-9
 export default component App() {
   fn counter(ref base) {

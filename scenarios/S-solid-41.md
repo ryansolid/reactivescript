@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source period := 1
   deferred fast = await fetch("f:" + period)
@@ -30,7 +30,7 @@ now; nothing holds on the panels. Each landing is its own change.
 
 ## Variant: plain async equations — one hold, gated on the slowest
 
-```
+```rx
 export default component App() {
   source period := 1
   fast = await fetch("f:" + period)
@@ -50,7 +50,7 @@ export default component App() {
 
 ## Variant: `period` is held by another reader — a re-ask lands into that hold
 
-```
+```rx
 export default component App() {
   source period := 1
   gate = await fetch("g:" + period)

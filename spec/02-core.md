@@ -399,7 +399,7 @@ An instant proceeds in three phases and no phase overlaps another:
 
 `scenarios/S-core-1.md` — the counter.
 
-```
+```rx
 export default component App() {
   source count := 0
   source show := true

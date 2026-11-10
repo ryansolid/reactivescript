@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   feed = await fetch("feed:" + id) -> "placeholder"

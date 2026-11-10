@@ -5,7 +5,7 @@ H-5, H-6, H-7, R-4.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source period := "q1"
   summary = await fetch("s:" + period)
@@ -41,7 +41,7 @@ change together (H-2). `latest period` moves at once (H-7).
 
 ## Variant: the audit panel takes its own skeleton with `on`
 
-```
+```rx
 export default component App() {
   source period := "q1"
   summary = await fetch("s:" + period)
@@ -79,7 +79,7 @@ belongs to the frame of the change that armed it).
 
 ## Variant: audit lands first — its skeleton is never seen
 
-```
+```rx
 export default component App() {
   source period := "q1"
   summary = await fetch("s:" + period)

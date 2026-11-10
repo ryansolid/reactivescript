@@ -4,7 +4,7 @@ Rules exercised: 07 §6b CSS-5 (TSRX's style expressions).
 
 ## Program
 
-```
+```rx
 component Badge(props) {
   <span class={props.class}>{props.children}</span>
 }
@@ -50,7 +50,7 @@ module's top level.
 
 ## Rejected variants
 
-```
+```rx
 -- types: TS2339
 tones = <style>.warn { color: orange }</style>
 export default component App() {
@@ -60,7 +60,7 @@ export default component App() {
 
 The map's type is its classes: a misspelt class is a type error.
 
-```
+```rx
 -- reject: CSS-5
 export default component App() {
   <style ref={styles}>.a { color: red }</style>

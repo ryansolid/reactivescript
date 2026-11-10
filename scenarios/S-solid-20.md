@@ -4,7 +4,7 @@ Rules: AC-1, H-5, H-6.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   comments = await fetch("c:" + id)

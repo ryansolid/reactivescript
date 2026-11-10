@@ -4,7 +4,7 @@ Rules: AC-1, AC-3, H-11.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source truth := 1
   source guess = truth
@@ -30,7 +30,7 @@ commit) are one instant here.
 
 ## Variant: a derived flight keeps the hold open
 
-```
+```rx
 export default component App() {
   source truth := 1
   source guess = truth
@@ -62,7 +62,7 @@ instant 3, and untracked `pending? guess` is `true` until the commit.
 
 ## Variant: the guess's own question re-asked holds the change
 
-```
+```rx
 export default component App() {
   source list = await fetch("list")
   action add() { try { optimistic list := list + "+mine"; await fetch("save"); refresh list } catch {} }

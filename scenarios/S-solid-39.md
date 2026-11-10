@@ -4,7 +4,7 @@ Rules: R-11, H-5, F-4; Solid D-25 (ruled 2026-10-09).
 
 ## Program
 
-```
+```rx
 export default component App() {
   source s := 0
   source mounted := false
@@ -37,7 +37,7 @@ Instant 3: `n0(1)` lands; control and `[1, 1]` reveal together.
 
 ## Variant: the other order
 
-```
+```rx
 export default component App() {
   source s := 0
   source mounted := false
@@ -57,7 +57,7 @@ export default component App() {
 
 ## Variant: inside a fresh `loading` the throw is caught (row 1′)
 
-```
+```rx
 export default component App() {
   source s := 0
   source mounted := false

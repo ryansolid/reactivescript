@@ -5,7 +5,7 @@ authoritative view), `tests/until.test.ts`.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source name := "Ann"              // the truth, as a live channel pushes it
   source shown = name
@@ -55,7 +55,7 @@ The truth is already `Ann`: `until` resolves at once.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: IO_IN_REACTIVE
 export default component App() {
   source ok := false
@@ -67,7 +67,7 @@ export default component App() {
 `until` waits for the world; it is called from imperative scope (Solid:
 "Cannot call until inside a reactive scope").
 
-```
+```rx
 -- reject: UNTIL_PREDICATE
 export default component App() {
   source ok := false
@@ -79,7 +79,7 @@ export default component App() {
 The argument is a predicate, `() => e`: a value is read once, and would never
 change.
 
-```
+```rx
 -- reject: REACTIVE_WRITE_IN_OWNED_SCOPE
 export default component App() {
   source ok := false
@@ -90,7 +90,7 @@ export default component App() {
 
 The predicate is reactive scope: it reads; it does not write.
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 export default component App() {
   source id := 1

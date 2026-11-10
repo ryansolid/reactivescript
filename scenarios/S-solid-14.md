@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source count := 0
   source open := false
@@ -34,7 +34,7 @@ Instant 4: the content arrives with the hold's commit.
 
 ## Variant: a plain read beside the boundary holds the mount (2b)
 
-```
+```rx
 export default component App() {
   source count := 0
   source open := false

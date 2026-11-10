@@ -4,7 +4,7 @@ Rules: ST-3, C-2, E-6, EF-3.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   selected = draft(pre selected -> {}) { d[str(pre id -> 0)] := false; d[str(id)] := true }
@@ -30,7 +30,7 @@ equation's value is the draft. Instant 3 touches `"2"` and `"3"` only:
 
 ## Rejected variants
 
-```
+```rx
 -- reject: ST-3a
 export default component App() {
   source id := 1

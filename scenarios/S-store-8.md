@@ -4,7 +4,7 @@ Rules exercised: R-12, AC-3 (path targets), ST-4, H-11.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source todos key id = await fetch("todos")
   shown = latest todos
@@ -44,7 +44,7 @@ reading through the store, inside `latest`, and agrees with `todos` itself.
 
 ## Variant: two guesses on one key
 
-```
+```rx
 export default component App() {
   source todos key id = await fetch("todos")
   shown = latest todos

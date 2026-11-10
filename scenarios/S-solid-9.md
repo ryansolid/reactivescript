@@ -9,7 +9,7 @@ its return belongs to its change.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source a := 0
   source b := 0

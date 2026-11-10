@@ -8,7 +8,7 @@ loop across instants and is refused. A write in a closure the apply creates
 
 ## Program
 
-```
+```rx
 export default component App() {
   source n := 0
   effect (n) { log($0); return () => { n := 0 } }
@@ -30,7 +30,7 @@ cleanup writes `n := 0`, which opens instant 2 (EF-5, W-3).
 
 ## Rejected variants
 
-```
+```rx
 -- reject: EFFECT_WRITES_OWN_SOURCE
 export default component App() {
   source count := 0
@@ -43,7 +43,7 @@ export default component App() {
 Clamping in the apply: write `clamped = count > 10 ? 10 : count`, or clamp at
 the write.
 
-```
+```rx
 -- reject: EFFECT_WRITES_OWN_SOURCE
 export default component App() {
   source items := [1, 2]
@@ -60,7 +60,7 @@ instead — `shown = valid ? selected : null` — or make `selected` a source
 with a question over `items` (ST-5), which re-derives when `items` changes
 and stays writable otherwise.
 
-```
+```rx
 -- reject: EFFECT_WRITES_OWN_SOURCE
 export default component App() {
   source n := 0

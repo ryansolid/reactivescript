@@ -4,14 +4,14 @@ Rules exercised: SV-1, SV-2, SV-5; H-12, R-f-4, R-f-10.
 
 ## Modules
 
-```
+```rx
 -- module: ./api.d.rx
 export error NotFound
 export pure fn fetchUser(id: number) rejects(NotFound)
 export pure fn fetchPosts(id: number)
 ```
 
-```
+```rx
 -- module: ./profile.rx
 import { fetchUser, fetchPosts } from "./api"
 export source id := 7
@@ -21,7 +21,7 @@ export posts = await fetchPosts(id)
 
 ## Program
 
-```
+```rx
 import { NotFound } from "./api"
 import { user, posts } from "./profile.rx"
 export default component App() {

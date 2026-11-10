@@ -8,7 +8,7 @@ checker, statically, before the program runs.
 
 ## Program
 
-```
+```rx
 import pure { len } from "./prelude"
 
 context panel: string                   // RG-7: a declared context
@@ -60,7 +60,7 @@ Instant 1: `a`'s own `pre` is the value it is replacing, `1` (C-2).
 
 ## Rejected variants
 
-```
+```rx
 -- reject: DUPLICATE_DECLARATION
 export default component App() {
   source x := 1
@@ -70,7 +70,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: CYCLE
 export default component App() {
   source m := true
@@ -84,7 +84,7 @@ export default component App() {
 The branches are exclusive and no run closes the cycle; the static graph is
 the union of branches and refuses it (CN-3a).
 
-```
+```rx
 -- reject: CYCLE
 export default component App() {
   source s := 1
@@ -98,7 +98,7 @@ export default component App() {
 `pre` of *another* node is an input of it (C-2): only an equation's own
 `pre` breaks a cycle.
 
-```
+```rx
 -- reject: PRE_OF_NON_REACTIVE
 export default component App() {
   fn f(x) => x
@@ -108,7 +108,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: ROW_NARROWER_THAN_INFERRED
 export default component App() {
   source id := 1
@@ -121,7 +121,7 @@ export default component App() {
 The written row says `lane` only; the value is also `pending` (CN-4a). Rows
 are checked only when written.
 
-```
+```rx
 -- reject: UNBOUND
 component Row(props) { <p>{caption}</p> }
 component List(props) {
@@ -136,14 +136,14 @@ export default component App() {
 
 `Row` sees its declaration site, not its caller (RG-7a).
 
-```
+```rx
 -- reject: UNKNOWN_COMPONENT
 export default component App() {
   <Nope />
 }
 ```
 
-```
+```rx
 -- reject: ACTION_CALLED_IN_OWNED_SCOPE
 export default component App() {
   source n := 1
@@ -154,7 +154,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: IO_IN_FN
 import { log } from "./prelude"
 export default component App() {
@@ -165,7 +165,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: REACTIVE_WRITE_IN_OWNED_SCOPE
 export default component App() {
   source n := 1
@@ -178,7 +178,7 @@ export default component App() {
 A closure created in reactive scope is pure (SC-3); a statement body is a
 write position. Handlers are written on the element (`onClick={() => { … }}`).
 
-```
+```rx
 -- reject: ASYNC_STORE_SETTER
 export default component App() {
   source id := 1
@@ -188,7 +188,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: WRITE_TO_NON_SOURCE
 export default component App() {
   source n := 1
@@ -198,7 +198,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: OPTIMISTIC_OUTSIDE_HOLD
 export default component App() {
   source name := "Ann"
@@ -209,7 +209,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: OPTIMISTIC_NO_QUESTION
 export default component App() {
   source shown := "Ann"
@@ -219,7 +219,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: INVALID_REFRESH_TARGET
 export default component App() {
   source base := 1
@@ -228,7 +228,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: INVALID_AFFECTS_TARGET
 export default component App() {
   action go(n) { affects n }
@@ -237,7 +237,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: REGION_ESCAPE
 export default component App() {
   source handlers := []
@@ -252,7 +252,7 @@ export default component App() {
 
 `() => hits` captures the row's `hits`; `handlers` outlives the row (O-3).
 
-```
+```rx
 -- reject: REGION_ESCAPE
 export default component App() {
   source handlers := []
@@ -273,7 +273,7 @@ fs => [...fs, () => v]`. RG-7c is withdrawn, 2026-10-31: a provider now
 provides writer functions, and a closure handed to one as an argument is
 not yet followed by O-3. See the gap noted under O-3 in 03-regions.)
 
-```
+```rx
 -- reject: REGION_ESCAPE
 source handlers := []
 fn counter(ref start: number) {
@@ -298,7 +298,7 @@ Calling it is fine anywhere: `handlers := [...handlers, c.get()]` stores
 a number. What a call returns holds a closure only when the closure called
 makes one:
 
-```
+```rx
 -- reject: REGION_ESCAPE
 export default component App() {
   source handlers := []
@@ -312,7 +312,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: REGION_ESCAPE
 source registry := []
 component Item(props) {
@@ -338,7 +338,7 @@ a `source` context provided above the rows. That form is withdrawn
 (RG-7c, 2026-10-31); the same store made through a provided writer
 function is the O-3 gap noted in 03-regions.)
 
-```
+```rx
 -- reject: CONTEXT_NOT_FOUND
 context panel: string
 component Panel(props) {

@@ -89,7 +89,7 @@ paths iff it is missing from the intersection of what the paths discharge.
 text, and that text is the whole signature: it is read back in place of the
 module (MO-9).
 
-```
+```rx
 export source products: pending fails(Error) = …      // `= …`: a question (ST-5); `:= …` a plain source
 export discount: pending fails(Error)
 export pure fn qtyOf(id)
@@ -152,7 +152,7 @@ export component Save(props: { v: unrendered action go catches(nothing) })
   `.mjs` or `.ts` on the import is dropped). It declares each export in
   rows, once, in the same notation as an `.rx` signature (MO-3):
 
-  ```
+  ```rx
   export pure fn fetchUser(id: number) rejects(NotFound | Offline)   // safe to call from reactive scope (R-io-4); its promise rejects with these (R-f-8)
   export fn saveUser(id: number, name: string) rejects(Offline)     // io: dirty is the default
   export error NotFound                                             // a JS class that is an error class (R-f-1)

@@ -6,7 +6,7 @@ same — which hold a mount joins is decided by the instant it is made in.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source a := 0
   source b := 0
@@ -59,7 +59,7 @@ change alone.
 
 ## Variant: both branches under one `errored` boundary
 
-```
+```rx
 export default component App() {
   source a := 0
   source b := 0

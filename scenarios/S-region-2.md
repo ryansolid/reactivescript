@@ -4,7 +4,7 @@ Rules exercised: RG-1b, RG-1c, E-11.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source user := { name: "a" }
 

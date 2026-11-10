@@ -4,7 +4,7 @@ Rules: AC-1, H-5, H-8, RG-1.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source x := false
   slow = await fetch("slow:" + str(x))

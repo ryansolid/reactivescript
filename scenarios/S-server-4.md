@@ -4,14 +4,14 @@ Rules exercised: SV-7d; SV-3a; MO-3.
 
 ## Modules
 
-```
+```rx
 -- module: ./row.rx
 export component Row(props) { <tr><td>{props.name}</td></tr> }
 ```
 
 ## Program
 
-```
+```rx
 import { Row } from "./row.rx"
 component Note(props) { <p class="note">{props.children}</p> }
 export default component App() {
@@ -35,7 +35,7 @@ children in a `<p>`; a `<b>` is phrasing content, so it stays there.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: CONTENT_MODEL
 import { Row } from "./row.rx"
 export default component App() {
@@ -49,7 +49,7 @@ The server's `<table><tr>` is parsed with a `<tbody>` the client never
 builds (it inserts each row into the table). Solid's compiler assumes "table
 partials are used in the right place"; this is the place.
 
-```
+```rx
 -- reject: CONTENT_MODEL
 import { Row } from "./row.rx"
 
@@ -60,7 +60,7 @@ export default component App() {
 
 Outside a table the parser drops the `<tr>` and `<td>` tags.
 
-```
+```rx
 -- reject: CONTENT_MODEL
 component Panel(props) { <div class="panel">{props.children}</div> }
 
@@ -72,7 +72,7 @@ export default component App() {
 A `<div>` closes an open `<p>`: the served `<p>` is empty and the panel is
 its sibling.
 
-```
+```rx
 -- reject: CONTENT_MODEL
 component Line(props) { <tr>{props.children}</tr> }
 
@@ -84,7 +84,7 @@ export default component App() {
 Children land where the component puts them: here, a `<span>` in a
 `<tr>`, which the parser moves out of the table.
 
-```
+```rx
 -- reject: CONTENT_MODEL
 export default component App() {
   source ok := true
@@ -96,7 +96,7 @@ export default component App() {
 A branch is its own template: Solid's compiler sees `<p>` and `<div>`
 apart. The checker sees them together.
 
-```
+```rx
 -- reject: CONTENT_MODEL
 component Link(props) { <a href="/x">{props.children}</a> }
 

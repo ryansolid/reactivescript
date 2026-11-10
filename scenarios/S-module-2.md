@@ -4,7 +4,7 @@ Rules: MO-8, R-io-4, R-f-8, R-f-4, R-f-6.
 
 ## Modules
 
-```
+```rx
 -- module: ./api.d.rx
 // what ./api (a JS module) exports, in rows
 export error NotFound
@@ -20,7 +20,7 @@ default, so it says nothing. No import restates any of this.
 
 ## Program
 
-```
+```rx
 import { fetchUser, saveUser, NotFound, Offline, User } from "./api"
 export default component App() {
   source id := 1
@@ -61,7 +61,7 @@ typed boundary.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: NOT_EXPORTED
 import { deleteUser } from "./api"
 
@@ -72,7 +72,7 @@ export default component App() {
 
 MO-8: with a declaration file, a JS module exports what it declares.
 
-```
+```rx
 -- reject: IMPORT_ROW_MISMATCH
 import pure { saveUser } from "./api"
 
@@ -83,7 +83,7 @@ export default component App() {
 
 `saveUser` is declared io; `pure` on the import cannot lower it.
 
-```
+```rx
 -- reject: IMPORT_ROW_MISMATCH
 import { fetchUser } from "./api" fails NotFound
 
@@ -94,7 +94,7 @@ export default component App() {
 
 The declaration file is the row; the import cannot restate it.
 
-```
+```rx
 -- reject: IO_IN_REACTIVE
 import { saveUser } from "./api"
 export default component App() {
@@ -104,7 +104,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 import { fetchUser, NotFound } from "./api"
 export default component App() {
@@ -117,7 +117,7 @@ export default component App() {
 `Offline` is left: the declared rejections are the whole row, and nothing
 here discharges `Offline`.
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 import { saveUser, NotFound } from "./api"
 export default component App() {

@@ -4,7 +4,7 @@ Rules: R-f-10, R-f-3, R-f-4, R-f-5, CN-6b.
 
 ## Program
 
-```
+```rx
 import pure { fail } from "./prelude"
 export default component App() {
   source raw := "ok"
@@ -38,7 +38,7 @@ value replaces it and the page recovers.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 export default component App() {
   source raw := "ok"

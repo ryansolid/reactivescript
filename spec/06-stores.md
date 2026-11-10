@@ -36,7 +36,7 @@ AC-1…AC-5 (S-store-1…5, S-solid-8/9/15/20/26/32…35/37). Optimistic path wr
 
 An equation may write only its own draft, in its own body:
 
-```
+```rx
 selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
 ```
 

@@ -4,7 +4,7 @@ Rules exercised: <ids>. Solid scenario mirrored (holds only): S-<n>.
 
 ## Program
 
-```
+```rx
 export default component App() {
   <declarations, then the view (07; MO-1c)>
 }

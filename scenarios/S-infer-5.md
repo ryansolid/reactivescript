@@ -4,7 +4,7 @@ Rules: AC-1d, W-4, H-10, W-6; Solid 2.0.0-rc.19: an `action()` that writes a sig
 
 ## Program
 
-```
+```rx
 export default component App() {
   source count := 0
   source seen := 0
@@ -24,7 +24,7 @@ The value written is kept in a local and read from there.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: STALE_OWN_READ
 export default component App() {
   source count := 0
@@ -37,7 +37,7 @@ export default component App() {
 made it (W-4). The checker can see the run's own writes, so this read is
 an error; a read of anything else is the committed snapshot it always was.
 
-```
+```rx
 -- reject: STALE_OWN_READ
 export default component App() {
   source seq := 0
@@ -58,7 +58,7 @@ the same. A plain handler's change ends at its `await`, so there the read
 would see the committed write; but a handler that writes and awaits is
 now an action (AC-1b).
 
-```
+```rx
 -- reject: STALE_OWN_READ
 export default component App() {
   source form := { name: "", email: "" }
