@@ -5,6 +5,7 @@
   "version": "0.1.1",
   "publisher": "solidjs",
   "license": "MIT",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.82.0"
   },
@@ -26,7 +27,11 @@
         "extensions": [
           ".rx"
         ],
-        "configuration": "./language-configuration.json"
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icon.png",
+          "dark": "./icon.png"
+        }
       }
     ],
     "grammars": [
