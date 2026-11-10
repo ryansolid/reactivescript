@@ -4,7 +4,7 @@ Rules: AC-1b, AC-1, AC-3, AC-7, H-11, R-f-6.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source liked = "no"
   source error := ""
@@ -49,7 +49,7 @@ as in S-action-1.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 export default component App() {
   source liked = "no"
@@ -60,7 +60,7 @@ export default component App() {
 An inferred action catches what its body can fail with, like a declared
 one (R-f-6): nothing awaits a handler.
 
-```
+```rx
 -- reject: OPTIMISTIC_OUTSIDE_HOLD
 export default component App() {
   source draft := "a"

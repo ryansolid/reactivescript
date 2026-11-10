@@ -4,7 +4,7 @@ Rules exercised: AC-4, H-11, ST-4, O-2.
 
 ## Program
 
-```
+```rx
 component List() {
   source rows key id = tag(await fetch("l"))
   action ren() { try { optimistic rows[0].title := "x"; await fetch("save"); refresh rows } catch (e) {} }

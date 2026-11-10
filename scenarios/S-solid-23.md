@@ -4,7 +4,7 @@ Rules exercised: RG-8 (PT-1, PT-2), H-5. Solid scenario mirrored: S-23 (D-19).
 
 ## Program
 
-```
+```rx
 export default component App() {
   x = await fetch("data")
 

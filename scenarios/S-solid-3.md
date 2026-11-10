@@ -5,7 +5,7 @@ unrelated mainline write of Solid's row 3.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source x := 0
   source show := false

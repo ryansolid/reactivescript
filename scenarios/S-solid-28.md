@@ -4,7 +4,7 @@ Rules: R-9, R-12, R-8; Solid D-23 (A16, A7).
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   user = await fetch("u:" + str(id))

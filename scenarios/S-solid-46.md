@@ -4,7 +4,7 @@ Rules: H-7, H-8, RG-1.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 0
   detail = await fetch("d:" + id)
@@ -34,7 +34,7 @@ empty).
 
 ## Variant: the content reads `latest id`
 
-```
+```rx
 export default component App() {
   source id := 0
   detail = await fetch("d:" + id)
@@ -56,7 +56,7 @@ The read that asks sees ahead, at its own site.
 
 ## Variant: the content is inside a `loading`
 
-```
+```rx
 export default component App() {
   source id := 0
   detail = await fetch("d:" + id)

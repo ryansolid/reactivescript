@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   meta = await fetch("m:" + id)
@@ -33,7 +33,7 @@ content stays until the fallback can show; the parent never drops to
 
 ## Variant: content lands first — the fallback is never seen
 
-```
+```rx
 export default component App() {
   source id := 1
   meta = await fetch("m:" + id)

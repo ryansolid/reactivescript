@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source s := 0
   n0 = await fetch("n:" + s)

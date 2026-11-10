@@ -4,7 +4,7 @@ Rules exercised: EF-8, W-3, H-2, AC-1; Solid `onFlush` (solidjs/solid#4292).
 
 ## Program
 
-```
+```rx
 export default component App() {
   source open := true
   source page := 1
@@ -50,7 +50,7 @@ until the page lands.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: IO_IN_REACTIVE
 export default component App() {
   source open := true
@@ -62,7 +62,7 @@ export default component App() {
 `onFlush` schedules a run; it is called from imperative scope (Solid warns
 with `ON_FLUSH_IN_OWNED_SCOPE`; here it is a compile error).
 
-```
+```rx
 -- reject: HOOK_CALLBACK
 export default component App() {
   source open := true

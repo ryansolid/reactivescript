@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source count := 0
   data = await fetch("d:" + count)

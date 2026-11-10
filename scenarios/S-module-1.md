@@ -4,7 +4,7 @@ Rules: MO-1, MO-1d, MO-2, MO-3, MO-4, MO-5, MO-6, R-f-5, R-f-6, RG-7b.
 
 ## Modules
 
-```
+```rx
 -- module: ./store.rx
 export error NotFound(id) => `no user ${id}`
 export source selected := 1
@@ -13,7 +13,7 @@ export action select(id) { selected := id }
 export fn initials(name) => name.slice(0, 1)
 ```
 
-```
+```rx
 -- module: ./ui.rx
 import { NotFound, initials } from "./store.rx"
 export context who: string
@@ -37,13 +37,13 @@ export component Pick(props) {
 }
 ```
 
-```
+```rx
 -- module: ./a.rx
 import { b } from "./b.rx"
 export a = b + 1
 ```
 
-```
+```rx
 -- module: ./b.rx
 import { a } from "./a.rx"
 export b = a + 1
@@ -73,7 +73,7 @@ The same text, with no `ui.rx` beside it, is read in place of the module
 
 ## Program
 
-```
+```rx
 import { selected, user, select } from "./store.rx"
 import { Card, Name, Badge, who } from "./ui.rx"
 provide who = "Zed"
@@ -107,7 +107,7 @@ question holds the change. Instant 4: the rejection is an `Error`, which
 
 ## Rejected variants
 
-```
+```rx
 -- reject: MO-2
 import { selected } from "./store.rx"
 
@@ -118,7 +118,7 @@ export default component App() {
 
 An imported source is read-only: the module exports `select` to write it.
 
-```
+```rx
 -- reject: REGION_ESCAPE
 import { Pick } from "./ui.rx"
 
@@ -134,7 +134,7 @@ export default component App() {
 O-3 through a signature: the row's closure would outlive the row in
 `ui.rx`'s `picks`. The checker sees only `retains(onPick: module)`.
 
-```
+```rx
 -- reject: NOT_EXPORTED
 import { hidden } from "./store.rx"
 
@@ -143,7 +143,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: MODULE_NOT_FOUND
 import { x } from "./nope.rx"
 
@@ -152,7 +152,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: MODULE_CYCLE
 import { a } from "./a.rx"
 
@@ -163,7 +163,7 @@ export default component App() {
 
 MO-5: `a.rx` and `b.rx` import each other.
 
-```
+```rx
 -- reject: IMPORT_ROW_MISMATCH
 import pure { select } from "./store.rx"
 
@@ -175,7 +175,7 @@ export default component App() {
 MO-4: `select` is an action — `io` in its signature; `pure` cannot lower an
 `.rx` row.
 
-```
+```rx
 -- reject: CONTEXT_NOT_FOUND
 import { Badge } from "./ui.rx"
 
@@ -187,7 +187,7 @@ export default component App() {
 RG-7b through a signature: `Badge` uses `who`, and nothing above this
 application provides it.
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 import { user } from "./store.rx"
 import { Name } from "./ui.rx"
@@ -200,7 +200,7 @@ export default component App() {
 `Name` discharges `NotFound` only; the fetch's `Error` comes out at this
 application with nothing above it.
 
-```
+```rx
 -- reject: UNCAUGHT_ACTION_FAILURE
 import { user } from "./store.rx"
 import { Save } from "./ui.rx"
@@ -213,7 +213,7 @@ export default component App() {
 `Save`'s action reads `props.v`: an argument that can fail is refused at
 the application, whatever boundary is above it (R-f-6).
 
-```
+```rx
 -- reject: SHADOWED_IMPORT
 import { initials } from "./store.rx"
 

@@ -4,7 +4,7 @@ Rules: AC-3, H-7, H-11.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source value := 0
   source double = await fetch("d:" + str(value))

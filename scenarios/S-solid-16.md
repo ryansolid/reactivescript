@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source page := 0
   source count := 0
@@ -34,7 +34,7 @@ The boundary alone waits.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: CN-3e
 export default component App() {
   source page := 0

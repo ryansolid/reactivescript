@@ -4,7 +4,7 @@ Rules: AC-1e, W-6, AC-1, H-2.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source log := ""
   action add(x: string) {
@@ -31,7 +31,7 @@ Two adds are out at once. Each appends to `log` as it stands at its write
 
 ## Rejected variants
 
-```
+```rx
 -- reject: STALE_WRITE_BACK
 export default component App() {
   source log := ""
@@ -50,7 +50,7 @@ so the frames would end at `log: a`, not `log: ba`. The compiler sees the
 read, the `await` and the write in one body, so this is an error; Solid
 cannot see them and lets the lost update through.
 
-```
+```rx
 -- reject: STALE_WRITE_BACK
 export default component App() {
   source items := []
@@ -68,7 +68,7 @@ The guess before the `await` is fine: it is this change's own picture. The
 write after it is the lost update (found by the eval's round 4: two posts
 at once, and a list that reloaded while a post was out).
 
-```
+```rx
 -- reject: STALE_WRITE_BACK
 export default component App() {
   source detail := { id: 1, title: "a" }

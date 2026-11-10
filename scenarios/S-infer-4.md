@@ -4,7 +4,7 @@ Rules: AC-1b, AC-4, AC-5, D-31; the inline form of S-solid-26's `reload`.
 
 ## Program
 
-```
+```rx
 export default component App() {
   user = await fetch("u")
 

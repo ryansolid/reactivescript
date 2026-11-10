@@ -4,7 +4,7 @@ Rules: ST-5, AC-4, E-6.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source base := 1
   source x = base * 10
@@ -29,7 +29,7 @@ the question with unchanged inputs: the override is dropped, quietly.
 
 ## Variant: an async question, re-asked quietly
 
-```
+```rx
 export default component App() {
   source id := 1
   source profile = await fetch("p:" + str(id))
@@ -55,7 +55,7 @@ pends. Instant 5: a new question pends.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: INVALID_REFRESH_TARGET
 -- handler: refresh base
 export default component App() {

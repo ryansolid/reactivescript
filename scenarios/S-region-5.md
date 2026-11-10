@@ -4,7 +4,7 @@ Rules exercised: RG-4a, RG-4b, RG-4c, RG-1a, E-6.
 
 ## Program
 
-```
+```rx
 component Greeting(props) {
   shout = props.name + "!"
   <p>{shout} {props.children}</p>
@@ -34,7 +34,7 @@ recreated with it (RG-4a, RG-1a).
 
 ## Rejected variants
 
-```
+```rx
 -- reject: RG-4a
 component Greeting(props) { <p>{props.name}</p> }
 export default component App() {

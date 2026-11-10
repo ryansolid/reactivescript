@@ -4,7 +4,7 @@ Rules exercised: SV-3e, SV-3d; AC-1.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source n := 0
   source note := ""

@@ -4,7 +4,7 @@ Rules exercised: RG-3, EF-2, EF-4, EF-5, O-2.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source open := true
   source n := 0

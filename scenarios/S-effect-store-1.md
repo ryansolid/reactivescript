@@ -4,7 +4,7 @@ Rules exercised: EF-1, EF-2, H-11, ST-4, AC-3, AC-4.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source rows key id = await fetch("l")
   effect (rows) { log(rows_title($0)) }

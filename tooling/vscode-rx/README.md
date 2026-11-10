@@ -13,6 +13,12 @@ completion and type errors, asked of the TSX projection (spec/13 TY-1c) and
 mapped back onto the `.rx` (spec/11 CP-8), and the compiler's own diagnostics,
 each with its rule.
 
+In Markdown, ` ```rx ` (or ` ```reactivescript `) blocks are highlighted too: in
+the editor with the full `.rx` grammar (`syntaxes/rx.markdown.tmLanguage.json`,
+injected into Markdown), and in the preview with a highlight.js language built
+on TypeScript's plus the `.rx` words (`markdown.js`). The language server only
+starts once a `.rx` file is open.
+
 ## Installing
 
 From the VS Marketplace or Open VSX (Cursor, VSCodium), once published: search

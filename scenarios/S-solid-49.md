@@ -4,7 +4,7 @@ Rules: H-6, H-7, R-11.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   source filter := 0

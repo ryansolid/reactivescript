@@ -4,7 +4,7 @@ Rules: ST-2c, ST-5, AC-4, R-7.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   source state = await fetch("s:" + str(id))

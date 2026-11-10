@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 0
   details = await fetch("d:" + latest id)
@@ -26,7 +26,7 @@ header reveals now.
 
 ## Variant: once the boundary has shown content, the lane holds on `details`
 
-```
+```rx
 export default component App() {
   source id := 0
   details = await fetch("d:" + latest id)

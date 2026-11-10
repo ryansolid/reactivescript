@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" width="96" height="96" alt="">
+
 # ReactiveScript
 
 A small language for reactive UIs that carries

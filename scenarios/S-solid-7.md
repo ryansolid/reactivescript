@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   user = await fetch("user")
 
@@ -21,7 +21,7 @@ export default component App() {
 
 ## Variant: with a boundary
 
-```
+```rx
 export default component App() {
   user = await fetch("user")
 
@@ -38,7 +38,7 @@ export default component App() {
 
 ## Rejected variants
 
-```
+```rx
 -- warn: ASYNC_OUTSIDE_LOADING_BOUNDARY
 export default component App() {
   user = await fetch("user")

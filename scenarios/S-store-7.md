@@ -4,7 +4,7 @@ Rules exercised: R-12, H-6, ST-4, AC-3, CN-3e (its `latest` exemption).
 
 ## Program
 
-```
+```rx
 export default component App() {
   source filter := "open"
   source rows key id = await fetch("l:" + filter)

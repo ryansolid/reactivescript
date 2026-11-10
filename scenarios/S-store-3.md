@@ -4,7 +4,7 @@ Rules: ST-4, RG-2.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source rows := [{ id: 1, name: "a" }, { id: 2, name: "b" }]
   view key id = map(rows, fn(r) => { id: r.id, name: r.name + "!" })
@@ -31,7 +31,7 @@ nothing is recreated. Instant 3: row 1 is removed, row 3 created.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: UNSTABLE_LIST_IDENTITY
 export default component App() {
   source rows := [{ id: 1, name: "a" }, { id: 2, name: "b" }]

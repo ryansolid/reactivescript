@@ -4,7 +4,7 @@ Rules exercised: R-12, H-7, H-11, AC-3, AC-4, ST-4.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source rows key id = await fetch("l")
   action close(id) { try { optimistic rows := rows.filter(r => r.id != id); await fetch("close"); refresh rows } catch (e) {} }

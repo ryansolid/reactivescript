@@ -4,7 +4,7 @@ Rules exercised: EF-1, EF-2, E-12, ST-4, AC-4.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source rows key id = await fetch("l")
   effect (rows catch (e) => null) { log($0 == null ? "none" : len($0)) }

@@ -4,13 +4,13 @@ Rules: RG-7a..e, MO-7, R-f-5, CN-4a.
 
 ## Modules
 
-```
+```rx
 -- module: ./theme.rx
 export context theme: string = "light"
 export context accent: string
 ```
 
-```
+```rx
 -- module: ./other.rx
 export context accent: string
 ```
@@ -20,7 +20,7 @@ spelling, another declaration.
 
 ## Program
 
-```
+```rx
 import { theme, accent } from "./theme.rx"
 source mode := "dark"
 component Label(props) { <b>{use theme}/{use accent}</b> }
@@ -47,7 +47,7 @@ default; the second reads `Themed`'s. Both find `main`'s `accent`.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: CONTEXT_NOT_FOUND
 import { accent } from "./theme.rx"
 import { accent as paint } from "./other.rx"
@@ -61,7 +61,7 @@ export default component App() {
 
 MO-7: a provision of `other.rx`'s `accent` is not one of `theme.rx`'s.
 
-```
+```rx
 -- reject: ROW_NARROWER_THAN_INFERRED
 import { accent } from "./theme.rx"
 provide accent = await fetch("accent")
@@ -75,7 +75,7 @@ RG-7e: an exported context's type is its contract — `accent: string`
 writes no rows, so a provision that is pending and can fail is refused at
 the `provide`. Its importers, on both sides, rely on the declaration.
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 context who: string
 provide who = await fetch("who")
@@ -88,7 +88,7 @@ export default component App() {
 A context that is not exported and writes no rows takes its rows from its
 provisions: `use who` can fail with `Error`, so its reader needs a boundary.
 
-```
+```rx
 -- reject: WRITE_TO_NON_SOURCE
 import { accent } from "./theme.rx"
 provide accent = "blue"
@@ -100,7 +100,7 @@ export default component App() {
 
 O-4: a context is read beneath its provision, never written through.
 
-```
+```rx
 -- reject: SOURCE_CONTEXT
 context picked: source number
 
@@ -114,7 +114,7 @@ export default component App() {
 `context x: source T` (RG-7c) is withdrawn (ruled 2026-10-31): the
 provider provides the writes it allows, as functions.
 
-```
+```rx
 -- reject: NOT_A_CONTEXT
 export default component App() {
   source picked := 1
@@ -124,7 +124,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: CONTEXT_AS_VALUE
 import { theme } from "./theme.rx"
 

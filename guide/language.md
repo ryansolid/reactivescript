@@ -7,7 +7,7 @@ code. When the compiler reports an error, `diagnostics.md` has its code: why, an
 
 ## Modules
 
-```
+```rx
 import pure { fetchUser } from "./api"     // a loader: callable anywhere, re-asked when its inputs change
 import { saveUser } from "./api"           // io: callable only in imperative code (handlers, actions, effects)
 import { Avatar } from "./Avatar.rx"       // another .rx module
@@ -21,7 +21,7 @@ does (`export action select(id) { selected := id }`, or an action passed as a pr
 
 ## Declarations
 
-```
+```rx
 source count: number := 0                  // state; written only with `:=` in imperative code
 source user = await fetchUser(id)          // state with a question: re-asked when `id` changes, can take a guess
 double = count * 2                         // an equation: always equal to its right side, never written
@@ -57,7 +57,7 @@ values. Arrays and strings have their usual methods: `xs.filter(f)`, `xs.map(f)`
 
 A component body is declarations, then markup. JSX is verbatim; control flow is braced:
 
-```
+```rx
 component IssueList(props: { issues: Issue[] }) {
   source open := true
   <section>
@@ -87,7 +87,7 @@ component IssueList(props: { issues: Issue[] }) {
 
 Handlers, `action` bodies and `effect` apply blocks:
 
-```
+```rx
 <button onClick={() => { count := count + 1 }}>+</button>
 
 effect (count) { log($0) }   // runs after `count` changes; `$0` is its value (async.md §6)
@@ -106,7 +106,7 @@ effect (count) { log($0) }   // runs after `count` changes; `$0` is its value (a
 
 ## Components
 
-```
+```rx
 component Card(props: { title: string; children: View }) {
   source open := false
   <div onClick={() => { open := !open }}>
