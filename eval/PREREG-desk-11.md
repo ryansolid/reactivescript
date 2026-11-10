@@ -23,8 +23,8 @@ were written with the current guide on a fixed Solid.
   `hidden.mjs` (77) and `hidden-overlap.mjs` (38), unchanged.
 - Arms: `rx` with `--inline-docs` (now `language.md`, `async.md` and `reference.md`), `foldkit` with `--inline-docs`,
   `react`, `vanilla`. `rxc` is built from the commit that holds this file once it is frozen.
-- Solid: `solid-next` at `next` 2789ca9c (2026-11-08; includes the #4689 fix, which is not yet in an rc), built from
-  source. The same build is used for every .rx run and grade. rc.22 isn't out; if it ships before the round starts and
+- Solid: `solid-next` at `next` 6751472f (2026-11-10; includes the fixes for #4689, #4724, #4737, #4738, #4739, #4748
+  and #4751, none yet in an rc), built from source. The same build is used for every .rx run and grade. rc.22 isn't out; if it ships before the round starts and
   holds every fix, it replaces this pin.
 - Harness: subagents, as in round 10. Numbers are comparable only within one harness: on the Foldkit side check
   (2026-11-08), the CLI harness alone moved Foldkit from 4.7 to 2.7 defects.
@@ -59,6 +59,11 @@ during another action's refresh, then the refresh fails). It came from the lower
 lowers to the setter's return, which Solid diffs shallowly against the view as guesses (its default). With that, the
 other 11 desks grade as before the change (52 defects over the 12; round 10 rx-9 fuzz seed 8, a known hole, is
 deterministic on both lowerings and was missed once by timing), and seed 3 is gone. The plain Solid case is solidjs/solid#4724.
+
+Result (2026-11-10), repinned to 6751472f: regrading on the intermediate next builds (c9816808, 79b6541d) turned up
+five more Solid bugs, each reduced to a plain Solid repro and fixed upstream (#4724 by #4729, #4737/#4738/#4739 by
+#4740, #4748 by #4749, #4751 by #4753). On 6751472f the 12 desks total 51 defects, against 52 on 2789ca9c: no desk
+gained a hole, and round 10 rx-6 fuzz seed 12 is gone. The gate passes.
 
 ## Cost
 
