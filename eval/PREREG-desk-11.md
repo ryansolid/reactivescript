@@ -32,7 +32,17 @@ were written with the current guide on a fixed Solid.
 ## Runs, grading
 
 As round 10: 3 frontier and 6 small runs per arm (36), one interleaved batch, at most 15 `./check`/`./test` calls,
-graded by `harness/grade.sh`. The definitions of legal holds, defects, correct and cost are round 10's.
+graded by `harness/grade.sh`. The definitions of correct and cost are round 10's. **Only defects are counted**: no
+legal hold and no failure the brief caused is in any count or table.
+
+- A legal hold is a consistent hold that settles (2026-10-30 ruling). The one hidden test that asserted one (overlap,
+  "two issues assigned at once": it required the declined row to revert while the other assignment was still out,
+  which a list held whole until both settle does not do) now checks only what is a defect, that the decline does not
+  take the other row with it and that both rows are right once everything has answered. Committed with this file.
+- A fuzz hole counts unless it is traced to a legal hold or to behaviour Solid's rules make legal; each exclusion is
+  listed with its trace.
+- Round 10's numbers, wherever they are compared with round 11's, are regraded with the same tests, and without "a
+  detail that loads while a rename is out keeps the new title", which round 10's brief caused (above).
 
 ## Hypotheses and tests
 
