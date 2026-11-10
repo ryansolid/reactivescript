@@ -103,8 +103,10 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - run: npm install -g npm@latest # trusted publishing needs npm 11.5.1 or later
+      # npm ci with the runner's npm 10: npm 11+ rejects a lock that lacks the
+      # not-yet-published platform packages. Then upgrade npm only to publish.
       - run: npm ci
+      - run: npm install -g npm@latest # trusted publishing needs npm 11.5.1 or later
       - name: Platform packages
         run: |
           node scripts/sync-optional-deps.mjs
