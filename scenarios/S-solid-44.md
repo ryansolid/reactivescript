@@ -4,7 +4,7 @@ Rules: H-9, H-11, AC-3, AC-4, ST-5.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source sel := 3
   source comments = await fetch("c:" + sel)

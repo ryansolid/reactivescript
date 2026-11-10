@@ -8,7 +8,7 @@ handler is an imperative closure; `===` is `==`.
 
 ## Program
 
-```
+```rx
 // a module: imports, declarations, then the mounted view
 import pure { len, str } from "./prelude"
 import { log } from "./prelude"              // io: callable only in imperative scope
@@ -48,7 +48,7 @@ changes, the text does not. Instant 3: a functional write appends.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: IO-2
 import { log } from "./prelude"
 export default component App() {
@@ -61,7 +61,7 @@ export default component App() {
 
 An `io` import called in reactive scope (R-io-3).
 
-```
+```rx
 -- reject: W-2
 export default component App() {
   source n := 1
@@ -70,7 +70,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: SNAPSHOT_INITIALIZER
 export default component App() {
   source form := { email: "a@x" }

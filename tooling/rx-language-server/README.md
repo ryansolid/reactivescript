@@ -38,6 +38,24 @@ node bin/server.js --stdio
 `initializationOptions: { typescript: { tsdk } }` picks TypeScript's `lib`
 folder; without it, the server uses its own `typescript`.
 
+## Type-checking from the command line
+
+`rx-tsc` (`bin/tsc.js`) is `tsc` with `.rx` modules in the program, for CI.
+It is Volar's tsc runner (the one `vue-tsc` uses) with this package's
+language plugin, so it checks the same projection the editor does, and places
+type errors on the `.rx`. It takes `tsc`'s arguments and reads
+`tsconfig.json`, whose `include` must name the `.rx` files.
+
+```sh
+npx rx-tsc --noEmit
+```
+
+After TypeScript's errors it prints the crate's diagnostics for every `.rx`
+module in the program (parse errors, else the checker's, with their rules),
+and exits non-zero if there are any. A module that does not parse has no
+projection, so TypeScript alone would pass it. Under `--watch` only
+TypeScript's errors are reported.
+
 ## Editors
 
 **VS Code** (and Cursor, VSCodium): the extension in
@@ -92,10 +110,11 @@ instead (or `rx-language-server --stdio` once installed).
 ```sh
 cargo build --release --manifest-path ../../compiler/Cargo.toml
 npm install && node test/run.js      # VERBOSE=1 prints each answer
+node test/tsc.js                     # rx-tsc: a clean program, a type, a parse and a checker error
 ```
 
 `test/run.js` drives the server over LSP on a copy of `examples/shop` (Solid's
 types from `ref/node_modules`, via `ref/scripts/solid-next.sh`): hover, go to
 definition across modules, references, completion while typing (in code and in
 markup), a parse error, a TypeScript type error and a crate diagnostic, each
-placed on the `.rx`.
+placed on the `.rx`. `test/tsc.js` runs `rx-tsc` on the same copy.

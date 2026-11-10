@@ -4,7 +4,7 @@ Rules: AC-1, H-2, H-7, H-9, H-10.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source x := 0
   action save() { try { x := 1; await fetch("save") } catch {} }

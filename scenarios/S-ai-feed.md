@@ -61,7 +61,7 @@ change and lands with the body's end (AC-7).
 
 ## Rejected variants
 
-```
+```rx
 -- reject: OPTIMISTIC_NO_QUESTION
 -- handler: pick()
 export default component App() {
@@ -74,7 +74,7 @@ export default component App() {
 
 `selected` is declared with `:=` — it has no question for a guess to confirm against (ST-5c).
 
-```
+```rx
 -- reject: RG-7b
 context room: number
 component Room(props: { id: number }) {

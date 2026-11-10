@@ -4,7 +4,7 @@ Rules exercised: 07 §6b CSS-1–CSS-4.
 
 ## Program
 
-```
+```rx
 component Card(props) {
   source open := false
   <style>
@@ -57,7 +57,7 @@ of appearance.)
 
 ## Rejected variants
 
-```
+```rx
 -- reject: STYLE_PLACEMENT
 export default component App() {
   <div><style>p { color: red }</style><p>x</p></div>
@@ -66,7 +66,7 @@ export default component App() {
 
 A stylesheet scopes a whole view, so it is written at the view's top level.
 
-```
+```rx
 -- reject: STYLE_PLACEMENT
 export default component App() {
   source ok := true
@@ -78,7 +78,7 @@ export default component App() {
 A branch is part of its view: TSRX counts this as the view's stylesheet; here
 where it is written is what it scopes.
 
-```
+```rx
 -- reject: STYLE_PLACEMENT
 export default component App() {
   <style>p { color: red }</style>

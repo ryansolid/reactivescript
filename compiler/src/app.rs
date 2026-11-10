@@ -32,7 +32,13 @@ pub fn app(entry: &str, target: Target, module_name: &str, spa: bool) -> Value {
         if read_disk(entry).is_none() {
             return Err(json!({ "error": format!("{entry}: no such file") }));
         }
-        let set = load_modules(entry, &read_disk).map_err(|e| json!({ "error": format!("{entry}: {}", e.0) }))?;
+        let set = load_modules(entry, &read_disk).map_err(|e| {
+            // a parse error is a diagnostic like the checker's, with its code (PARSE, or the habit it names)
+            let file = e.2.clone().unwrap_or_else(|| entry.to_string());
+            let mut d = crate::serve::parse_error_in(&file, &e, read_disk(&file).as_deref());
+            d["msg"] = json!(crate::serve::parse_message(&e));
+            json!({ "diagnostics": [d] })
+        })?;
         let checked = check_modules(&set, spa);
         if !checked.diags.is_empty() {
             return Err(json!({ "diagnostics": checked.diags.iter().map(|d| { let mut j = d.to_json(); if j["file"].is_null() { j["file"] = json!(set.entry); } j }).collect::<Vec<_>>() }));

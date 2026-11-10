@@ -4,7 +4,7 @@ Rules: AC-1b, AC-1c, AC-1, EF-8, W-6.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source status := ""
 
@@ -35,7 +35,7 @@ save is still out (S-flush-1).
 
 ## Variant: held on purpose
 
-```
+```rx
 export default component App() {
   source status := ""
   action save() {
@@ -60,7 +60,7 @@ there.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: HELD_WRITE
 export default component App() {
   source status := ""
@@ -77,7 +77,7 @@ the body now is, `saving` would wait for the server. The fixes are named
 by what the write is for: `optimistic` for state that shows while the work
 runs, `onFlush` for a reset, a declared action to hold it on purpose.
 
-```
+```rx
 -- reject: HELD_WRITE
 export default component App() {
   source saving := false

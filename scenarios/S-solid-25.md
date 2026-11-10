@@ -6,7 +6,7 @@ S-core-1's multi-write instant; this scenario covers the held case.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source count := 20
   doubled = count * 2

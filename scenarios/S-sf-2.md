@@ -4,7 +4,7 @@ Rules exercised: SF-1d, SF-2b, SF-3, SF-7a; IO-2.
 
 ## Modules
 
-```
+```rx
 -- module: ./api.d.rx
 export server pure fn findUser(id: number): Promise<{ id: number; name: string; secret: string }>
 export server pure fn now(): Date
@@ -12,7 +12,7 @@ export server pure fn now(): Date
 
 ## Program
 
-```
+```rx
 import pure { GET } from "@solidjs/web/server-functions"
 import { findUser } from "./api"
 export default component App() {
@@ -48,7 +48,7 @@ author owns it, as an import's `pure` (IO-3).
 
 ## Rejected variants
 
-```
+```rx
 -- reject: IO_IN_REACTIVE
 import { GET } from "@solidjs/web/server-functions"
 export default component App() {
@@ -61,7 +61,7 @@ export default component App() {
 The wrapper is called when the equation is evaluated, in reactive scope: it
 is imported `pure` (IO-2).
 
-```
+```rx
 -- reject: SERVER_CAPTURE
 import pure { GET } from "@solidjs/web/server-functions"
 export default component App() {
@@ -75,7 +75,7 @@ export default component App() {
 
 Wrapped or not, the body names nothing reactive (SF-3).
 
-```
+```rx
 -- reject: IO_IN_REACTIVE
 import pure { GET } from "@solidjs/web/server-functions"
 import { insert } from "./api2"
@@ -90,7 +90,7 @@ export default component App() {
 The rows are the function's (SF-1d): this body is io, so its call in an
 equation is refused — `GET` does not change what the body does.
 
-```
+```rx
 -- types: WIRE_VALUE
 import pure { GET } from "@solidjs/web/server-functions"
 import { now } from "./api"

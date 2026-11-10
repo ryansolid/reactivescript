@@ -23,7 +23,7 @@ submitted, close a menu, clear an error), give it its own instant: `onFlush(() =
 compiler can't tell a reset from a write that should wait with the rest, such as a tab highlight that moves with its
 page, so it's your call. Decide it for each write that sits next to work that loads.
 
-```
+```rx
 // submit a todo: the input clears now, the row shows as a guess until the server answers
 let t = text
 onFlush(() => { text := "" })
@@ -32,7 +32,7 @@ addTodo(t)
 
 ## 1. Reading from the server: an equation
 
-```
+```rx
 forecast = city == "" ? null : city.length < 3 ? throw TooShort(city) : await fetchForecast(city)
 ```
 
@@ -59,7 +59,7 @@ forecast = city == "" ? null : city.length < 3 ? throw TooShort(city) : await fe
 
 ## 3. Writing to the server: an action
 
-```
+```rx
 export source profile: Profile = await loadProfile()   // a source with a question: it can take a guess
 export source saveError: string = ""
 
@@ -95,7 +95,7 @@ by what the screen should do:
 
 When several actions can each change a different row of one list, guess the row, not the list:
 
-```
+```rx
 export source todos: Todo[] key id = await loadTodos()
 
 export action markDone(id: number) {
@@ -136,7 +136,7 @@ A guess on a value whose question reads a selection holds the selection with it:
 something else waits for the server, and the screen stays on the old choice until the action ends (F-1). Keep the
 pending items in a source of their own, with a constant question, and show them beside the loaded ones:
 
-```
+```rx
 source photo: number := 1
 tags = await loadTags(photo)
 source adding: { photo: number; tag: string }[] = []
@@ -169,7 +169,7 @@ and the screen reads only the top:
 
 `examples/todos.rx` is the whole app:
 
-```
+```rx
 server = await loadTodos()                                  // 1. what the server has: re-asked after every write
 source failures: Failure[] := []                            // outlives a reset: kept until a retry is accepted
 source todos: Row[] key id = withFailures(server, failures) // 2. the client's layer; 3. row guesses go on it

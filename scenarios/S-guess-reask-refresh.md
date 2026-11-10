@@ -4,7 +4,7 @@ Rules exercised: AC-3, AC-4, H-11, D-34.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source detail = await fetch("d")
   action rename(t) { try { optimistic detail.title := t; await fetch("save"); refresh detail } catch (e) {} }
@@ -36,7 +36,7 @@ effect's view too.
 
 ## Variant: read by an effect alone
 
-```
+```rx
 export default component App() {
   source detail = await fetch("d")
   action rename(t) { try { optimistic detail.title := t; await fetch("save"); refresh detail } catch (e) {} }

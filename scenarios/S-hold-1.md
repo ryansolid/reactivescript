@@ -5,7 +5,7 @@ H-5, H-6, H-7, H-9, R-1, R-4, R-9, R-10, R-11, V-1.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := "a"
   product = await fetch("p:" + id)
@@ -43,7 +43,7 @@ the screen keeps `A`; `latest id` shows `b` and `pending? product` shows
 
 ## Rejected variants
 
-```
+```rx
 -- warn: ASYNC_OUTSIDE_LOADING_BOUNDARY
 export default component App() {
   source id := "a"

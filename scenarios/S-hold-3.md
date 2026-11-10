@@ -4,7 +4,7 @@ Rules: H-2, H-3, H-4, H-10, R-4. (H-3 rewritten after Solid S-4.)
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := "a"
   source n := 0
@@ -34,7 +34,7 @@ caught). Instant 4: `product` lands.
 
 ## Variant: superseded flight
 
-```
+```rx
 export default component App() {
   source id := "a"
   product = await fetch("p:" + id)

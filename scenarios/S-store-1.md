@@ -4,7 +4,7 @@ Rules: ST-1, ST-2, ST-2a, ST-2c, W-3.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source user := { name: "Ann", prefs: { theme: "light", size: 12 } }
   effect (user.prefs.theme) { log("theme", $0) }

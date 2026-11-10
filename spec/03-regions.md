@@ -165,7 +165,7 @@ A call to a function with a `ref` parameter or a node-declaring body (E-9).
 
 Three things, in three places (ruled 2026-10-23: a context is declared):
 
-```
+```rx
 context theme: Theme = defaultTheme     // declared: once, at module level — what the context is (Solid: createContext)
 provide theme = settings.theme          // provided: in a component's block — its value for the tree beneath (the Provider)
 palette = (use theme).palette           // used: in any region beneath — the nearest provision above (useContext)

@@ -3,6 +3,9 @@
 // type errors come back through them. The crate's own diagnostics (rule IDs, spec/99) are a service of their own.
 const { analyze, preludeFor } = require("./rxc");
 
+/** The page that explains a diagnostic code and its fix (the compiler's guide/diagnostics.md, one section a code). */
+const guideUrl = code => `https://github.com/solidjs/reactivescript/blob/main/guide/diagnostics.md#${String(code).toLowerCase()}`;
+
 /** Every feature, where the projection copies the `.rx`'s text (a name, a member, a literal, a type, a tag). */
 const EXACT = { verification: true, completion: true, semantic: true, navigation: true, structure: true, format: false };
 /** Where it wrote text for a piece of the `.rx` (an expression, a statement): only for placing type errors. */
@@ -87,6 +90,7 @@ function rxDiagnostics() {
             severity: 1,
             source: "rx",
             code: d.code,
+            codeDescription: { href: guideUrl(d.code) },
             message: `${d.message} (${d.rule})`,
           }));
         },
@@ -95,4 +99,7 @@ function rxDiagnostics() {
   };
 }
 
-module.exports = { rxLanguagePlugin, rxDiagnostics, analysis };
+/** Every `.rx` module analyzed so far, with its last analysis (the command line reports their crate diagnostics). */
+const analyses = () => [...cache].filter(([f]) => isModule(f)).map(([file, { result }]) => ({ file, result }));
+
+module.exports = { rxLanguagePlugin, rxDiagnostics, analysis, analyses, guideUrl };

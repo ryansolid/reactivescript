@@ -4,7 +4,7 @@ Rules exercised: E-1, E-2, E-4, E-6, W-1, W-2, W-3, C-2, C-2a, EF-2, EF-4, P-6.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source count := 0
   source show := true
@@ -29,7 +29,7 @@ export default component App() {
 
 ## Variant: no effect (`double` undemanded while `show` is false)
 
-```
+```rx
 export default component App() {
   source count := 0
   source show := true
@@ -53,20 +53,20 @@ here and `prev 2` / `prev 14` at instants 2 and 4 of the main table.)
 
 ## Rejected variants
 
-```
+```rx
 -- reject: W-1
 source count := 0
 double = count * 2
 effect (count) { double := 4 }
 ```
 
-```
+```rx
 -- reject: W-2
 source count := 0
 count := 1
 ```
 
-```
+```rx
 -- reject: C-1
 export default component App() {
   source s := 0

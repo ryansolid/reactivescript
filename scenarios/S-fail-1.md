@@ -4,7 +4,7 @@ Rules: R-f-1, R-f-3, R-f-4, R-f-5, H-12, D-41.
 
 ## Program
 
-```
+```rx
 error BadId(id) => `bad id ${id}`
 error NotFound(id) => `no user ${id}`
 source id := 1
@@ -51,7 +51,7 @@ boundaries in one frame.
 
 ## Variant: a boundary that lists `Error` takes everything
 
-```
+```rx
 error BadId(id) => `bad id ${id}`
 error NotFound(id) => `no user ${id}`
 source id := 1
@@ -76,7 +76,7 @@ failure, so `BadId` lands here although it is not listed.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 error BadId(id) => `bad id ${id}`
 error NotFound(id) => `no user ${id}`
@@ -95,7 +95,7 @@ export default component App() {
 R-f-5: without the root boundary, the fetch's `Error` passes the `BadId`
 boundary and nothing above discharges it.
 
-```
+```rx
 -- reject: UNHANDLED_FAILURE
 error BadId(id) => `bad id ${id}`
 error NotFound(id) => `no user ${id}`
@@ -112,7 +112,7 @@ export default component App() {
 
 Neither `NotFound` (no catch on the reader) nor `Error` is discharged.
 
-```
+```rx
 -- reject: NOT_AN_ERROR_CLASS
 export default component App() {
   source id := 1
@@ -122,7 +122,7 @@ export default component App() {
 }
 ```
 
-```
+```rx
 -- reject: ROW_NARROWER_THAN_INFERRED
 error NotFound(id) => `no user ${id}`
 source id := 1

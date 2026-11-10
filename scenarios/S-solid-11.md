@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source x := 0
   source y := 0
@@ -32,7 +32,7 @@ Two flights, one shared on-screen derivation: one unit.
 
 ## Variant: without `Sum` the two are independent
 
-```
+```rx
 export default component App() {
   source x := 0
   source y := 0

@@ -23,7 +23,7 @@ A file (`.rx`) is a module. Its top level is imports, exports and
 declarations. A declaration at the top level lives for the module's lifetime
 (a module-level `source` is app state, as a module-level signal is in Solid).
 
-```
+```rx
 import { fetchUser } from "./api"          // an io value: callable only in imperative scope (IO-2)
 import pure { formatName } from "./format" // a lifted value function: callable anywhere (E-9)
 import { Avatar } from "./Avatar.rx"       // a component; its rows come from Avatar.rx's signature (09 MO-3)
@@ -62,7 +62,7 @@ export component Profile(props: { id: number }) { … }
 
 ## 2. Declarations (02 §1)
 
-```
+```rx
 source count: number := 0              // E-4: assigned once, written only in imperative scope
 source user = await fetchUser(id)      // ST-5: a source with a standing question
 double = count * 2                     // E-1: an equation; holds for all time
@@ -144,7 +144,7 @@ A reactive block is declarations, then markup. JSX elements are verbatim:
 attributes are equations, children are readers, components are applied as
 `<Name prop={e}>…</Name>` (RG-4).
 
-```
+```rx
 <section class={theme}>
   <h1>{user.name}</h1>
   {if open {
@@ -189,7 +189,7 @@ attributes are equations, children are readers, components are applied as
 Imperative scope is: an `effect`'s apply block, an `action` body, and any
 arrow function written in imperative scope or as an element's event handler.
 
-```
+```rx
 <button onClick={() => { count := count + 1 }}>+</button>
 
 effect (count) {
@@ -249,7 +249,7 @@ action { refresh user; affects user }   // inline, one run (AC-1)
   In a component body the same thing is `effect () { … }` (EF-4).
 - The optimistic-action idiom, with a spinner:
 
-  ```
+  ```rx
   action placeOrder() {
     let items = cart              // a snapshot of what is being ordered
     optimistic cart := []         // the guess shows now (AC-3)
@@ -272,7 +272,7 @@ action { refresh user; affects user }   // inline, one run (AC-1)
 
 ## 6. Components (RG-4)
 
-```
+```rx
 component Card(props: { title: string; children: View }) {
   source open := false
   <div class="card" onClick={() => { open := !open }}>
@@ -288,7 +288,7 @@ component Card(props: { title: string; children: View }) {
 
 ## 6b. Scoped styles (ruled 2026-10-24: per component, as TSRX)
 
-```
+```rx
 component Card(props) {
   source open := false
   <style>
@@ -351,7 +351,7 @@ stylesheet).
 
 S-solid-8:
 
-```
+```rx
 export default component App() {
   source x := 0
   action save() { try { x := 1; await api.save() } catch {} }   // R-f-6: a failed save ends the body; `x` commits (DV-2)
@@ -365,7 +365,7 @@ export default component App() {
 
 S-solid-26 (rows 4–7):
 
-```
+```rx
 export default component App() {
   source id := 1
   user = await fetchUser(id)
@@ -381,7 +381,7 @@ export default component App() {
 
 S-store-3:
 
-```
+```rx
 export default component App() {
   source rows := [{ id: 1, name: "a" }, { id: 2, name: "b" }]
   view key id = map(rows, r => ({ id: r.id, name: r.name + "!" }))
@@ -395,7 +395,7 @@ export default component App() {
 
 ## 8. Failures (04 R-f)
 
-```
+```rx
 import pure { fetchUser } from "./api"           // its promises reject with `Error` (R-f-8)
 error BadId(id: number) => `bad id ${id}`
 error NotFound(id: number) => `no user ${id}`

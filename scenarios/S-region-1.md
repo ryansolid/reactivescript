@@ -4,7 +4,7 @@ Rules exercised: RG-1a, RG-1b, E-4, O-2.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source open := true
 
@@ -36,7 +36,7 @@ re-ran its initializer (RG-1a). Instant 4: truthy→truthy does not switch
 
 ## Rejected variants
 
-```
+```rx
 -- reject: W-1
 -- handler: total := 2
 export default component App() {

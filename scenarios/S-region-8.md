@@ -4,7 +4,7 @@ Rules exercised: RG-8 (PT-1–PT-3), RG-1a, RG-7b, O-4.
 
 ## Program
 
-```
+```rx
 context tone: string = "plain"
 source open := false
 source n := 0
@@ -42,7 +42,7 @@ Served, the page is `count 0`: the server renders nothing for a portal
 
 ## Rejected variants
 
-```
+```rx
 -- reject: CONTENT_MODEL
 export default component App() {
   portal { <tr><td>x</td></tr> }

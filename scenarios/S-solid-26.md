@@ -4,7 +4,7 @@ Rules: R-9, H-9, AC-4, AC-5, AC-3.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   user = await fetch("u:" + id)
@@ -38,7 +38,7 @@ the re-ask lands into the action's hold (D-31) and reveals at its commit.
 
 ## Variant: a guess over `user` is verdict-inert (row 7)
 
-```
+```rx
 export default component App() {
   source id := 1
   user = await fetch("u:" + id)

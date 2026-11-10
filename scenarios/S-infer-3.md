@@ -4,7 +4,7 @@ Rules: AC-1b, AC-1 (D-7 adoption), AC-3, H-11.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source liked = "no"
   action like() { try { let r = await fetch("like"); liked := r } catch (e) {} }

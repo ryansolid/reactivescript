@@ -47,6 +47,7 @@ jobs:
           npm ci
           node test/run.js
           RXC=$GITHUB_WORKSPACE/compiler/target/release/rxc node test/run.js
+          node test/tsc.js
       - name: Package the extension
         working-directory: tooling/vscode-rx
         run: |
@@ -139,11 +140,13 @@ jobs:
       - name: VS Marketplace
         if: vars.AZURE_CLIENT_ID != '' || env.VSCE_PAT != ''
         run: npx --yes @vscode/vsce publish --packagePath ./*.vsix ${{ vars.AZURE_CLIENT_ID != '' && '--azure-credential' || '' }}
+      # Open VSX takes the job's OIDC token (trusted publishing, ovsx 1.4) when the repository variable OVSX_TRUSTED is
+      # `on` and the `solidjs` namespace lists this workflow as a trusted publisher, else the secret OVSX_PAT
       - name: Open VSX
-        if: env.OVSX_PAT != ''
-        run: npx --yes ovsx publish ./*.vsix -p "$OVSX_PAT"
+        if: vars.OVSX_TRUSTED == 'on' || env.OVSX_PAT != ''
+        run: npx --yes ovsx@^1.4.0 publish ./*.vsix ${{ vars.OVSX_TRUSTED == 'on' && '--trusted-publishing' || '-p "$OVSX_PAT"' }}
       - name: Tag
-        if: vars.AZURE_CLIENT_ID != '' || env.VSCE_PAT != '' || env.OVSX_PAT != ''
+        if: vars.AZURE_CLIENT_ID != '' || env.VSCE_PAT != '' || vars.OVSX_TRUSTED == 'on' || env.OVSX_PAT != ''
         run: git tag "vscode-v$V" && git push origin "vscode-v$V"
         env:
           V: ${{ needs.versions.outputs.vscode }}

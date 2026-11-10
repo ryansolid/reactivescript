@@ -4,7 +4,7 @@ Rules: R-f-4, R-f-5, R-6, D-41.
 
 ## Program
 
-```
+```rx
 component Detail(props) {
   item = await fetch("item:" + props.id)
   heading = props.titles[props.id] catch (e) => item.title

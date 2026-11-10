@@ -1,3 +1,5 @@
+<img src="assets/logo.svg" width="96" height="96" alt="">
+
 # ReactiveScript
 
 A small language for reactive UIs that carries
@@ -5,8 +7,8 @@ A small language for reactive UIs that carries
 *language* semantics, and checks them before your code runs. Files are `.rx`;
 they compile to plain Solid 2.0.
 
-> **Status:** early design work. The spec, its scenarios and the reference
-> implementation change often, and nothing here is released. See
+> **Status:** experimental, 0.1. The spec, its scenarios and the compiler
+> still change often, and releases follow Solid 2.0's release candidates. See
 > [CONTRIBUTING.md](CONTRIBUTING.md) to run the suite or propose a change.
 
 ## Why
@@ -107,13 +109,62 @@ TSX projection ([spec/13](spec/13-types.md)). For whole apps, start with
 | [`tooling/rx-language-server`](tooling/rx-language-server) | the `.rx` language server: TypeScript's hover, go to definition, rename, completion and type errors on `.rx`, plus the checker's diagnostics with their rules |
 | [`tooling/vscode-rx`](tooling/vscode-rx) | the VS Code extension: highlighting, and the language server |
 
-Nothing is published yet. `@reactivescript/compiler`,
-`@reactivescript/runtime` and `@reactivescript/language-server` will go to
-npm, and the extension to the VS Marketplace and Open VSX
-([`tooling/RELEASING.md`](tooling/RELEASING.md)). In Vite, the compiler is a
-front end that Solid's Vite plugin loads on its own when the package is
-installed; that support is merged in Solid's plugin but not yet released
-([`compiler/README.md`](compiler/README.md)).
+## Install
+
+ReactiveScript 0.1 is experimental. It follows Solid 2.0's release
+candidates, so expect breaking changes until Solid 2.0 is final.
+
+**In a Solid app (Vite).** Install the compiler and the runtime beside Solid
+2.0:
+
+```sh
+npm i solid-js@next @solidjs/web@next @solidjs/signals@next @reactivescript/runtime
+npm i -D vite @solidjs/vite-plugin @reactivescript/compiler
+```
+
+Keep `solid()` in `vite.config.js` as it is. Solid's Vite plugin
+(3.0.0-next.57 or later) finds the compiler and compiles `.rx` on its own
+(spec/11 CP-7).
+
+```rx
+// src/app.rx
+export default component App() {
+  source count := 0
+  doubled = count * 2
+  <button onClick={() => { count := count + 1 }}>{count} × 2 = {doubled}</button>
+}
+```
+
+```js
+// src/main.js
+import { createApp } from "@reactivescript/runtime";
+import main from "./app.rx";
+
+const app = createApp({ root: document.getElementById("app") });
+app.mount(main(app));
+```
+
+**In an editor.** Install the ReactiveScript extension (publisher
+`solidjs`) from the VS Code Marketplace, or from Open VSX for Cursor
+and VSCodium. It brings highlighting and the language server. Other editors
+can run the language server on its own: `npx @reactivescript/language-server
+--stdio` ([`tooling/rx-language-server`](tooling/rx-language-server)).
+
+**In CI.** Vite compiles `.rx` without type-checking it, as it does `.ts`.
+`rx-tsc` is `tsc` with `.rx` in the program: the same check the editor runs,
+plus the checker's errors with their rules.
+
+```sh
+npm i -D @reactivescript/language-server typescript
+npx rx-tsc --noEmit
+```
+
+It reads `tsconfig.json`, whose `include` must name the `.rx` files
+(`"include": ["src"]` or `["src/**/*.rx", "src/**/*.ts"]`), with Solid's JSX:
+`"jsx": "preserve"`, `"jsxImportSource": "@solidjs/web"`.
+
+How releases are made: [`tooling/RELEASING.md`](tooling/RELEASING.md) and
+[`compiler/README.md`](compiler/README.md).
 
 ## Try it
 
@@ -121,7 +172,7 @@ You need Node 22 or later. The checker and the interpreter run straight from
 the repo with no install:
 
 ```sh
-git clone https://github.com/ryansolid/reactivescript && cd reactivescript
+git clone https://github.com/solidjs/reactivescript && cd reactivescript
 node --experimental-strip-types ref/check.ts examples/todo.rx   # check a program
 node --experimental-strip-types ref/run.ts                      # run every scenario
 ```
@@ -129,11 +180,9 @@ node --experimental-strip-types ref/run.ts                      # run every scen
 Running the scenarios on Solid itself needs Solid's `next` branch built from
 source (pnpm and a Rust toolchain); see [CONTRIBUTING.md](CONTRIBUTING.md) and
 [`ref/README.md`](ref/README.md). The compiler builds with Cargo
-([`compiler/README.md`](compiler/README.md)). For the editor, install a
-`.vsix` from a run of the repository's `editor` workflow, or build one
-([`tooling/vscode-rx/README.md`](tooling/vscode-rx/README.md)); other editors
-use the language server directly
-([`tooling/rx-language-server`](tooling/rx-language-server)).
+([`compiler/README.md`](compiler/README.md)). To try an unreleased editor build, install a `.vsix` from a run of the
+repository's `editor` workflow, or build one
+([`tooling/vscode-rx/README.md`](tooling/vscode-rx/README.md)).
 
 ## Reading the spec
 

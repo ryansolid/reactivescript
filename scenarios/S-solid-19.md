@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   data = await fetch("d:" + id)
@@ -28,7 +28,7 @@ that re-arms on the same change.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: CN-3e
 export default component App() {
   source id := 1
@@ -45,7 +45,7 @@ is exactly what the first boundary's fallback waits on, so the spinner is never 
 `spinner spinner`, `A A`, then `A A` after `id := 2` until `data` resolves "B", then `B B`; Solid's dev build warns
 `LOADING_ON_OUTSIDE_HOLD`. The checker refuses it (CN-3e).
 
-```
+```rx
 -- reject: CN-3e
 export default component App() {
   source id := 1

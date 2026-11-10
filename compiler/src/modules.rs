@@ -85,10 +85,10 @@ impl Loader<'_> {
         let Some(src) = (self.read)(path) else { return Ok(()) };
         let mut p = if self.recover {
             let (p, errs) = crate::parse::parse_program_recovering(&src);
-            self.parse_errors.extend(errs.into_iter().map(|e| ParseError(e.0, e.1, Some(path.to_string()))));
+            self.parse_errors.extend(errs.into_iter().map(|e| ParseError(e.0, e.1, Some(path.to_string()), e.3)));
             p
         } else {
-            parse_program(&src).map_err(|e| ParseError(format!("{}: {}", path, e.0), e.1, Some(path.to_string())))?
+            parse_program(&src).map_err(|e| ParseError(format!("{}: {}", path, e.0), e.1, Some(path.to_string()), e.3))?
         };
         self.state.insert(path.to_string(), State::Busy);
         for d in p.decls.iter_mut() {
@@ -98,7 +98,7 @@ impl Loader<'_> {
                 let dts = join_path(path, &(replace_js_ext(from) + ".d.rx"));
                 if !self.declarations.contains_key(&dts) {
                     if let Some(src) = (self.read)(&dts) {
-                        let ds = parse_declarations(&src).map_err(|e| ParseError(format!("{}: {}", dts, e.0), e.1, Some(dts.clone())))?;
+                        let ds = parse_declarations(&src).map_err(|e| ParseError(format!("{}: {}", dts, e.0), e.1, Some(dts.clone()), e.3))?;
                         self.declarations.insert(dts.clone(), ds);
                     }
                 }
@@ -134,7 +134,7 @@ impl Loader<'_> {
                 // MO-9: no body — its signature, read in place
                 let dts = to.strip_suffix(".rx").map(|s| format!("{}.d.rx", s)).unwrap_or_else(|| to.clone());
                 if let Some(sig) = (self.read)(&dts) {
-                    let s = parse_signature(&sig, &to).map_err(|e| ParseError(e.0, None, Some(dts.clone())))?;
+                    let s = parse_signature(&sig, &to).map_err(|e| ParseError(e.0, None, Some(dts.clone()), "PARSE"))?;
                     self.signatures.insert(to.clone(), s);
                     continue;
                 }

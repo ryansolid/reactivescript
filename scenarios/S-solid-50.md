@@ -4,7 +4,7 @@ Rules: H-3a, H-7, R-11.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source x := 0
   source k := 0

@@ -4,7 +4,7 @@ Rules: H-12, H-4, R-6, E-12.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := "a"
   product = await fetch("p:" + id)

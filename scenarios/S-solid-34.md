@@ -4,7 +4,7 @@ Rules: AC-3, R-4, H-11.
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 0
   source cat = await fetch("cat:" + str(id))

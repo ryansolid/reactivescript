@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source id := 1
   product = await fetch("p:" + id)
@@ -30,7 +30,7 @@ entered but not shown. Instant 4: it lands with `B`, not beside `A`.
 
 ## Variant: comments land first — no spinner ever
 
-```
+```rx
 export default component App() {
   source id := 1
   product = await fetch("p:" + id)
@@ -50,7 +50,7 @@ export default component App() {
 
 ## Variant: nothing outside holds
 
-```
+```rx
 export default component App() {
   source id := 1
   comments = await fetch("c:" + id)

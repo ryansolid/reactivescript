@@ -1,7 +1,36 @@
 // Hand-rolled scanner/parser for the abstract syntax (spec/02-core.md §1).
 import type { Decl, Expr, Markup, Param, Program, Stmt, Target } from "./ast.ts";
 
-export class ParseError extends Error {}
+/** A parse error; `code` names the habit it looks like when `hint` recognises one (guide/diagnostics.md), else `PARSE`. */
+export class ParseError extends Error { code = "PARSE"; }
+
+const JS_APIS = /\b(useState|useReducer|useMemo|useCallback|useEffect|useRef|createSignal|createMemo|createEffect|createStore|createResource|createAsync)\s*\(/;
+/** What a parse failure at `i` most likely meant, when the line reads like JavaScript, React or Solid: `[code, text]`.
+ *  `src/parse.rs` `hint` is the same function. */
+export function hint(src: string, i: number, msg: string): [string, string] | null {
+  const rest = src.slice(i);
+  const at = rest.length && !/^\s*$/.test(rest.split("\n")[0]) ? i : src.slice(0, i).trimEnd().length - 1;
+  const p = Math.max(0, at);
+  const lineStart = (k: number) => src.slice(0, k).lastIndexOf("\n") + 1;
+  const line = src.slice(lineStart(p), (src.indexOf("\n", p) + 1 || src.length + 1) - 1).trim();
+  const before = src.slice(lineStart(i), i);
+  const name = /([A-Za-z_$][A-Za-z0-9_$.]*)\s*$/.exec(before)?.[1] ?? "x";
+  if (msg.startsWith("W-2") && rest.startsWith(":=") && /=>\s*[A-Za-z_$][A-Za-z0-9_$.]*\s*$/.test(before))
+    return ["REACTIVE_WRITE_IN_OWNED_SCOPE", `an arrow that writes takes a braced body, \`() => { ${name} := … }\`: an expression-bodied arrow is a pure function (SC-3)`];
+  if (/^(\+\+|--|(\*\*|\|\||&&|\?\?|[-+*\/%])=|=(?![=>]))/.test(rest))
+    return ["ASSIGNMENT", `a source is written with \`:=\`, as a statement in a handler or action: \`${name} := ${name} + 1\`, or \`${name} := v => v + 1\` (W-1, W-6); .rx has no \`=\`, \`+=\` or \`++\` on state`];
+  if (/^(export\s+)?(default\s+)?(async\s+)?function\b/.test(line))
+    return ["JS_FUNCTION", "`function` is not .rx: a pure function is `fn f(x) => …`, one that writes or awaits is `action f(x) { … }`, one that renders is `component F(props) { … }`"];
+  const local = /^(const|let|var)\b/.exec(line);
+  if (local)
+    return ["JS_LOCAL", `\`${local[1]}\` declares a local only in a handler or action body: in a component or at a module's top level, state is \`source x := …\` and a value computed from others is an equation, \`x = …\``];
+  if (/^return\b/.test(line))
+    return ["JS_RETURN", "a component has no `return`: its body is declarations, then its markup"];
+  const api = JS_APIS.exec(line);
+  if (api)
+    return ["JS_API", `\`${api[1]}\` is not .rx: state is \`source x := …\`, a value computed from others is \`x = …\`, a side effect is \`effect (x) { … }\``];
+  return null;
+}
 let viewAt = 0;
 /** The offset where a program's view begins (after its last declaration) — for tools that edit programs. */
 export function viewStart(src: string): number { parseProgram(src); return viewAt; }
@@ -25,7 +54,13 @@ class Cursor {
   startsWith(s: string) { return this.src.startsWith(s, this.i); }
   eat(s: string) { if (this.startsWith(s)) { this.i += s.length; return true; } return false; }
   expect(s: string) { if (!this.eat(s)) this.fail(`expected '${s}'`); }
-  fail(msg: string): never { throw new ParseError(`line ${this.line}: ${msg} near '${this.src.slice(this.i, this.i + 20)}'`); }
+  fail(msg: string): never {
+    const h = hint(this.src, this.i, msg);
+    const near = this.src.slice(this.i, this.i + 20).split("\n")[0];
+    const e = new ParseError(`line ${this.line}: ${msg} ${near.trim() ? `near '${near}'` : "at the end of the line"}${h ? ` — ${h[1]}` : ""}`);
+    if (h) e.code = h[0];
+    throw e;
+  }
   ident(): string | null {
     const m = /^[A-Za-z_$][A-Za-z0-9_$]*/.exec(this.src.slice(this.i));
     if (!m) return null;
@@ -85,7 +120,7 @@ export function parseProgram(src: string): Program {
   viewAt = c.i;
   const view = parseMarkup(c, null);
   c.ws();
-  if (!c.eof()) c.fail("declaration or markup");
+  if (!c.eof()) c.fail("expected a declaration or markup");
   const dflt = decls.filter(d => d.k === "component" && d.isDefault);
   if (dflt.length > 1) c.fail("two default components: a module has one entry");
   if (view.length === 0 && dflt.length) return { decls, view: [{ k: "el", tag: (dflt[0] as { name: string }).name, attrs: [], children: [], line: dflt[0].line }] };   // MO-1c: the mounted view is the default component, applied
@@ -488,7 +523,7 @@ function parseMarkup(c: Cursor, closeTag: string | null): Markup[] {
       // outside an element, bare text is not markup: a block is declarations, then markup
       if (s.trim() === "") { if (c.peek() === "\n") c.i++; continue; }
       if (s.includes(":=")) c.fail("W-2: write in reactive scope (no statement position)");
-      c.fail("declaration or markup");
+      c.fail("expected a declaration or markup");
     }
     if (broke && out.length && out[out.length - 1].k === "text") out.push({ k: "text", s: " " });   // text on two lines: one space between
     if (s) out.push({ k: "text", s });

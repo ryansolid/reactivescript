@@ -4,7 +4,7 @@ Rules exercised: SV-7b, SF-5b; SV-1, SV-3; R-7.
 
 ## Modules
 
-```
+```rx
 -- module: ./api.d.rx
 // what only the browser knows
 export client pure fn viewport()
@@ -13,7 +13,7 @@ export client pure fn timeZone()
 
 ## Program
 
-```
+```rx
 import { viewport, timeZone } from "./api"
 export default component App() {
   width = await viewport()
@@ -46,7 +46,7 @@ are the browser's, after it has taken the page over.
 
 ## Rejected variants
 
-```
+```rx
 -- reject: CLIENT_QUESTION_UNHELD
 import { viewport } from "./api"
 export default component App() {
@@ -59,7 +59,7 @@ export default component App() {
 Nothing holds it: on the server this page would never finish (Solid:
 `ASYNC_OUTSIDE_LOADING_BOUNDARY`, at run time).
 
-```
+```rx
 -- reject: CLIENT_QUESTION_UNHELD
 import { viewport } from "./api"
 export default component App() {
@@ -73,7 +73,7 @@ export default component App() {
 
 A value computed from a client question is one: its reader needs the hold.
 
-```
+```rx
 -- reject: CLIENT_QUESTION_UNHELD
 import { viewport } from "./api"
 component Size(props) { <p>{props.w}</p> }
@@ -86,7 +86,7 @@ export default component App() {
 
 Through a prop: the component reads it where nothing holds it.
 
-```
+```rx
 -- reject: CLIENT_NOT_AWAITED
 import { viewport } from "./api"
 export default component App() {

@@ -2,7 +2,7 @@
 
 ## Program
 
-```
+```rx
 export default component App() {
   source n := 0
   x = await fetch("x:" + n)
@@ -35,7 +35,7 @@ atomic pair shows `[true, x0]` (a landed answer awaiting reveal); the
 
 ## Variant: an equation probes `n` and reads it plainly
 
-```
+```rx
 export default component App() {
   source n := 0
   x = 1 + n + (pending? n ? 1 : 0)
@@ -60,7 +60,7 @@ wrong.
 
 ## Variant: an equation probes `n` and reads another held value plainly
 
-```
+```rx
 export default component App() {
   source n := 0
   source k := 0
