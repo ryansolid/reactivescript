@@ -1,6 +1,6 @@
 # Round 11: round 10 again, on a Solid with every eval bug fixed and the current guide
 
-Pre-registration, committed before any round 11 agent runs. Status: DRAFT (needs Ryan's OK before it is frozen).
+Pre-registration, committed before any round 11 agent runs. Status: FROZEN (Ryan, 2026-11-10: "freeze").
 
 ## Why
 
