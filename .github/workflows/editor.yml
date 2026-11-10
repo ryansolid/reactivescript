@@ -47,6 +47,7 @@ jobs:
           npm ci
           node test/run.js
           RXC=$GITHUB_WORKSPACE/compiler/target/release/rxc node test/run.js
+          node test/tsc.js
       - name: Package the extension
         working-directory: tooling/vscode-rx
         run: |

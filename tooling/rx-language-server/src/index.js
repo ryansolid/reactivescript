@@ -95,4 +95,7 @@ function rxDiagnostics() {
   };
 }
 
-module.exports = { rxLanguagePlugin, rxDiagnostics, analysis };
+/** Every `.rx` module analyzed so far, with its last analysis (the command line reports their crate diagnostics). */
+const analyses = () => [...cache].filter(([f]) => isModule(f)).map(([file, { result }]) => ({ file, result }));
+
+module.exports = { rxLanguagePlugin, rxDiagnostics, analysis, analyses };

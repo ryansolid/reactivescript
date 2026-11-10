@@ -1,7 +1,7 @@
 {
   "name": "@reactivescript/language-server",
   "version": "0.1.0",
-  "description": "The .rx language server (spec/11 CP-8): Volar over the crate's TSX projection, TypeScript's answers mapped back onto .rx, the crate's own diagnostics.",
+  "description": "The .rx language server (spec/11 CP-8): Volar over the crate's TSX projection, TypeScript's answers mapped back onto .rx, the crate's own diagnostics; rx-tsc type-checks .rx from the command line.",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -10,7 +10,8 @@
   },
   "type": "commonjs",
   "bin": {
-    "rx-language-server": "./bin/server.js"
+    "rx-language-server": "./bin/server.js",
+    "rx-tsc": "./bin/tsc.js"
   },
   "main": "./src/index.js",
   "files": [
@@ -21,7 +22,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node test/run.js",
+    "test": "node test/run.js && node test/tsc.js",
     "prepack": "node scripts/wasm.js"
   },
   "dependencies": {
