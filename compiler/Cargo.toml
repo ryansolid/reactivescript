@@ -1,6 +1,6 @@
 [package]
 name = "reactivescript"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 description = "ReactiveScript's compiler (spec/11): parse, check, resolve, and lower through Solid's solidjs-compiler"
 license = "MIT"
@@ -32,11 +32,11 @@ oxc_ast = "0.144"
 oxc_span = "0.144"
 oxc_sourcemap = "8.1"
 oxc_syntax = "0.144"
-napi = { version = "3.12", default-features = false, features = ["napi4"], optional = true }
-napi-derive = { version = "3.6", optional = true }
+napi = { version = "=3.12.1", default-features = false, features = ["napi4"], optional = true }
+napi-derive = { version = "=3.6.3", optional = true }
 
 [build-dependencies]
-napi-build = "2.4"
+napi-build = "=2.4.1"   # held with napi and napi-derive: the WASI build's emnapi setup (build.rs) is written for this set
 
 [profile.release]
 debug = false

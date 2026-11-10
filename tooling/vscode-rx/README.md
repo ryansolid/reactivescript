@@ -21,7 +21,7 @@ artifact of a run of the repository's `editor` workflow, or build one (below),
 then run **Extensions: Install from VSIX…** in the command palette, or
 
 ```sh
-code --install-extension reactivescript-0.0.2.vsix
+code --install-extension reactivescript-0.1.0.vsix
 ```
 
 The project needs a `tsconfig.json` with Solid's JSX (`"jsx": "preserve"`,

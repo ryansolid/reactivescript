@@ -20,5 +20,5 @@ pub mod project;
 pub mod serve;
 pub mod signature;
 pub mod spans;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "node")))]   // the language server's module (wasm32-unknown-unknown, its host reads files); the WASI Node-API build has std::fs
 pub mod wasm;

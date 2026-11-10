@@ -26,6 +26,7 @@ jobs:
           - { os: macos-latest, target: aarch64-apple-darwin, test: true }
           - { os: macos-latest, target: x86_64-apple-darwin, test: false } # cross-built on Apple silicon
           - { os: windows-latest, target: x86_64-pc-windows-msvc, test: true }
+          - { os: ubuntu-latest, target: wasm32-wasip1-threads, test: true } # @reactivescript/compiler-wasm32-wasi: WebContainers, musl, Windows on ARM
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -45,14 +46,25 @@ jobs:
           node-version: 22
       - run: npm ci
       - name: Node-API build
-        run: npx napi build --platform --release --strip --features node --target ${{ matrix.target }} --manifest-path ./Cargo.toml -- --lib
+        # RUSTC: napi-build finds crt1-reactor.o from it for WASI; the rustup proxy's name gives a module that
+        # deadlocks before its threads start (as @solidjs/compiler's workflow notes)
+        run: RUSTC="$(rustup which rustc)" npx napi build --platform --release --strip --features node --target ${{ matrix.target }} --manifest-path ./Cargo.toml -- --lib
       - name: Test
         if: matrix.test
         run: npm test
+        env:
+          NAPI_RS_FORCE_WASI: ${{ matrix.target == 'wasm32-wasip1-threads' && '1' || '' }}
       - uses: actions/upload-artifact@v4
         with:
           name: binding-${{ matrix.target }}
-          path: compiler/*.node
+          path: |
+            compiler/*.node
+            compiler/compiler.wasm32-wasi.wasm
+            compiler/compiler.wasi.cjs
+            compiler/compiler.wasi.d.cts
+            compiler/compiler.wasi-browser.js
+            compiler/wasi-worker.mjs
+            compiler/wasi-worker-browser.mjs
           if-no-files-found: error
 
   # which version is new: on main only, after every platform built

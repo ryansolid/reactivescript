@@ -9,7 +9,7 @@ and tags it:
 | --- | --- | --- | --- |
 | `tooling/rx-language-server` | npm, `@reactivescript/language-server` | trusted publishing (OIDC), no token | `language-server-v<version>` |
 | `tooling/vscode-rx` | VS Marketplace | a Microsoft Entra identity (OIDC), or the secret `VSCE_PAT` | `vscode-v<version>` |
-| `tooling/vscode-rx` | Open VSX (Cursor, VSCodium) | the secret `OVSX_PAT` | (the same) |
+| `tooling/vscode-rx` | Open VSX (Cursor, VSCodium) | trusted publishing (OIDC), or the secret `OVSX_PAT` | (the same) |
 
 Nothing is published until the repository variable `RELEASES` is `on`.
 
@@ -33,7 +33,7 @@ environment `release`. (The repository moved from `ryansolid` to `solidjs` befor
 any publisher was set up; if it moves again, change the owner here.) Every
 later version is published by the workflow, with provenance.
 
-**VS Marketplace.** Create the `reactivescript` publisher
+**VS Marketplace.** Create the `solidjs` publisher (shared with Solid's other extensions)
 (marketplace.visualstudio.com/manage). Then either:
 
 - a token: an Azure DevOps personal access token with **Marketplace › Manage**
@@ -48,11 +48,16 @@ later version is published by the workflow, with provenance.
   repository variables `AZURE_CLIENT_ID` and `AZURE_TENANT_ID`. The workflow
   signs in with `azure/login` and runs `vsce publish --azure-credential`.
 
-**Open VSX.** Sign in at open-vsx.org with GitHub, sign the publisher
-agreement, create a token, run `npx ovsx create-namespace reactivescript -p
-<token>`, and store the token as the secret `OVSX_PAT` on the `release`
-environment. (Open VSX's trusted publishing is server-side work in progress,
-eclipse-openvsx/openvsx#1980; switch when `ovsx` supports it.)
+**Open VSX.** Sign in at open-vsx.org with GitHub, link an Eclipse account
+and sign the publisher agreement (Settings), make an access token, and run
+`npx ovsx create-namespace solidjs -p <token>` once. Then either:
+
+- no token: under **Settings › Trusted publishers**, add GitHub Actions for
+  the `solidjs` namespace: owner `solidjs`, repository `reactivescript`,
+  workflow `editor.yml`, environment `release`; then the repository variable
+  `OVSX_TRUSTED` = `on`. The workflow runs `ovsx publish --trusted-publishing`
+  (ovsx 1.4 and later); or
+- a token: store it as the secret `OVSX_PAT` on the `release` environment.
 
 Finally set the repository variable `RELEASES` to `on`.
 
