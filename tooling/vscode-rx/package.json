@@ -1,8 +1,8 @@
 {
   "name": "reactivescript",
   "displayName": "ReactiveScript",
-  "description": "ReactiveScript (.rx, .d.rx): highlighting, and TypeScript's types, hover, go to definition, completion and errors through the .rx language server, with the compiler's own diagnostics.",
-  "version": "0.1.0",
+  "description": "ReactiveScript (.rx, .d.rx): highlighting, and TypeScript's types, hover, go to definition, completion and errors through the .rx language server, with the compiler's own diagnostics; ```rx blocks highlighted in Markdown.",
+  "version": "0.1.1",
   "publisher": "solidjs",
   "license": "MIT",
   "engines": {
@@ -37,6 +37,16 @@
         "embeddedLanguages": {
           "meta.embedded.block.css": "css"
         }
+      },
+      {
+        "scopeName": "markdown.rx.codeblock",
+        "path": "./syntaxes/rx.markdown.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ],
+        "embeddedLanguages": {
+          "meta.embedded.block.rx": "reactivescript"
+        }
       }
     ],
     "configuration": {
@@ -58,9 +68,11 @@
           "description": "TypeScript's lib folder. Empty: the workspace's node_modules/typescript, else the one VS Code ships."
         }
       }
-    }
+    },
+    "markdown.markdownItPlugins": true
   },
   "dependencies": {
+    "highlight.js": "^11.11.1",
     "vscode-languageclient": "^9.0.1"
   },
   "repository": {
