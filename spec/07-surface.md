@@ -433,11 +433,15 @@ Decl'     ::= "source" Name Type? ("key" Name)? (":=" | "=") Expr
             | "context" Name (":" "source"? Type)? ("=" Expr)?            -- RG-7a; `source`: SOURCE_CONTEXT (RG-7c withdrawn)
             | "provide" Name "=" Expr                                  -- Name: a context
             | "deferred"? Name Type? ("key" Name)? "=" Expr
+            | Pattern "=" Expr                                     -- RG-4b: one equation per name, a projection of Expr
             | "effect" "(" (Expr ("," Expr)*)? ")" Block           -- no inputs: EF-4
             | "fn" Name "(" Params ")" Type? ("=>" Expr | "{" Decl* Expr "}")
             | "action" Name "(" Params ")" Block
-            | "component" Name "(" Name Type? ")" "{" RBlock "}"
+            | "component" Name "(" (Name | ObjPattern) Type? ")" "{" RBlock "}"   -- a pattern projects props (RG-4b)
             | "error" Name ("(" Params ")")? ("=>" Expr)?                -- R-f-1
+Pattern   ::= ObjPattern | "[" (Bind? ",")* Bind? "]"                   -- no rest (`...r`) yet
+ObjPattern ::= "{" (Name (":" Bind | ("=" Expr)?)) ,* "}"
+Bind      ::= (Name | Pattern) ("=" Expr)?                           -- a default applies when the field is `undefined`
 RBlock    ::= Decl* Markup*
 Markup    ::= JSXElement | "{" Expr "}" | Control
 Control   ::= "if" Expr "{" RBlock "}" ("else" "{" RBlock "}")?
@@ -447,7 +451,7 @@ Control   ::= "if" Expr "{" RBlock "}" ("else" "{" RBlock "}")?
 Block     ::= "{" Stmt* "}"
 Stmt      ::= Target ":=" Expr | "guess" Target ":=" Expr      -- Target `use` Name Path: WRITE_TO_NON_SOURCE (O-4)
             | "refresh" Name | "affects" Name | "action" Block
-            | ("let" | "const") Name Type? "=" Expr
+            | ("let" | "const") (Name Type? | Pattern) "=" Expr           -- a pattern: one snapshot local per name, as in JS
             | "if" "(" Expr ")" (Block | Stmt) ("else" (Block | Stmt))?
             | "try" Block ("catch" ("(" Name (":" Classes)? ")")? Block)? ("finally" Block)?
             | "throw" Expr | "return" Expr? | Expr
@@ -542,3 +546,12 @@ Expr      ::= TSExpr with §3's removals and additions
     truth, and a plain `x := v` on an equation stays `WRITE_TO_NON_SOURCE`.
     `source x = e` is for state that is also written as truth. A prop is
     guessed through the child's own equation of it, never `props.x` (O-4).
+20. **Destructuring keeps each side's meaning** (ruled 2026-11-11):
+    `{ a, b } = e` in a component or module is one equation per name, each a
+    projection of `e` that keeps updating (RG-4b), and `component C({ a, b })`
+    is the same over `props`; `let { a, b } = e` in imperative code is one
+    snapshot local per name, as in JS. So bare `x = e` is always an equation
+    and `let x = e` always a snapshot, and only `:=` and `guess` mutate: a
+    destructured name is an equation, so `a := v` is `WRITE_TO_NON_SOURCE`.
+    Defaults apply on `undefined`, as in JS. Rest patterns (`...r`) are not
+    yet supported: they need `omit` on a live value (06).
