@@ -1,0 +1,6 @@
+# reactivescript.dev on Cloudflare Pages: a static page, no build step.
+# Deploy: npx wrangler pages deploy (from site/), or connect the repo in the
+# Cloudflare dashboard with root directory `site`, no build command, output `.`.
+name = "reactivescript"
+pages_build_output_dir = "."
+compatibility_date = "2026-11-01"
