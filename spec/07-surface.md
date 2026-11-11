@@ -535,3 +535,10 @@ Expr      ::= TSExpr with §3's removals and additions
     keyword need not. `source` was weighed against `state`
     and `signal` the same day and kept (decision 2): `signal` reads as atomic
     beside stores, and an equation is state too.
+19. **A guess may sit over an equation** (ruled 2026-11-11): `x = e` then
+    `guess x := v` in an action, as Solid's `createOptimistic(fn)`, whose
+    setter only guesses (06 ST-5c). Requiring `source x = e` to guess was
+    stricter than Solid and guarded nothing: a guess is not a write of the
+    truth, and a plain `x := v` on an equation stays `WRITE_TO_NON_SOURCE`.
+    `source x = e` is for state that is also written as truth. A prop is
+    guessed through the child's own equation of it, never `props.x` (O-4).

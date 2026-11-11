@@ -58,7 +58,7 @@ Expr      ::= TypeScript's, without assignment, `this`, `function`, `new` on rea
 - A failure inside the body must be caught there: `try { … } catch (e) { … }` (R-f-6, AC-7). The catch runs inside the
   same change: its writes land with the body's end. A rejected body commits its plain writes and reverts its guesses
   (AC-1, DV-2).
-- `guess x := e`: a guess on a source with a question (`source x = …`), shown now, kept until the action's change
+- `guess x := e`: a guess on an equation (`x = …`) or a source with a question (`source x = …`), shown now, kept until the action's change
   commits or `x`'s own answer differs (AC-3, H-11). Guesses on one source hold together.
 - `refresh x`: asks `x` again, quietly (no `pending?`; the old value stays up until the new one lands). Inside an
   action, the answer lands with the action's commit (AC-4).
