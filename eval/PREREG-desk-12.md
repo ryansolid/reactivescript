@@ -1,6 +1,6 @@
 # Round 12: round 11 again with five arms and twice the frontier runs
 
-Pre-registration, committed before any round 12 agent runs. Status: DRAFT.
+Pre-registration, committed before any round 12 agent runs. Status: FROZEN (Ryan, 2026-11-11 "Go").
 
 ## Why
 
