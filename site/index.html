@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ReactiveScript</title>
+<meta name="description" content="A small language for reactive UIs: Solid 2.0's reactive semantics as language semantics, checked before your code runs. Compiles to plain Solid 2.0.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<meta property="og:title" content="ReactiveScript">
+<meta property="og:description" content="Solid 2.0's reactive semantics as a language, checked before your code runs.">
+<meta property="og:url" content="https://reactivescript.dev/">
+<meta name="theme-color" content="#12233D">
+<style>
+  :root {
+    --bg: #0c1829;
+    --tile: #12233D;
+    --panel: #15294a;
+    --line: #23406b;
+    --text: #e8eef7;
+    --muted: #9fb2cc;
+    --blue: #5B9BE6;
+    --amber: #F0B44C;
+    --red: #ff8a80;
+    --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html { background: var(--bg); }
+  body { margin: 0; color: var(--text); font: 17px/1.6 var(--sans); background: var(--bg); }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  main { max-width: 880px; margin: 0 auto; padding: 0 20px 64px; }
+  header.hero { padding: 72px 0 32px; display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+  header.hero > div { flex: 1 1 320px; }
+  header.hero img { width: 112px; height: 112px; flex: none; }
+  h1 { font-size: clamp(36px, 6vw, 52px); line-height: 1.1; margin: 0 0 10px; letter-spacing: -0.02em; }
+  .tagline { font-size: clamp(18px, 2.6vw, 22px); color: var(--muted); margin: 0; max-width: 34em; }
+  .tagline em { color: var(--text); font-style: normal; }
+  .cta { display: flex; gap: 12px; flex-wrap: wrap; margin: 28px 0 8px; }
+  .btn { display: inline-block; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); color: var(--text); font-weight: 600; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #0c1829; }
+  .btn:hover { text-decoration: none; border-color: var(--blue); }
+  .status { font-size: 14px; color: var(--muted); margin: 14px 0 0; }
+  .status b { color: var(--amber); font-weight: 600; }
+  h2 { font-size: 26px; margin: 56px 0 12px; letter-spacing: -0.01em; }
+  h2::before { content: ""; display: block; width: 40px; height: 4px; border-radius: 2px; margin-bottom: 14px;
+    background: linear-gradient(var(--blue) 0 50%, var(--amber) 50% 100%); }
+  p { margin: 0 0 14px; }
+  code { font-family: var(--mono); font-variant-ligatures: none; font-size: 0.9em; background: var(--panel); padding: 1px 6px; border-radius: 5px; }
+  pre { font: 14px/1.55 var(--mono); font-variant-ligatures: none; background: var(--tile); border: 1px solid var(--line); border-radius: 12px;
+    padding: 16px 18px; margin: 0 0 14px; overflow-x: auto; }
+  pre code { background: none; padding: 0; font-size: inherit; }
+  pre.err { border-color: #5a2a33; background: #1d1626; color: var(--red); white-space: pre-wrap; }
+  .fname { display: block; font: 12px var(--mono); color: var(--muted); margin: 0 0 6px; }
+  .k { color: var(--blue); } .w { color: var(--amber); } .s { color: #a8d59b; } .c { color: #6f86a6; } .t { color: #c9a7f2; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 8px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .card h3 { margin: 0 0 6px; font-size: 17px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  ul.links { list-style: none; padding: 0; margin: 0; }
+  ul.links li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  ul.links li span { color: var(--muted); font-size: 15px; }
+  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } header.hero { padding-top: 40px; } }
+  footer { max-width: 880px; margin: 0 auto; padding: 24px 20px 48px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <img src="logo.svg" alt="ReactiveScript logo: r = x">
+    <div>
+      <h1>ReactiveScript</h1>
+      <p class="tagline">A small language for reactive UIs. It carries <em>Solid 2.0's reactive semantics</em> as language semantics, and <em>checks them before your code runs</em>.</p>
+    </div>
+  </header>
+
+  <div class="cta">
+    <a class="btn primary" href="#install">Get started</a>
+    <a class="btn" href="https://github.com/solidjs/reactivescript/blob/main/guide/language.md">Read the guide</a>
+    <a class="btn" href="https://github.com/solidjs/reactivescript">GitHub</a>
+  </div>
+  <p class="status"><b>Experimental · 0.1.</b> Files are <code>.rx</code> and compile to plain Solid 2.0. Releases follow Solid 2.0's release candidates, so expect breaking changes until Solid 2.0 is final.</p>
+
+  <h2>Mistakes of shape become compile errors</h2>
+  <p>In Solid you already write UIs as derivations over signals. Most of what goes wrong is a shape mistake: writing to something that should be derived, writing during a computation, reading async data with no loading or error boundary above it. ReactiveScript makes those things the compiler refuses, the way Rust refuses a borrow.</p>
+  <p>Three kinds of names do the work. A <code>source</code> is state, and only a source is written, with <code>:=</code>. An <b>equation</b>, <code>y = x * 2</code>, is always true and recomputes when what it reads changes. Writes happen only in an event handler or an <code>action</code>.</p>
+<pre><span class="fname">counter.rx</span><code><span class="k">export default component</span> Counter() {
+  <span class="w">source</span> count := <span class="t">0</span>
+  double = count * <span class="t">2</span>
+
+  &lt;button onClick={() =&gt; { count := count + <span class="t">1</span> }}&gt;{count} × 2 = {double}&lt;/button&gt;
+}</code></pre>
+  <p>Write to the equation instead, <code>double := 4</code>, and it does not compile:</p>
+<pre class="err"><code>counter.rx:5: error WRITE_TO_NON_SOURCE [W-1] double is an equation: only sources are written (W-1)</code></pre>
+
+  <h2>Async is just <code>await</code></h2>
+  <p>Put an <code>await</code> in an equation. The compiler tracks that the value can be pending and can fail, and asks you to say what to show in both cases.</p>
+<pre><span class="fname">profile.rx</span><code><span class="k">import pure</span> { fetchUser } <span class="k">from</span> <span class="s">"./api"</span>
+
+<span class="k">export default component</span> Profile() {
+  <span class="w">source</span> id := <span class="t">1</span>
+  user = <span class="k">await</span> fetchUser(id)              <span class="c">// re-asked whenever `id` changes</span>
+
+  &lt;section&gt;
+    &lt;button onClick={() =&gt; { id := id + <span class="t">1</span> }}&gt;Next&lt;/button&gt;
+    {<span class="k">errored fallback</span>(e) { &lt;p&gt;Couldn't load: {e.message}&lt;/p&gt; } {
+      {<span class="k">loading fallback</span> { &lt;p&gt;Loading…&lt;/p&gt; } {
+        &lt;h1&gt;{user.name}&lt;/h1&gt;
+      }}
+    }}
+  &lt;/section&gt;
+}</code></pre>
+  <p>Leave out the <code>errored</code> boundary and the checker says what's missing and how to fix it:</p>
+<pre class="err"><code>profile.rx:10: error UNHANDLED_FAILURE [R-f-5] a reader of user.name (in &lt;Profile&gt;) can fail with Error and no catch or errored boundary above it discharges Error — wrap it in `errored fallback(e) { … } { … }`, or catch it: `… catch (e) => …`</code></pre>
+
+  <h2>Why it's built this way</h2>
+  <div class="grid">
+    <div class="card"><h3>Static checks only</h3><p>A <code>.rx</code> program compiles to ordinary Solid 2.0 code. It adds nothing at run time beyond what Solid does.</p></div>
+    <div class="card"><h3>Easy for an AI to write</h3><p>The rules are small and explicit. Every error names the rule it enforces and usually the fix, so an agent can correct itself.</p></div>
+    <div class="card"><h3>TypeScript underneath</h3><p>Expressions and JSX are TypeScript's, and types are checked by TypeScript in the editor and in CI.</p></div>
+    <div class="card"><h3>The spec is the product</h3><p>Every behaviour is a numbered rule or an executable scenario, checked against Solid itself.</p></div>
+  </div>
+
+  <h2 id="install">Install</h2>
+  <p><b>In a Solid app (Vite).</b> Install the compiler and the runtime beside Solid 2.0. Solid's Vite plugin (3.0.0-next.57 or later) finds the compiler and compiles <code>.rx</code> on its own, so <code>vite.config.js</code> stays as it is.</p>
+<pre><code>npm i solid-js@next @solidjs/web@next @solidjs/signals@next @reactivescript/runtime
+npm i -D vite @solidjs/vite-plugin @reactivescript/compiler</code></pre>
+<pre><span class="fname">src/main.js</span><code><span class="k">import</span> { createApp } <span class="k">from</span> <span class="s">"@reactivescript/runtime"</span>;
+<span class="k">import</span> main <span class="k">from</span> <span class="s">"./app.rx"</span>;
+
+<span class="k">const</span> app = createApp({ root: document.getElementById(<span class="s">"app"</span>) });
+app.mount(main(app));</code></pre>
+  <p><b>In your editor.</b> The ReactiveScript extension brings highlighting, the checker's diagnostics, and TypeScript's hover, completion, rename and type errors on <code>.rx</code>. Get it from the <a href="https://marketplace.visualstudio.com/items?itemName=solidjs.reactivescript">VS Code Marketplace</a>, or from <a href="https://open-vsx.org/extension/solidjs/reactivescript">Open VSX</a> for Cursor and VSCodium. Other editors can run <code>npx @reactivescript/language-server --stdio</code>.</p>
+
+  <h2>Learn more</h2>
+  <ul class="links">
+    <li><a href="https://github.com/solidjs/reactivescript/blob/main/guide/language.md">The language on one page</a> <span>: the whole working language</span></li>
+    <li><a href="https://github.com/solidjs/reactivescript/blob/main/guide/async.md">Talking to a server</a> <span>: async, guesses and what waits</span></li>
+    <li><a href="https://github.com/solidjs/reactivescript/blob/main/guide/diagnostics.md">Diagnostics</a> <span>: every error code, why, and the fix</span></li>
+    <li><a href="https://github.com/solidjs/reactivescript/tree/main/spec">The spec</a> <span>: the language as numbered rules</span></li>
+    <li><a href="https://github.com/solidjs/reactivescript/tree/main/examples">Examples</a> <span>: real apps in <code>.rx</code></span></li>
+    <li><a href="https://www.npmjs.com/package/@reactivescript/compiler">@reactivescript/compiler on npm</a> <span>: the Rust compiler, with a Vite front end</span></li>
+  </ul>
+</main>
+<footer>
+  ReactiveScript is MIT licensed and part of the <a href="https://github.com/solidjs">Solid</a> project. Built on <a href="https://github.com/solidjs/solid">Solid 2.0</a>.
+</footer>
+</body>
+</html>
