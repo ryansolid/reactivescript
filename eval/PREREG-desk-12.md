@@ -35,7 +35,7 @@ The guide follows all four. `rxc` is built from the commit that holds this file 
 
 **Guide addition** (principle only, no task code): `async.md` says how to guess a prop. You guess over the child's own equation of it, never `props.x`.
 
-**Solid:** `solid-next` at `next`, at a commit holding the fix for both cases of solidjs/solid#4762, built from source. TBD: 0a11dbb8 fixes the first case; the second, which is two guesses with one landing after a switch, is reported on the issue.
+**Solid:** `solid-next` at `next` bcef1041, built from source. It holds the fixes for both cases of solidjs/solid#4762: cf32a50b (a keyed projection of a projection losing a row on a switch) and #4769 (two guesses, one landing after the switch, now hold together as D-33 says).
 
 **Harness:** subagents, as in round 11.
 
@@ -67,6 +67,8 @@ The direction is the claim being tested. A null or reversed result is reported a
 ## Gate before freezing
 
 Round 11's nine .rx desks are regraded on the pinned Solid, with round 11's `rxc`. Any desk that gains a hole is traced. A Solid regression is filed upstream, then fixed or recorded, before the round starts.
+
+**Gate result** (2026-11-11, on `next` bcef1041's source, round 11's `rxc`): 26 defects across the nine desks, against 29 in round 11. Only rx-2 changed, from 5 to 2: its three fuzz holes (seeds 1, 3, 18, solidjs/solid#4762) are gone, and its two overlap failures, which are its own (a pending source in a component that remounts), remain. The other eight desks grade exactly as in round 11. No desk gained a hole, so nothing needed tracing.
 
 ## Cost
 
