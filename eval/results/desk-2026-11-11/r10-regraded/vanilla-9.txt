@@ -1,0 +1,15 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ rows: a detail assign and a newer row assign on one issue: the newer shows while the older answers
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+29/38 passed
+== fuzz
+desk10-vanilla-9: 0/20 seeds found a hole

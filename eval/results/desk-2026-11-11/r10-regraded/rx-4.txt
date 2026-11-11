@@ -1,0 +1,9 @@
+== hidden
+✗ base: help: selecting after a failure shows loading…, not the old failure
+76/77 passed
+== overlap
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ a label added on one issue does not show on another
+36/38 passed
+== fuzz
+desk10-rx-4: 0/20 seeds found a hole

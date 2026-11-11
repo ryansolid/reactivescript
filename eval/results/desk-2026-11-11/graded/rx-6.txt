@@ -1,0 +1,12 @@
+== hidden
+✗ base: selecting after not found shows loading, not the old message
+✗ related help landing out of order shows the selected issue's
+75/77 passed
+== overlap
+38/38 passed
+== fuzz
+desk11-rx-6: 2/20 seeds found a hole
+  seed 11 step 34: row assignee: #4 shows dana, server ann
+    tab help ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; focus ; tab help ; tab issues ; land fetchIssues:open ; row-assign 1 ; land assign:3,guest ; filter closed ; user ann ; row-assign 0 ; focus ; land fetchIssues:open ; land assign:1,ann ; select #4 ; close ; land fetchIssues:closed ; close ; land fetchLabels:4 ; fail fetchComments:4 ; row-assign 0 ; close ; land fetchIssue:
+  seed 18 step 32: row assignee: #4 shows dana, server guest
+    land fetchIssues:open ; select #4 ; row-close 0 ; land fetchLabels:4 ; assign ; row-close 0 ; row-close 0 ; assign ; rename Delta ; fail closeIssue:3 ; fail closeIssue:4 ; land fetchComments:4 ; land renameIssue:4,Delta ; filter closed ; land fetchIssues:closed ; land closeIssue:1 ; close ; land closeIssue:4 ; land fetchIssues:closed ; rename Alpha ; land fetchIssues:open ; land renameIssue:4,
