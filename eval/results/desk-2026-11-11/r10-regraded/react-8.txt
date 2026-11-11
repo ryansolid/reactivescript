@@ -1,0 +1,26 @@
+== hidden
+✗ rows: row errors and detail errors leave each other alone
+76/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: a list that loads while a close is out keeps the row out
+✗ base: comments that load while a post is out keep the post
+✗ labels that load while an add is out keep the add
+✗ open issues that load while a close is out keep it off the count
+✗ rows: a detail assign and a newer row assign on one issue: the newer shows while the older answers
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+✗ rows: open issues that load while a row close is out keep the row out
+27/38 passed
+== fuzz
+desk10-react-8: 4/20 seeds found a hole
+  seed 2 step 15: row assignee: #2 shows guest, server eve
+    filter closed ; land fetchIssues:closed ; row-assign 0 ; select #2 ; land fetchComments:2 ; assign ; rename Delta ; fail renameIssue:2,Delta ; fail fetchIssues:open ; close ; focus ; land fetchLabels:2 ; fail fetchIssue:2 ; land closeIssue:2 ; fail assign:2,guest
+  seed 4 step 24: closed row shown: #1 is closed on the server
+    filter closed ; land fetchIssues:open ; user guest ; tab help ; tab issues ; focus ; tab help ; tab issues ; focus ; filter closed ; land fetchIssues:open ; tab help ; fail fetchIssues:closed ; tab issues ; focus ; land fetchIssues:open ; row-assign 1 ; fail assign:3,guest ; row-close 0 ; filter closed ; filter open ; land fetchIssues:closed ; land fetchIssues:open ; land closeIssue:1
+  seed 10 step 17: detail title: "#2 Old buglong goneassign to guestNew title RenamecloseComme", server "Bravo"
+    focus ; focus ; filter closed ; fail fetchIssues:open ; focus ; land fetchIssues:closed ; row-assign 0 ; land assign:2,guest ; select #2 ; close ; rename Bravo ; fail fetchIssue:2 ; select #2 ; fail fetchComments:2 ; land fetchIssue:2 ; row-assign 0 ; land renameIssue:2,Bravo
+  seed 15 step 39: at rest: comments: #4 shows [], server [guest: fixed?]
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; row-assign 0 ; fail assign:1,guest ; row-assign 0 ; focus ; row-assign 0 ; select #3 ; land fetchIssue:3 ; close ; row-assign 0 ; row-close 0 ; land assign:1,guest ; row-assign 0 ; select #4 ; land fetchComments:3 ; assign ; add-label ui ; land assign:4,guest ; land fetchLabels:3 ; assign ; land assign:4,guest ; assign ; rena

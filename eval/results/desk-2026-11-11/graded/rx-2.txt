@@ -1,0 +1,14 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: comments that load while a post is out keep the post
+✗ labels that load while an add is out keep the add
+36/38 passed
+== fuzz
+desk11-rx-2: 3/20 seeds found a hole
+  seed 1 step 24: open row in closed list: #4
+    user bob ; focus ; land fetchIssues:open ; row-assign 2 ; row-close 0 ; row-assign 0 ; select #3 ; rename Alpha ; land assign:3,bob ; rename Alpha ; row-assign 1 ; land fetchLabels:3 ; focus ; land fetchComments:3 ; fail closeIssue:1 ; land renameIssue:3,Alpha ; fail assign:4,bob ; post me too ; add-label ui ; land addComment:3,bob,me too ; row-close 2 ; filter closed ; land fetchIssue:3 ; lan
+  seed 3 step 37: open row in closed list: #1
+    user bob ; land fetchIssues:open ; row-close 0 ; fail closeIssue:1 ; select #4 ; add-label p1 ; land fetchLabels:4 ; row-assign 2 ; select #4 ; land assign:4,bob ; add-label bug ; fail addLabel:4,bug ; land fetchIssue:4 ; row-close 2 ; row-close 0 ; land closeIssue:4 ; row-assign 0 ; remove-label 0 ; close ; row-close 0 ; filter closed ; add-label p1 ; assign ; land closeIssue:4 ; fail removeL
+  seed 18 step 16: open row in closed list: #3
+    land fetchIssues:open ; select #4 ; row-close 0 ; land fetchLabels:4 ; assign ; row-close 0 ; row-close 0 ; assign ; rename Delta ; fail closeIssue:3 ; fail closeIssue:4 ; land fetchComments:4 ; land renameIssue:4,Delta ; filter closed ; land fetchIssues:closed ; land closeIssue:1

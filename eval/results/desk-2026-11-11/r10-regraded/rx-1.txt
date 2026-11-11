@@ -1,0 +1,7 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a detail that loads while a rename is out keeps the new title
+37/38 passed
+== fuzz
+desk10-rx-1: 0/20 seeds found a hole

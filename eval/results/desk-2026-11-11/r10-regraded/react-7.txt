@@ -1,0 +1,28 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: a list that loads while a close is out keeps the row out
+✗ base: two closes at once: a declined one does not undo the other
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ open issues that load while a close is out keep it off the count
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+✗ rows: open issues that load while a row close is out keep the row out
+26/38 passed
+== fuzz
+desk10-react-7: 5/20 seeds found a hole
+  seed 3 step 40: at rest: labels: #4 shows [docs], server [docs,ui]
+    user bob ; land fetchIssues:open ; row-close 0 ; fail closeIssue:1 ; select #4 ; add-label p1 ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchLabels:4 ; row-assign 2 ; select #4 ; land assign:4,bob ; add-label bug ; fail addLabel:4,bug ; land fetchIssue:4 ; row-close 2 ; row-close 0 ; land closeIssue:4 ; row-assign 0 ; remove-label 0 ; close ; row-close 0 ; filter closed ;
+  seed 4 step 24: closed row shown: #1 is closed on the server
+    filter closed ; land fetchIssues:open ; user guest ; tab help ; tab issues ; focus ; tab help ; tab issues ; focus ; filter closed ; land fetchIssues:open ; tab help ; fail fetchIssues:closed ; tab issues ; focus ; land fetchIssues:open ; row-assign 1 ; fail assign:3,guest ; row-close 0 ; filter closed ; filter open ; land fetchIssues:closed ; land fetchIssues:open ; land closeIssue:1
+  seed 12 step 34: row assignee: #4 shows dana, server guest
+    land fetchIssues:open ; focus ; select #1 ; row-close 1 ; select #4 ; land closeIssue:3 ; row-assign 1 ; rename Alpha ; close ; rename Alpha ; land fetchIssue:1 ; land fetchIssue:4 ; row-close 0 ; rename Alpha ; land search:Login fails ; land renameIssue:4,Alpha ; land fetchComments:1 ; land fetchComments:4 ; filter closed ; land closeIssue:1 ; fail assign:4,guest ; assign ; land search:Typo i
+  seed 15 step 39: two views: row "#3 Crash on save", detail "#3 Deltastack trace attachedassign to gu"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; row-assign 0 ; fail assign:1,guest ; row-assign 0 ; focus ; row-assign 0 ; select #3 ; land fetchLabels:3 ; close ; row-close 0 ; row-close 0 ; land assign:1,guest ; add-label ui ; assign ; rename Alpha ; remove-label 0 ; post fixed? ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land closeIssue:4 ; land fetchIssu
+  seed 18 step 13: row title: #4 shows "Typo in footer", server "Delta"
+    land fetchIssues:open ; select #4 ; row-close 0 ; land fetchLabels:4 ; assign ; row-close 0 ; row-close 0 ; assign ; rename Delta ; fail closeIssue:3 ; fail closeIssue:4 ; land fetchComments:4 ; land renameIssue:4,Delta

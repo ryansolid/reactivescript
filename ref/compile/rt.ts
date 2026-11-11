@@ -187,7 +187,7 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
         const [store, setStore] = (createOptimisticStore as any)((draft: any) => { const r = fn(draft); if (r instanceof Flight || r instanceof Promise) return (async () => assignDraft(draft, r instanceof Flight ? await r.first : await r))(); assignDraft(draft, r); }, key ? [] : {}, key ? { key } : undefined);
         const get = () => store; storeAccs.add(get);
         const plain = () => { throw new Error("a plain write to an optimistic store is not lowered yet"); };
-        return [get, { set: plain, path: plain, guess: (v, keys = []) => setStore((d: any) => { if (keys.length === 0) { assignDraft(d, typeof v === "function" ? (v as (x: unknown) => unknown)(d) : v); return; } let o = d; for (const k of keys.slice(0, -1)) o = o[k]; const last = keys[keys.length - 1]; o[last] = typeof v === "function" ? (v as (x: unknown) => unknown)(o[last]) : v; }) }];
+        return [get, { set: plain, path: plain, guess: (v, keys = []) => setStore((d: any) => { if (keys.length === 0) return typeof v === "function" ? (v as (x: unknown) => unknown)(d) : v; /* a whole guess is the setter\'s return, which Solid diffs shallowly against the view as guesses */ let o = d; for (const k of keys.slice(0, -1)) o = o[k]; const last = keys[keys.length - 1]; o[last] = typeof v === "function" ? (v as (x: unknown) => unknown)(o[last]) : v; }) }];
       }
       if (mode.optimistic && mode.derived) {                             // AC-3 over an equation: createOptimistic(fn), whose setter only guesses
         const plain = () => { throw new Error("a plain write to an equation"); };
