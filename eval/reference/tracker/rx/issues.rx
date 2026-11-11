@@ -24,7 +24,7 @@ export source selected: number | null := null
 // The server's message from the last declined assignment ("" when none). A
 // question with a constant truth, so a new assignment can clear it as a guess
 // the moment it starts (ST-5a); a plain write would be held with the action.
-export source assignError: string = ""
+export source assignError: string := ""
 
 // Only asked while something is selected (E-11: the null arm opens no flight).
 export detail = selected == null ? null : found(await fetchIssue(selected), selected)
@@ -42,7 +42,7 @@ export action select(id: number) {
 }
 
 export action assignToMe(id: number, user: string) {
-  guess assignError := ""
+  onFlush(() => { assignError := "" })
   guess issues := list => withAssignee(list, id, user)
   try {
     await assign(id, user)

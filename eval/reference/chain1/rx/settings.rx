@@ -13,11 +13,11 @@ fn validName(name: string): string =>
 
 export component SettingsPage() {
   source settings: Settings = await loadSettings()
-  source saveError: string = ""
+  source saveError: string := ""
 
   action save(next: Settings) {
     guess settings := next
-    guess saveError := ""
+    onFlush(() => { saveError := "" })
     affects settings
     try {
       let saved = await saveSettings(next)

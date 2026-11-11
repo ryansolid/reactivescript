@@ -11,13 +11,13 @@ export default component App() {
   source filter: string := "open"
   source selected: number | null := null
   source issues key id = await fetchIssues(filter)
-  source assignError: string = ""
-  source postError: string = ""
+  source assignError: string := ""
+  source postError: string := ""
   source commentInput: string := ""
   source comments = selected == null ? [] : await fetchComments(selected)
 
   action postComment(id: number, author: string, text: string) {
-    guess postError := ""
+    onFlush(() => { postError := "" })
     try {
       guess comments := [...comments, { author: author, text: `${text} (sending…)` }]
       await addComment(id, author, text)
@@ -29,7 +29,7 @@ export default component App() {
 
 
   action assignTo(id: number, who: string) {
-    guess assignError := ""
+    onFlush(() => { assignError := "" })
     try {
       let i = indexOf(issues, t => t.id == id)
       guess issues[i].assignee := who

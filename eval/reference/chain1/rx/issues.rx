@@ -16,12 +16,12 @@ export component IssuesPage() {
   source issues key id = await fetchIssues(filter)
   source detail = selected == null ? null : found(await fetchIssue(selected), selected)
   source titleInput: string := ""
-  source assignError: string = ""
-  source renameError: string = ""
-  source closeError: string = ""
+  source assignError: string := ""
+  source renameError: string := ""
+  source closeError: string := ""
 
   action assignTo(id: number, who: string) {
-    guess assignError := ""
+    onFlush(() => { assignError := "" })
     try {
       let i = issues.findIndex(t => t.id == id)
       guess issues[i].assignee := who
@@ -33,7 +33,7 @@ export component IssuesPage() {
   }
 
   action renameTo(id: number, title: string) {
-    guess renameError := ""
+    onFlush(() => { renameError := "" })
     try {
       let i = issues.findIndex(t => t.id == id)
       if (i >= 0) {
@@ -51,7 +51,7 @@ export component IssuesPage() {
   }
 
   action closeOne(id: number) {
-    guess closeError := ""
+    onFlush(() => { closeError := "" })
     try {
       guess issues := issues.filter(t => t.id != id)
       await closeIssue(id)

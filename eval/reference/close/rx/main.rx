@@ -11,10 +11,10 @@ export default component App() {
   source filter: string := "open"
   source selected: number | null := null
   source issues key id = await fetchIssues(filter)
-  source assignError: string = ""
-  source closeError: string = ""
+  source assignError: string := ""
+  source closeError: string := ""
   action closeOne(id: number) {
-    guess closeError := ""
+    onFlush(() => { closeError := "" })
     try {
       guess issues := keep(issues, t => t.id != id)
       await closeIssue(id)
@@ -25,7 +25,7 @@ export default component App() {
   }
 
   action assignTo(id: number, who: string) {
-    guess assignError := ""
+    onFlush(() => { assignError := "" })
     try {
       let i = indexOf(issues, t => t.id == id)
       guess issues[i].assignee := who

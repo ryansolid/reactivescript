@@ -11,13 +11,13 @@ export default component App() {
   source filter: string := "open"
   source selected: number | null := null
   source issues key id = await fetchIssues(filter)
-  source assignError: string = ""
-  source renameError: string = ""
+  source assignError: string := ""
+  source renameError: string := ""
   source titleInput: string := ""
   source detail = selected == null ? null : found(await fetchIssue(selected), selected)
 
   action renameTo(id: number, title: string) {
-    guess renameError := ""
+    onFlush(() => { renameError := "" })
     try {
       let i = indexOf(issues, t => t.id == id)
       if (i >= 0) {
@@ -35,7 +35,7 @@ export default component App() {
   }
 
   action assignTo(id: number, who: string) {
-    guess assignError := ""
+    onFlush(() => { assignError := "" })
     try {
       let i = indexOf(issues, t => t.id == id)
       guess issues[i].assignee := who

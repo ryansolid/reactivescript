@@ -8,14 +8,14 @@ export component Comments(props: { id: number; user: string }) {
   source comments = await fetchComments(props.id)
   source sending: { id: number; author: string; text: string }[] = []
   shownSending = sending.filter(s => s.id == props.id)
-  source postError: string | null = null
+  source postError: string | null := null
   source commentInput: string := ""
 
   // a post error belongs to the issue it was made on: selecting another clears it
   effect (props.id) { postError := null }
 
   action postComment(id: number, author: string, text: string) {
-    guess postError := null
+    onFlush(() => { postError := null })
     try {
       guess sending := [...sending, { id: id, author: author, text: text }]
       await addComment(id, author, text)

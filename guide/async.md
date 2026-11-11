@@ -61,11 +61,11 @@ forecast = city == "" ? null : city.length < 3 ? throw TooShort(city) : await fe
 
 ```rx
 export source profile: Profile = await loadProfile()   // a source with a question: it can take a guess
-export source saveError: string = ""
+export source saveError: string := ""
 
 export action save(next: Profile) {
   guess profile := next        // shows now; reverts by itself if the save fails
-  guess saveError := ""        // the old error goes now
+  onFlush(() => { saveError := "" })   // the old error goes now, in its own instant (EF-8)
   affects profile                   // `pending? profile` is true until the save ends
   try {
     let answer = await saveProfile(next)

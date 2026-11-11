@@ -25,18 +25,18 @@ export component IssuesPage(props: { onOpenCount: (n: number) => void; onOpenHel
   source issues key id = await fetchIssues(filter)
   source detail = selected == null ? null : found(await fetchIssue(selected), selected)
   source titleInput: string := ""
-  source assignError: string = ""
-  source renameError: string = ""
-  source closeError: string = ""
+  source assignError: string := ""
+  source renameError: string := ""
+  source closeError: string := ""
   // the newest row action's failure; row actions and the detail's leave each other's errors alone
-  source rowError: string = ""
+  source rowError: string := ""
 
 
   action assignTo(id: number, who: string, fromRow: boolean) {
     if (fromRow) {
-      guess rowError := ""
+      onFlush(() => { rowError := "" })
     } else {
-      guess assignError := ""
+      onFlush(() => { assignError := "" })
     }
     try {
       let i = issues.findIndex(t => t.id == id)
@@ -53,7 +53,7 @@ export component IssuesPage(props: { onOpenCount: (n: number) => void; onOpenHel
   }
 
   action renameTo(id: number, title: string) {
-    guess renameError := ""
+    onFlush(() => { renameError := "" })
     try {
       let i = issues.findIndex(t => t.id == id)
       if (i >= 0) {
@@ -72,9 +72,9 @@ export component IssuesPage(props: { onOpenCount: (n: number) => void; onOpenHel
 
   action closeOne(id: number, fromRow: boolean) {
     if (fromRow) {
-      guess rowError := ""
+      onFlush(() => { rowError := "" })
     } else {
-      guess closeError := ""
+      onFlush(() => { closeError := "" })
     }
     try {
       guess issues := issues.filter(t => t.id != id)
