@@ -24,7 +24,7 @@ runtime check.
 
 | constraint | rules | enforcer |
 | --- | --- | --- |
-| no write, statement or `io` call in reactive scope; `optimistic` only in an action; a draft writes only `d` | W-1, W-2, IO-2, AC-3, ST-3a | grammar: no position exists (bin U) |
+| no write, statement or `io` call in reactive scope; `guess` only in an action; a draft writes only `d` | W-1, W-2, IO-2, AC-3, ST-3a | grammar: no position exists (bin U) |
 | `io` rises and never falls; `fn` is pure, `action` is `io`; `pure` only at the JS boundary | R-io-1..4 | row inference in the checker |
 | `pending` enters only through `await`; `lane` only through probes; rows flow through equations and across modules | R-1, R-10, R-13, R-14 | row inference |
 | no instantaneous cycle | C-1 | the static input graph (CN-3) |
@@ -79,7 +79,7 @@ runtime check.
   first load. A probe waits like a read (R-9). Only the first load is
   checked: an answer that lands after the first paint is a transition
   (H-2), legal anywhere. Whether a later hold shows on screen is the
-  affordances' business (`pending?`, `latest`, an `optimistic` guess; a
+  affordances' business (`pending?`, `latest`, a `guess` guess; a
   `loading` region is an escape, not an affordance), and a hold that shows
   none is Solid's run-time `SILENT_HOLD` report; the static form stays
   advice (99, the advisory rows). With SSR the held mount stays correct

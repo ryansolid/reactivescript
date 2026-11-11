@@ -12,16 +12,16 @@ export component Labels(props: { id: number }) {
     ...labels.filter(l => !removing.some(r => r.id == props.id && r.label == l)),
     ...adding.filter(a => a.id == props.id).map(a => a.label),
   ]
-  source labelError: string = ""
+  source labelError: string := ""
   source labelInput: string := ""
 
   // a label error belongs to the issue it was made on: selecting another clears it
   effect (props.id) { labelError := "" }
 
   action add(id: number, label: string) {
-    optimistic labelError := ""
+    onFlush(() => { labelError := "" })
     try {
-      optimistic adding := [...adding, { id: id, label: label }]
+      guess adding := [...adding, { id: id, label: label }]
       await addLabel(id, label)
       refresh labels
     } catch (e) {
@@ -30,9 +30,9 @@ export component Labels(props: { id: number }) {
   }
 
   action remove(id: number, label: string) {
-    optimistic labelError := ""
+    onFlush(() => { labelError := "" })
     try {
-      optimistic removing := [...removing, { id: id, label: label }]
+      guess removing := [...removing, { id: id, label: label }]
       await removeLabel(id, label)
       refresh labels
     } catch (e) {

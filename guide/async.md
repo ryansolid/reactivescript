@@ -61,11 +61,11 @@ forecast = city == "" ? null : city.length < 3 ? throw TooShort(city) : await fe
 
 ```rx
 export source profile: Profile = await loadProfile()   // a source with a question: it can take a guess
-export source saveError: string = ""
+export source saveError: string := ""
 
 export action save(next: Profile) {
-  optimistic profile := next        // shows now; reverts by itself if the save fails
-  optimistic saveError := ""        // the old error goes now
+  guess profile := next        // shows now; reverts by itself if the save fails
+  onFlush(() => { saveError := "" })   // the old error goes now, in its own instant (EF-8)
   affects profile                   // `pending? profile` is true until the save ends
   try {
     let answer = await saveProfile(next)
@@ -76,7 +76,7 @@ export action save(next: Profile) {
 }
 ```
 
-A handler can be the action itself, with no keyword: an arrow that writes `optimistic`, declares `affects`, or both
+A handler can be the action itself, with no keyword: an arrow that writes `guess`, declares `affects`, or both
 writes and awaits is an action (AC-1b). Declare a named `action` when you call it from more than one place.
 
 An action's body is **one change**: every plain write in it, before or after an `await`, is held until the body
@@ -85,7 +85,7 @@ by what the screen should do:
 
 | You want | Write |
 | --- | --- |
-| Show a value now, and take it back if the action fails | `optimistic x := v` (x is a source with a question: `source x = …`) |
+| Show a value now, and take it back if the action fails | `guess x := v` (x is a source with a question: `source x = …`) |
 | `pending? x` true while the action runs | `affects x` |
 | Land a UI write now and keep it (close a menu, clear a message) | `onFlush(() => { x := v })` (EF-8) |
 | Record the server's answer | `x := answer` after the `await` |
@@ -101,7 +101,7 @@ export source todos: Todo[] key id = await loadTodos()
 export action markDone(id: number) {
   try {
     let i = todos.findIndex(t => t.id == id)  // -1 when absent
-    optimistic todos[i].done := true          // this row only
+    guess todos[i].done := true          // this row only
     await saveDone(id)
     refresh todos                             // the server's list confirms the guess
   } catch (e) { … }
@@ -121,12 +121,12 @@ flight, everything shown from `todos` waits for that action to end, including an
 The screen is never wrong in between: it shows the guesses, then the truth, in one frame. This is the design (H-11),
 not a bug, and moving the guess to a source of its own doesn't change it: the rows that show it read `todos`.
 
-A guess on a whole list (`optimistic adding := as => [...as, x]`) is one change with every other guess on that list:
+A guess on a whole list (`guess adding := as => [...as, x]`) is one change with every other guess on that list:
 two adds in flight end together, so a declined one stays until the other ends. That's the same rule, not something
 to work around.
 
 - **Show that something is in flight**, so the longer wait isn't silent: a row flag set by the guess
-  (`optimistic todos[i].saving := true`), or `pending? todos` with `affects todos`.
+  (`guess todos[i].saving := true`), or `pending? todos` with `affects todos`.
 - **Don't rebuild guesses by hand** (a plain list of pending ids with your own revert) to end them one by one: it
   loses the revert and the hold that keep the screen consistent.
 
@@ -144,7 +144,7 @@ shownAdding = adding.filter(a => a.photo == photo)   // shown after `tags`
 
 export action addTag(p: number, tag: string) {
   try {
-    optimistic adding := [...adding, { photo: p, tag: tag }]
+    guess adding := [...adding, { photo: p, tag: tag }]
     await saveTag(p, tag)
     refresh tags                              // the server's list now has the tag; the guess goes with the action
   } catch (e) { … }
@@ -165,7 +165,7 @@ and the screen reads only the top:
    (ST-5a). The client writes it (an edit, a draft, a flag, a failure to show), and a new answer from below resets
    it. Anything that must outlive that reset (in the todos app, the failures awaiting a retry) is a plain source
    this layer is derived from.
-3. **Guesses.** `optimistic` writes on layer 2, made by an action and gone when the action ends.
+3. **Guesses.** `guess` writes on layer 2, made by an action and gone when the action ends.
 
 `examples/todos.rx` is the whole app:
 
@@ -177,7 +177,7 @@ source adding: Row[] key id = []                            // 3. adds in flight
 
 export action add(id: string, title: string) {
   try {
-    optimistic adding := as => [...as, { id: id, title: title, saving: true }]
+    guess adding := as => [...as, { id: id, title: title, saving: true }]
     await addTodo(id, title)
     failures := fs => without(fs, id)
   } catch (e) {
@@ -198,7 +198,7 @@ export action add(id: string, title: string) {
 
 ## 4. Things that look like bugs and aren't
 
-- **A plain write in an action doesn't show until the server answers.** That's the hold. Use `optimistic` or
+- **A plain write in an action doesn't show until the server answers.** That's the hold. Use `guess` or
   `onFlush` (the table above). Don't move the code into a plain handler to escape it.
 - **A declined row guess stays until another action's re-ask lands.** While an action's `refresh` of the list is
   in flight, the list's rows wait for that action (H-11), declined guesses included. That's by design; see "When
@@ -210,7 +210,7 @@ export action add(id: string, title: string) {
   `loading on(k)` above the `errored`.
 - **The server accepted, and the screen went back to the old value.** The action guessed on one question and
   refreshed another, or none. A guess ends with its action; only a new answer for the question it guessed on shows
-  what the server took. Refresh every question you guessed on (`optimistic detail.title := t` needs `refresh detail`,
+  what the server took. Refresh every question you guessed on (`guess detail.title := t` needs `refresh detail`,
   not only `refresh issues`).
 - **A write landed and nothing showed it until the reload answered.** A guess needs a value to guess on. A rename sent
   while the detail is still loading, or for a row the list does not show yet (`findIndex` gave -1), guesses nothing,
@@ -220,7 +220,7 @@ export action add(id: string, title: string) {
 ## 5. Plain handlers
 
 A handler that writes and awaits is an action (AC-1b), so it never lands a write early by accident. A write before
-its `await` is a compile error (`HELD_WRITE`), because it would wait for the server: make it `optimistic` if it shows
+its `await` is a compile error (`HELD_WRITE`), because it would wait for the server: make it `guess` if it shows
 while the work runs, `onFlush` if it is a reset, or declare the action if it should wait. Plain handlers are for
 local state: typing, toggles, selection.
 
@@ -239,7 +239,7 @@ a value; an effect is for sending a value somewhere else (a parent's `on…` han
   the block does not run until the answer lands (R-2). The effect doesn't hold the screen while it waits.
 - **Failing inputs**: give an input that can fail a `catch` (`effect (x catch (e) => fallback) { … }`), so the block
   gets a plain value it can test for.
-- **Guesses**: an input computed from an `optimistic` write fires as soon as the guess shows, and again with the old
+- **Guesses**: an input computed from a `guess` write fires as soon as the guess shows, and again with the old
   value if the guess reverts (EF-2). It doesn't wait for the action to end.
 - **Lifetime**: an effect lives as long as its component. When the component goes away the effect stops, and its
   cleanup (a function the block returns) runs; nothing it would have seen later reaches it. State that must outlive

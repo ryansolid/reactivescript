@@ -40,7 +40,7 @@ the list, and actions as the only writers.
   read (see Ambiguities 1). I'd want either a sync action to be stated to be
   an ordinary instant, or a lighter exported-setter form.
 - **The truth after a successful assign repeats the guess.**
-  `optimistic issues := f` followed later by `issues := f` with the same `f`.
+  `guess issues := f` followed later by `issues := f` with the same `f`.
   H-11 makes this necessary: without the plain write, the guess is "corrected
   by the truth at hand" when the body ends, which reverts a successful
   assignment. The ideal is `refresh issues` (the server is the truth), but

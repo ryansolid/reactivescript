@@ -34,7 +34,7 @@ export action open(id: number) { route := { page: "note", id: id }; saveError :=
 export action back() { route := { page: "list" } }
 export action save(id: number, title: string, body: string) {
   saveError := ""
-  optimistic notes := ns => ns.map(n => n.id == id ? { ...n, title: title, body: body } : n)
+  guess notes := ns => ns.map(n => n.id == id ? { ...n, title: title, body: body } : n)
   try {
     try {
       let saved = await saveNote(id, title, body)

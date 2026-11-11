@@ -110,7 +110,7 @@ pub enum PathSeg {
 pub struct Target {
     pub name: String,
     pub path: Vec<PathSeg>,
-    /// `use name := …` (RG-7, O-4). `None`: not written by this form (an `optimistic` target).
+    /// `use name := …` (RG-7, O-4). `None`: not written by this form (a `guess` target).
     pub ctx: Option<bool>,
 }
 impl Target {

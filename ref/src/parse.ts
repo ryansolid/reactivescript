@@ -110,7 +110,7 @@ function parseClasses(c: Cursor): string[] | undefined {
   return out.some(n => n === "Error" || n === "unknown" || n === "any") ? undefined : out;
 }
 
-const KEYWORDS = new Set(["source", "effect", "component", "ref", "await", "latest", "loading", "errored", "fallback", "on", "deferred", "action", "optimistic", "refresh", "affects", "if", "else", "pre", "peek", "fn", "let", "for", "in", "true", "false", "undefined", "null", "provide", "context", "use", "import", "export", "from", "pure", "return", "type", "interface", "try", "catch", "finally", "throw", "portal"]);
+const KEYWORDS = new Set(["source", "effect", "component", "ref", "await", "latest", "loading", "errored", "fallback", "on", "deferred", "action", "guess", "refresh", "affects", "if", "else", "pre", "peek", "fn", "let", "for", "in", "true", "false", "undefined", "null", "provide", "context", "use", "import", "export", "from", "pure", "return", "type", "interface", "try", "catch", "finally", "throw", "portal"]);
 
 export function parseProgram(src: string): Program {
   const c = new Cursor(src);
@@ -288,7 +288,7 @@ export function parseStmts(src: string): Stmt[] {
 
 function parseStmt(c: Cursor): Stmt {
   c.ws();
-  if (c.keyword("optimistic")) {
+  if (c.keyword("guess")) {
     c.ws(); const name = c.ident() ?? c.fail("target"); const path: Target["path"] = [];
     for (;;) { if (c.eat(".")) path.push(c.ident() ?? c.fail("member")); else if (c.eat("[")) { c.ws(); path.push(parseExpr(c)); c.ws(); c.expect("]"); } else break; }
     c.ws(); c.expect(":="); c.ws(); return { k: "optimistic", target: { name, path }, e: parseExpr(c) };

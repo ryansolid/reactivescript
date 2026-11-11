@@ -34,7 +34,7 @@ Modules: `theme.rx` (contexts only) ← `settings.rx` (server truth + actions),
   frames would read `compactProfile [compact]Display name…`. A real page would
   not have these.
 - **`saveError` needs both a guess and a plain write on success.** I wrote
-  `optimistic saveError := ""` so a new save clears the old message at once.
+  `guess saveError := ""` so a new save clears the old message at once.
   But the source's truth is the last *plain* write (`"quota exceeded"`), so
   without `saveError := ""` after a successful `await`, the guess would revert
   and the old error would come back. It is correct per H-11, and easy to get
@@ -85,7 +85,7 @@ Modules: `theme.rx` (contexts only) ← `settings.rx` (server truth + actions),
    a value replaces the error". I assumed that happens automatically when the
    refreshed flight lands, even though the content readers were behind the
    fallback (S-solid-42 is cited for this).
-5. **A guess closing an `if` branch** (`optimistic saveError := ""` hiding
+5. **A guess closing an `if` branch** (`guess saveError := ""` hiding
    "Save failed" at once). H-7 says "a branch a lane condition opens is a
    mainline mount and attaches now". It does not explicitly say the same for a
    branch a lane condition *closes*. I assumed it is symmetric.

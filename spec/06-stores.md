@@ -2,7 +2,7 @@
 
 **Status: OPEN (2026-10-21).** Structured values, sources with a standing
 question, drafts, keys, streams, and the imperative forms that tie writes to
-async work: `action`, `optimistic`, `refresh`, `affects`. Rules cite Solid's
+async work: `action`, `guess`, `refresh`, `affects`. Rules cite Solid's
 F-9, F-11 and the derived rules they restate. In `ref/`: ST-1…ST-6,
 AC-1…AC-5 (S-store-1…5, S-solid-8/9/15/20/26/32…35/37). Optimistic path writes: S-store-6. AC-6 `until`: S-action-2. AC-7 try/catch: S-action-1. A functional guess over a held input, and two actions guessing one slot (H-11): S-action-3, S-action-4. AC-1b…AC-1d (inferred actions, held writes, stale own reads): S-infer-1…5. AC-1e (stale write-back): S-infer-6.
 
@@ -84,7 +84,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
   a `createOptimistic(() => truth())` layer.
 - **ST-5b.** Its question (V-9) is `e`'s inputs. `refresh x` re-asks it
   quietly; `affects x` declares that in-flight work will change it (H-9).
-- **ST-5c.** It is the only legal target of `optimistic` (AC-3): a guess
+- **ST-5c.** It is the only legal target of `guess` (AC-3): a guess
   needs a truth that will confirm or correct it.
 
 ## ST-6 — Streams
@@ -142,7 +142,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
   adoption).
 - **AC-1b (Inferred action).** [ruled 2026-10-28] An arrow function in
   imperative scope, including an element's event handler (02 SC-4), is an
-  action when its own statements include `optimistic x := e` (AC-3),
+  action when its own statements include `guess x := e` (AC-3),
   `affects x` (AC-5), or both a write to a source (W-1) and a
   statement-level `await` (07 decision 16). It is then `(ps) => action { B }`
   with every consequence of AC-1: one change across its awaited work, its
@@ -156,7 +156,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
   An `effect`'s apply block is never inferred: its return is the effect's
   cleanup (EF-5), which an action's body cannot give, and the next run's
   cleanup could not cancel an action in flight. A server function's body is
-  never inferred. A guess in either stays `OPTIMISTIC_OUTSIDE_HOLD`.
+  never inferred. A guess in either stays `GUESS_OUTSIDE_HOLD`.
   Lowers to Solid's `action` exactly as `action { … }` does, nothing added
   (11). Solid: a TypeScript function's promises are invisible to the
   transition, so its author writes `action(function* () { … })`; here every
@@ -168,7 +168,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
   so a later write in the body hides it and otherwise it lands late, and
   nothing in the text says so. The fix names what the write is for:
   ephemeral state that shows while the work runs ("saving", a spinner, a
-  pending row) is a guess, `optimistic x := v` on a source with a question
+  pending row) is a guess, `guess x := v` on a source with a question
   (ST-5c; often a constant one, `source status = ""`); a reset that lands
   now and stays (clear an error, clear an input, close a menu) is
   `onFlush(() => { x := v })` (02 EF-8). A write meant to be held — a
@@ -205,7 +205,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
   index computed from `x` (`let i = indexOf(x, …); … x[i].f := v`) is not
   the written value and does not count. The fix is the functional write
   (`x := v => …`, W-6), which applies to `x` as it stands at the write, or
-  a guess (`optimistic`, AC-3) that the answer replaces. A guess or a write
+  a guess (`guess`, AC-3) that the answer replaces. A guess or a write
   before the `await` is the change's own and is not checked; nor is an
   awaited answer (`let r = await …`), which is the server's, not a
   snapshot of `x`. The check is the language's (Solid cannot see the read,
@@ -217,17 +217,17 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
 - **AC-2 (Not special).** An action is only a way to tie writes to async
   work; the hold is the thing (H-2). `refresh`, `affects` and probes behave
   the same inside and outside one.
-- **AC-3 (optimistic).** `optimistic x := e`, legal only inside an action
+- **AC-3 (guess).** `guess x := e`, legal only inside an action
   body, declared or inferred (AC-1b); in an `effect`'s apply block, which
-  is never an action, it is `OPTIMISTIC_OUTSIDE_HOLD`, and only on a source with a
-  question (ST-5; `OPTIMISTIC_NO_QUESTION`): writes a guess that is the
+  is never an action, it is `GUESS_OUTSIDE_HOLD`, and only on a source with a
+  question (ST-5; `GUESS_NO_QUESTION`): writes a guess that is the
   graph's and the screen's value for `x` from the instant's settle,
   display-ahead and verdict-inert, until the hold it was made over commits
   or `x`'s own answer differs — the full rule is H-11. `x`'s truth is
   whatever its question gives: a constant (`source draft = "Ann"`), another
   source (`source draft = name`, S-solid-32), or an `await`. Lowers to
   `createOptimistic`/`createOptimisticStore` by usage. Path targets
-  (`optimistic x.a := v`, `optimistic todos[i].done := true`) guess per key,
+  (`guess x.a := v`, `guess todos[i].done := true`) guess per key,
   as Solid's per-node override: the rest of `x` is the truth beneath the
   guess, a new answer corrects only where it differs at a guessed key, and
   equal there it confirms silently (S-store-6). A question re-asked by an
@@ -299,11 +299,11 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
 | `ACTION_CALLED_IN_OWNED_SCOPE`  | U   | AC-1: an action is `io` (IO-2)                   |
 | `INVALID_REFRESH_TARGET`        | S   | AC-4: not a source with a question / await eq    |
 | `INVALID_AFFECTS_TARGET`        | S   | AC-5                                             |
-| `OPTIMISTIC_OUTSIDE_HOLD` (new) | S   | AC-3: an apply block (never an action, AC-1b)    |
+| `GUESS_OUTSIDE_HOLD` (new) | S   | AC-3: an apply block (never an action, AC-1b)    |
 | `HELD_WRITE` (new)              | S   | AC-1c: an early write in an inferred action      |
 | `STALE_OWN_READ` (new)          | S   | AC-1d: a read of the change's own write          |
 | `STALE_WRITE_BACK` (new)        | S   | AC-1e: a pre-`await` read written back after it  |
-| `OPTIMISTIC_NO_QUESTION` (new)  | S   | AC-3 / ST-5c                                     |
+| `GUESS_NO_QUESTION` (new)  | S   | AC-3 / ST-5c                                     |
 
 ## Scenarios
 

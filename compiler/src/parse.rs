@@ -42,7 +42,7 @@ re!(LINE_COMMENT, r"//.*$");
 
 static KEYWORDS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     [
-        "source", "effect", "component", "ref", "await", "latest", "loading", "errored", "fallback", "on", "deferred", "action", "optimistic", "refresh", "affects", "if", "else", "pre", "peek", "fn", "let", "for", "in", "true", "false", "undefined",
+        "source", "effect", "component", "ref", "await", "latest", "loading", "errored", "fallback", "on", "deferred", "action", "guess", "refresh", "affects", "if", "else", "pre", "peek", "fn", "let", "for", "in", "true", "false", "undefined",
         "null", "provide", "context", "use", "import", "export", "from", "pure", "return", "type", "interface", "try", "catch", "finally", "throw", "portal",
     ]
     .into_iter()
@@ -925,7 +925,7 @@ fn parse_path(c: &mut Cursor) -> R<Vec<PathSeg>> {
 fn parse_stmt(c: &mut Cursor) -> R<Stmt> {
     c.ws(true);
     let start = c.i;
-    if c.keyword("optimistic") {
+    if c.keyword("guess") {
         c.ws(true);
         let name = c.ident_or("target")?;
         let path = parse_path(c)?;

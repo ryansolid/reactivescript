@@ -12,7 +12,7 @@
 //   tracked   reactive scope (SC-1): the computation depends on it
 //   snapshot  imperative scope (SC-2), `peek` (E-5), a source's seed (E-4), a value parameter's argument (E-10)
 //   pre       `pre x` (C-2): the previous instant's value
-// and `probe: "latest" | "pending"` under `latest` / `pending?` (R-9, R-12). A write is `x := e` (W-1), `optimistic`
+// and `probe: "latest" | "pending"` under `latest` / `pending?` (R-9, R-12). A write is `x := e` (W-1), `guess`
 // (AC-3), `refresh` (AC-4) or `affects` (AC-5); `use p := e` writes the context's provided source (RG-7c). A call names a
 // fn, an action, a server fn or a JS import called by name.
 

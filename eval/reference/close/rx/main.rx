@@ -11,12 +11,12 @@ export default component App() {
   source filter: string := "open"
   source selected: number | null := null
   source issues key id = await fetchIssues(filter)
-  source assignError: string = ""
-  source closeError: string = ""
+  source assignError: string := ""
+  source closeError: string := ""
   action closeOne(id: number) {
-    optimistic closeError := ""
+    onFlush(() => { closeError := "" })
     try {
-      optimistic issues := keep(issues, t => t.id != id)
+      guess issues := keep(issues, t => t.id != id)
       await closeIssue(id)
       refresh issues
     } catch (e) {
@@ -25,10 +25,10 @@ export default component App() {
   }
 
   action assignTo(id: number, who: string) {
-    optimistic assignError := ""
+    onFlush(() => { assignError := "" })
     try {
       let i = indexOf(issues, t => t.id == id)
-      optimistic issues[i].assignee := who
+      guess issues[i].assignee := who
       await assign(id, who)
       refresh issues
     } catch (e) {

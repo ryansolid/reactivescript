@@ -10,7 +10,7 @@ export default component App() {
   source status := ""
   source orders := 0
   action placeOrder() {
-    optimistic cart := []
+    guess cart := []
     status := "placing"
     try {
       let receipt = await fetch("checkout")
@@ -50,7 +50,7 @@ export default component App() {
   source cart = [1, 2]
   source status := ""
   action placeOrder() {
-    optimistic cart := []
+    guess cart := []
     status := "placing"
     try { let receipt = await fetch("checkout") } catch (e) { status := "declined" }
     fail("lost the receipt")
@@ -96,7 +96,7 @@ export default component App() {
   source cart = [1, 2]
   source status := ""
   action placeOrder() {
-    optimistic cart := []
+    guess cart := []
     status := "placing"
     let receipt = await fetch("checkout")
     cart := []

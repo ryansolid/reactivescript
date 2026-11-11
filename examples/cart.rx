@@ -33,7 +33,7 @@ source orderError: string := ""
 action placeOrder() {
   if (count === 0) return
   let items = cart                                               // SC-2: a snapshot of the lines being ordered
-  optimistic cart := []                                          // AC-3: the cart empties now, display-ahead
+  guess cart := []                                          // AC-3: the cart empties now, display-ahead
   affects cart                                                   // AC-5: `pending? cart` while the order is in flight
   orderError := ""
   try {

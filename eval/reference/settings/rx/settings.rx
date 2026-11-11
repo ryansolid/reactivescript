@@ -22,15 +22,15 @@ export source settings: Settings = await loadSettings()
 
 // What the last save failed with, or "". A question with a constant truth, so
 // a new save can clear it as a guess the moment it starts (ST-5a).
-export source saveError: string = ""
+export source saveError: string := ""
 
 export action retryLoad() {
   refresh settings
 }
 
 export action save(next: Settings) {
-  optimistic settings := next     // the page shows what is being saved, now (H-11)
-  optimistic saveError := ""      // and stops showing the previous failure
+  guess settings := next     // the page shows what is being saved, now (H-11)
+  onFlush(() => { saveError := "" })      // and stops showing the previous failure
   affects settings                // `pending? settings` is true until the save ends (AC-5)
   try {
     let saved = await saveSettings(next)

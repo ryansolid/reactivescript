@@ -86,7 +86,7 @@ predicted every frame right; the briefs here are stricter.
 - `tracker`: `assignToMe` cleared its error with a plain write (`assignError := ""`) inside an action that awaits,
   and a plain write in an async action is held until the action ends (AC-1), so the old error stayed up until the
   server answered. The fix is the `settings` app's own idiom: `assignError` a question source,
-  `optimistic assignError := ""`.
+  `guess assignError := ""` (since 2026-11-11 the references clear errors with `onFlush`, EF-8).
 
 ## Layout
 

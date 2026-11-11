@@ -8,7 +8,7 @@ Rules: AC-1, AC-3, H-11.
 export default component App() {
   source truth := 1
   source guess = truth
-  action attempt() { try { optimistic guess := 5; await fetch("unrelated") } catch {} }
+  action attempt() { try { guess guess := 5; await fetch("unrelated") } catch {} }
 
   <p>{guess} / {latest guess} {pending? guess ? "p" : "-"}</p>
 }
@@ -35,7 +35,7 @@ export default component App() {
   source truth := 1
   source guess = truth
   derived = await fetch("x:" + str(guess))
-  action attempt() { try { optimistic guess := 5; await fetch("unrelated") } catch {} }
+  action attempt() { try { guess guess := 5; await fetch("unrelated") } catch {} }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
     <p>{guess} {derived} / {latest guess} {pending? guess ? "p" : "-"}</p>
@@ -65,7 +65,7 @@ instant 3, and untracked `pending? guess` is `true` until the commit.
 ```rx
 export default component App() {
   source list = await fetch("list")
-  action add() { try { optimistic list := list + "+mine"; await fetch("save"); refresh list } catch {} }
+  action add() { try { guess list := list + "+mine"; await fetch("save"); refresh list } catch {} }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
     <p>{list}</p>

@@ -18,7 +18,7 @@ pub enum Trigger {
 pub fn trigger_text(t: Trigger) -> &'static str {
     match t {
         Trigger::WriteAwait => "it writes and awaits",
-        Trigger::Optimistic => "it has `optimistic`",
+        Trigger::Optimistic => "it has `guess`",
         Trigger::Affects => "it has `affects`",
     }
 }

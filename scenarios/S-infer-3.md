@@ -9,7 +9,7 @@ export default component App() {
   source liked = "no"
   action like() { try { let r = await fetch("like"); liked := r } catch (e) {} }
 
-  <button onClick={() => { optimistic liked := "yes"; like() }}>{liked}</button>
+  <button onClick={() => { guess liked := "yes"; like() }}>{liked}</button>
 }
 ```
 
@@ -22,7 +22,7 @@ the same instant's change (D-7), so the guess lives until `like` ends.
 | instant | action                                         | frame |
 | ------- | ---------------------------------------------- | ----- |
 | 0       | mount                                          | `no`  |
-| 1       | handler `optimistic liked := "yes"; like()`    | `yes` |
+| 1       | handler `guess liked := "yes"; like()`    | `yes` |
 | 2       | resolve "like" "yes"                           | `yes` |
 
 ## Variant: the server declines
@@ -30,5 +30,5 @@ the same instant's change (D-7), so the guess lives until `like` ends.
 | instant | action                                         | frame |
 | ------- | ---------------------------------------------- | ----- |
 | 0       | mount                                          | `no`  |
-| 1       | handler `optimistic liked := "yes"; like()`    | `yes` |
+| 1       | handler `guess liked := "yes"; like()`    | `yes` |
 | 2       | reject "like" "offline"                        | `no`  |

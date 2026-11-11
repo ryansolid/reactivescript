@@ -214,7 +214,7 @@ export default component App() {
 
 A write after an `await` that is computed from a read before it overwrites whatever changed the source in between
 (another action, a reload). Write functionally, so the write applies to the value as it stands (W-6), or guess it with
-`optimistic` and let the answer replace the guess (AC-3).
+`guess` and let the answer replace the guess (AC-3).
 
 ```rx before
 export default component App() {
@@ -379,7 +379,7 @@ export default component App() {
 ### HELD_WRITE
 
 A handler that writes and awaits is an action (AC-1b), and an action's writes land when its body ends (AC-1). So a
-write before the `await` does not show while the work runs. Say which you meant: `optimistic x := …` for state that
+write before the `await` does not show while the work runs. Say which you meant: `guess x := …` for state that
 shows while the work runs (on a source with a question, ST-5c); `onFlush(() => { x := … })` for a reset that lands now
 (EF-8); a declared `action` to hold it on purpose; or write it after the `await`. `async.md` ("What lands together, and
 what waits") is the long form.
@@ -433,7 +433,7 @@ export default component App() {
 }
 ```
 
-### OPTIMISTIC_OUTSIDE_HOLD
+### GUESS_OUTSIDE_HOLD
 
 A guess lives in an action's hold until the server answers it (AC-3). An effect's apply block is never an action, so
 declare one and call it from the block.
@@ -442,7 +442,7 @@ declare one and call it from the block.
 export default component App() {
   source draft := "a"
   source saved = "a"
-  effect (draft) { optimistic saved := $0 }
+  effect (draft) { guess saved := $0 }
   <p>{saved}</p>
 }
 ```
@@ -452,7 +452,7 @@ export default component App() {
   source draft := "a"
   source saved = "a"
   action save(v: string) {
-    optimistic saved := v
+    guess saved := v
     await fetch("save:" + v) catch (e) => null
   }
   effect (draft) { save($0) }
@@ -460,15 +460,15 @@ export default component App() {
 }
 ```
 
-### OPTIMISTIC_NO_QUESTION
+### GUESS_NO_QUESTION
 
-A guess is confirmed or replaced by the answer to a question, so `optimistic` writes a source declared with `=` (a
+A guess is confirmed or replaced by the answer to a question, so `guess` writes a source declared with `=` (a
 source with a question, ST-5c). A source seeded with `:=` has no question; write it plainly.
 
 ```rx before
 export default component App() {
   source shown := "Ann"
-  action fix() { optimistic shown := "Zed"; await fetch("x") catch (e) => null }
+  action fix() { guess shown := "Zed"; await fetch("x") catch (e) => null }
   <button onClick={() => { fix() }}>{shown}</button>
 }
 ```
@@ -476,7 +476,7 @@ export default component App() {
 ```rx after
 export default component App() {
   source shown = await fetch("name") catch (e) => "Ann"
-  action fix() { optimistic shown := "Zed"; await fetch("x") catch (e) => null }
+  action fix() { guess shown := "Zed"; await fetch("x") catch (e) => null }
   <button onClick={() => { fix() }}>{shown}</button>
 }
 ```

@@ -9,7 +9,7 @@ export default component App() {
   source name := "Ann"
   source shown = name
   source saved := false
-  action rename(n) { try { optimistic shown := n; saved := true; await fetch("save"); name := n } catch {} }
+  action rename(n) { try { guess shown := n; saved := true; await fetch("save"); name := n } catch {} }
 
   <p>{shown} / {saved ? "saved" : "unsaved"} / {pending? shown ? "p" : "-"} {pending? saved ? "p" : "-"}</p>
 }
@@ -43,7 +43,7 @@ was a plain write and commits (AC-1, DV-2).
 
 | instant | action                              | frame                  |
 | ------- | ----------------------------------- | ---------------------- |
-| 1       | handler `optimistic shown := "Zed"` | `Ann / unsaved / - -`  |
+| 1       | handler `guess shown := "Zed"` | `Ann / unsaved / - -`  |
 
 A guess outside a hold does not exist (D-33). A handler with a guess is an
 action (AC-1b), so this compiles; the action's change opens and commits in
@@ -54,11 +54,11 @@ The `effect` form, which is never an action, is still rejected (S-check-1).
 
 
 ```rx
--- reject: OPTIMISTIC_NO_QUESTION
+-- reject: GUESS_NO_QUESTION
 -- handler: fix()
 export default component App() {
   source shown := "Ann"
-  action fix() { try { optimistic shown := "Zed"; await fetch("x") } catch {} }
+  action fix() { try { guess shown := "Zed"; await fetch("x") } catch {} }
 
   <p>{shown}</p>
 }

@@ -213,7 +213,7 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   not `σ`, not `σ′`, not a probe. The instant begins when the run ends
   (W-3); from then `v` is in `σ′` (probes see it) and in `σ` at commit.
 
-- **H-11 (Optimistic).** [F-11, D-33, D-34] `optimistic x := e`, legal only
+- **H-11 (Optimistic).** [F-11, D-33, D-34] `guess x := e`, legal only
   inside an action body, declared or inferred (AC-3, AC-1b), and only on a source with a question (ST-5),
   writes a *guess* for `x`: from the instant's settle it is the graph's
   value (equations derive from it — S-solid-33: `related` re-asks from the
@@ -229,7 +229,7 @@ which showed `A 0` where Solid shows `A 1` — S-hold-3.)
   `true`, and the new question's answer is not the guess's truth — it neither
   confirms nor corrects the guess; it commits with the hold (S-solid-44). An
   input the guess's own action writes is the guess's question
-  (S-solid-34). A functional guess (`optimistic x := v => …`, W-6) applies
+  (S-solid-34). A functional guess (`guess x := v => …`, W-6) applies
   to `x` as the screen shows it: an input its action holds, the launching
   handler's own write included (AC-1), is not shown yet, so the updater
   sees the old answer (S-action-3; #33). `latest x` answers the guess

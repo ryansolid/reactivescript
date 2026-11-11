@@ -62,7 +62,7 @@ Bins:
 | `UNSTABLE_MEMO_OUTPUT`            | R   | data-dependent (partly S once ST decides structured equality)      |
 | `UNSTABLE_LIST_IDENTITY`          | S   | ST: key is on the type; unkeyed `for` over records is a diagnostic |
 | `IMMUTABLE_UPDATE_IN_STORE`       | U   | ST: a structured equation is a delta over `pre`, not a replaced container |
-| `OPTIMISTIC_REVERTED`             | R   | data-dependent                                                     |
+| `GUESS_REVERTED`                  | R   | data-dependent                                                     |
 | `GRAPH_GROWTH`                    | R   | profiling                                                          |
 | `REACTIVITY_HALTED`               | R   | an error escaping every boundary                                   |
 | `INVARIANT_VIOLATION`             | R   | runtime internal                                                   |
@@ -99,11 +99,11 @@ named.
 | `WRITE_TO_NON_SOURCE`             | S   | W-1   | S-core-1, S-check-1 |
 | `DRAFT_WRITE_OUTSIDE_DRAFT`       | S   | ST-3a | S-store-2 |
 | `ASYNC_STORE_SETTER`              | S   | ST-3b | S-check-1 |
-| `OPTIMISTIC_OUTSIDE_HOLD`         | S   | AC-3 (an `effect`'s apply block: never an action, AC-1b) | S-check-1, S-infer-1 |
+| `GUESS_OUTSIDE_HOLD`         | S   | AC-3 (an `effect`'s apply block: never an action, AC-1b) | S-check-1, S-infer-1 |
 | `HELD_WRITE`                      | S   | AC-1c | S-infer-2 |
 | `STALE_OWN_READ`                  | S   | AC-1d | S-infer-5 |
 | `STALE_WRITE_BACK`                | S   | AC-1e | S-infer-6 |
-| `OPTIMISTIC_NO_QUESTION`          | S   | AC-3 / ST-5c | S-check-1, S-solid-32 |
+| `GUESS_NO_QUESTION`          | S   | AC-3 / ST-5c | S-check-1, S-solid-32 |
 | `INVALID_REFRESH_TARGET`, `INVALID_AFFECTS_TARGET` | S | AC-4, AC-5 | S-check-1 |
 | `REGION_ESCAPE`                   | S   | O-3, O-3a, O-3b | S-check-1 (seven shapes), S-module-1 |
 | `UNSTABLE_LIST_IDENTITY`          | S   | ST-4b (narrow form: `map` into fresh records, unkeyed) | S-store-3 |

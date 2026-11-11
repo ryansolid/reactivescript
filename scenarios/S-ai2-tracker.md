@@ -47,4 +47,4 @@ Predicted from the spec and not run (the test allows the checker only on `main.r
 | delete the `errored fallback(e) { … }` wrapper in `DetailPanel` | R-f-5 | `UNHANDLED_FAILURE` (`detail` fails `Error` or `NotFound`) |
 | in `assignToMe`, `await assign(id, user)` outside `try … catch` | R-f-6 | `UNCAUGHT_ACTION_FAILURE` |
 | in `ui.rx`, a handler `() => { selected := issue.id }` | MO-2a | `WRITE_TO_NON_SOURCE` |
-| `optimistic assignError := "…"` in an action (`assignError` is `:=`, no question) | AC-3 / ST-5c | `OPTIMISTIC_NO_QUESTION` |
+| `guess assignError := "…"` in an action (`assignError` is `:=`, no question) | AC-3 / ST-5c | `GUESS_NO_QUESTION` |

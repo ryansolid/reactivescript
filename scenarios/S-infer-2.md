@@ -74,7 +74,7 @@ export default component App() {
 
 Written as a plain handler, this showed `saving` at once. As the action
 the body now is, `saving` would wait for the server. The fixes are named
-by what the write is for: `optimistic` for state that shows while the work
+by what the write is for: `guess` for state that shows while the work
 runs, `onFlush` for a reset, a declared action to hold it on purpose.
 
 ```rx
