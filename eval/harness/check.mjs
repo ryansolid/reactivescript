@@ -1,6 +1,6 @@
 // The arm's compiler feedback, as the agent runs it.
 //   rx:    rxc check src/main.rx
-//   react: tsc --noEmit -p . and eslint (react-hooks rules)
+//   react, xstate: tsc --noEmit -p . and eslint (react-hooks rules)
 //   solid: tsc --noEmit -p . and eslint (eslint-plugin-solid's v2 config)
 //   vanilla: tsc --noEmit -p . (strict)
 //   foldkit: tsc --noEmit -p . with Foldkit's template tsconfig (its lint, oxlint + effect-tsgo, is not on npm)

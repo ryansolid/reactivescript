@@ -1,6 +1,6 @@
 // Builds one app (a run directory or a reference) into `<dir>/.build/dist` with Vite, for the tests to drive.
 //   rx arm:    `rxc compile src/main.rx` → JavaScript over Solid rc.19, mounted with the .rx runtime (ref/compile/rt-web.ts)
-//   react arm: `src/App.tsx` (default export) mounted with createRoot under StrictMode, as Vite's React template does
+//   react and xstate arms: `src/App.tsx` (default export) mounted with createRoot under StrictMode, as Vite's React template does
 //   solid arm: `src/App.tsx` (default export) compiled by @solidjs/compiler (Solid 2's JSX compiler) and mounted with
 //              @solidjs/web's `render`
 //   vanilla arm: `src/main.ts` default-exports `mount(root: HTMLElement)`, called once with the `#app` container
@@ -57,7 +57,7 @@ export async function build(dir, arm = armOf(dir)) {
   writeFileSync(path.join(work, "entry.js"), entry);
   writeFileSync(path.join(work, "index.html"), `<!doctype html><html><head><meta charset="utf-8"><title>app</title></head><body><div id="app"></div><script type="module" src="./entry.js"></script></body></html>\n`);
   const vite = await import(pathToFileURL(path.join(evalDir, "node_modules/vite/dist/node/index.js")).href);
-  const plugins = arm === "react" ? [(await import(pathToFileURL(path.join(evalDir, "node_modules/@vitejs/plugin-react/dist/index.js")).href)).default()]
+  const plugins = arm === "react" || arm === "xstate" ? [(await import(pathToFileURL(path.join(evalDir, "node_modules/@vitejs/plugin-react/dist/index.js")).href)).default()]
     : arm === "solid" ? [await solidPlugin()] : [];
   try {
     await vite.build({

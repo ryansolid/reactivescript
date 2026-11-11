@@ -12,15 +12,20 @@
 // For foldkit, the docs are Foldkit's own FOLDKIT.md (create-foldkit-app's template) at the end of the prompt, and the
 // Foldkit repository at the installed release's tag readable in docs/foldkit, as Foldkit tells agents to vendor it
 // (examples, skills, AGENTS.md, the framework source); FOLDKIT_REPO names the checkout (default ../../foldkit).
-// Arms: rx, react, solid (Solid 2 TSX, round 5), foldkit (round 6), vanilla (plain TypeScript and DOM, no framework).
-// Usage: node harness/scaffold.mjs <task> <rx|react|solid|foldkit|vanilla> <dir> [--reference] [--brief <name>] [--base <dir>] [--inline-docs]
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from "node:fs";
+// Arms: rx, react, solid (Solid 2 TSX, round 5), foldkit (round 6), vanilla (plain TypeScript and DOM, no framework),
+// xstate (React with XState v5 machines, no TanStack Query; 2026-11-11).
+// Usage: node harness/scaffold.mjs <task> <rx|react|xstate|solid|foldkit|vanilla> <dir> [--reference] [--brief <name>] [--base <dir>] [--inline-docs]
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const evalDir = path.resolve(here, "..");
 const foldkitRepo = process.env.FOLDKIT_REPO ?? path.resolve(evalDir, "../../foldkit");
+// For xstate, the docs are Stately's own (github.com/statelyai/docs, content/docs, the XState v5 pages as .mdx): the
+// cheatsheet and @xstate/react's README at the end of the prompt, every page readable in docs/xstate. STATELY_DOCS names the
+// checkout (default ../../stately-docs).
+const statelyDocs = process.env.STATELY_DOCS ?? path.resolve(evalDir, "../../stately-docs");
 
 export function scaffold(task, arm, dir, { reference = false, brief = null, base = null, inline = false } = {}) {
   const t = path.join(evalDir, "tasks", task);
@@ -39,8 +44,8 @@ export function scaffold(task, arm, dir, { reference = false, brief = null, base
   }, null, 2) + "\n");
   cpSync(path.join(t, "visible.mjs"), path.join(dir, "tests/visible.mjs"));
   cpSync(path.join(t, "fixtures.mjs"), path.join(dir, "tests/fixtures.mjs"));
-  if (arm === "react" || arm === "solid" || arm === "vanilla") {
-    const jsx = arm === "react" ? { jsx: "react-jsx" } : arm === "solid" ? { jsx: "preserve", jsxImportSource: "@solidjs/web" } : {};
+  if (arm === "react" || arm === "xstate" || arm === "solid" || arm === "vanilla") {
+    const jsx = arm === "react" || arm === "xstate" ? { jsx: "react-jsx" } : arm === "solid" ? { jsx: "preserve", jsxImportSource: "@solidjs/web" } : {};
     writeFileSync(path.join(dir, "tsconfig.json"), JSON.stringify({
       compilerOptions: { target: "ES2022", module: "ESNext", moduleResolution: "bundler", ...jsx, strict: true, noEmit: true, allowJs: true, checkJs: false, skipLibCheck: true, lib: ["ES2022", "DOM", "DOM.Iterable"] },
       include: ["src"],
@@ -56,6 +61,10 @@ export function scaffold(task, arm, dir, { reference = false, brief = null, base
   if (arm === "foldkit") {
     for (const p of ["README.md", "AGENTS.md", "examples", "skills", "packages/foldkit/src", "packages/create-foldkit-app/templates/base/FOLDKIT.md"])
       cpSync(path.join(foldkitRepo, p), path.join(dir, "docs/foldkit", p), { recursive: true });
+    if (!existsSync(path.join(dir, "node_modules"))) symlinkSync(path.join(evalDir, "node_modules"), path.join(dir, "node_modules"));
+  }
+  if (arm === "xstate") {
+    cpSync(path.join(statelyDocs, "content/docs"), path.join(dir, "docs/xstate"), { recursive: true, filter: f => !/[\\/]assets([\\/]|$)/.test(f) && (statSync(f).isDirectory() || /\.(mdx?|json)$/.test(f)) });
     if (!existsSync(path.join(dir, "node_modules"))) symlinkSync(path.join(evalDir, "node_modules"), path.join(dir, "node_modules"));
   }
   // Solid's own docs ship in its package: the agent can read them there before its first build
@@ -81,6 +90,7 @@ export function prompt(arm, dir, { plain = false, change = false, inline = false
   for (let i = 0; i < 2; i++) for (const k of [...Object.keys(fill), "DIR"]) text = text.replaceAll(`{{${k}}}`, k === "DIR" ? dir : fill[k]);
   if (docs && arm === "rx") for (const f of ["language.md", "async.md", "reference.md"]) text += `\n---\n\n${readFileSync(path.join(evalDir, "../guide", f), "utf8")}`;
   if (docs && arm === "foldkit") text += `\n---\n\n${readFileSync(path.join(foldkitRepo, "packages/create-foldkit-app/templates/base/FOLDKIT.md"), "utf8")}`;
+  if (docs && arm === "xstate") text += `\n---\n\n${readFileSync(path.join(statelyDocs, "content/docs/cheatsheet.mdx"), "utf8").replace(/^---\n[\s\S]*?\n---\n+/, "")}\n---\n\n${readFileSync(path.join(evalDir, "node_modules/@xstate/react/README.md"), "utf8")}`;
   if (docs && arm === "solid") text += `\n---\n\n${readFileSync(path.join(evalDir, "node_modules/solid-js/skills/solid-2.0/SKILL.md"), "utf8").replace(/^---\n[\s\S]*?\n---\n+/, "")}`;
   return text;
 }
