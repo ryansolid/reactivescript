@@ -97,33 +97,6 @@ export default component App() {
 }
 ```
 
-### OPTIMISTIC
-
-A guess is written `guess x := e` (AC-3). The keyword was `optimistic` before 0.2; it lowers to the same
-`createOptimistic`, and shows until the action's answer replaces it.
-
-```rx before
-export default component App() {
-  source liked = false
-  action like() {
-    optimistic liked := true
-    refresh liked
-  }
-  <button onClick={() => { like() }}>♥</button>
-}
-```
-
-```rx after
-export default component App() {
-  source liked = false
-  action like() {
-    guess liked := true
-    refresh liked
-  }
-  <button onClick={() => { like() }}>♥</button>
-}
-```
-
 ### ASSIGNMENT
 
 A source is written with `:=` as a statement, in a handler or an action (W-1). There is no `=`, `+=` or `++` on state.

@@ -163,7 +163,6 @@ section with a fix in `guide/diagnostics.md`, and the compiler's tests check its
 | `JS_FUNCTION`| `function f() { … }`                                     |
 | `JS_RETURN`  | `return <div>…</div>` in a component                     |
 | `JS_API`     | `createSignal(…)`, `useState(…)`, … on a failing line    |
-| `OPTIMISTIC` | `optimistic x := …`, the old spelling of `guess x := …` (AC-3) |
 | `ASSIGNMENT` | `x = …`, `x += …`, `x++` where a write `x := …` was meant (W-1) |
 | `REACTIVE_WRITE_IN_OWNED_SCOPE` | `() => x := …`: the arrow needs a braced body (W-2, SC-3) |
 

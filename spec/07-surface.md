@@ -531,7 +531,7 @@ Expr      ::= TSExpr with §3's removals and additions
     `createOptimistic`, which it still lowers to. A guess on state nothing
     will answer reads wrong on its face (`guess saveError := …`: the eval's
     pilot runs wrote that nine times as `optimistic`, `GUESS_NO_QUESTION`).
-    `optimistic` stays reserved, and a line that uses it is the parse error
-    `OPTIMISTIC`, which names `guess`. `source` was weighed against `state`
+    `optimistic` is not reserved: Solid's primitive keeps its name, and the
+    keyword need not. `source` was weighed against `state`
     and `signal` the same day and kept (decision 2): `signal` reads as atomic
     beside stores, and an equation is state too.

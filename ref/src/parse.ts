@@ -15,8 +15,6 @@ export function hint(src: string, i: number, msg: string): [string, string] | nu
   const line = src.slice(lineStart(p), (src.indexOf("\n", p) + 1 || src.length + 1) - 1).trim();
   const before = src.slice(lineStart(i), i);
   const name = /([A-Za-z_$][A-Za-z0-9_$.]*)\s*$/.exec(before)?.[1] ?? "x";
-  if (/(^|[{;]\s*)optimistic\s+[A-Za-z_$]/.test(line))
-    return ["OPTIMISTIC", "`optimistic` is spelled `guess`: `guess x := e` shows a guess until the action's answer replaces it (AC-3); it lowers to `createOptimistic`"];
   if (msg.startsWith("W-2") && rest.startsWith(":=") && /=>\s*[A-Za-z_$][A-Za-z0-9_$.]*\s*$/.test(before))
     return ["REACTIVE_WRITE_IN_OWNED_SCOPE", `an arrow that writes takes a braced body, \`() => { ${name} := … }\`: an expression-bodied arrow is a pure function (SC-3)`];
   if (/^(\+\+|--|(\*\*|\|\||&&|\?\?|[-+*\/%])=|=(?![=>]))/.test(rest))
@@ -112,7 +110,7 @@ function parseClasses(c: Cursor): string[] | undefined {
   return out.some(n => n === "Error" || n === "unknown" || n === "any") ? undefined : out;
 }
 
-const KEYWORDS = new Set(["source", "effect", "component", "ref", "await", "latest", "loading", "errored", "fallback", "on", "deferred", "action", "guess", "optimistic", "refresh", "affects", "if", "else", "pre", "peek", "fn", "let", "for", "in", "true", "false", "undefined", "null", "provide", "context", "use", "import", "export", "from", "pure", "return", "type", "interface", "try", "catch", "finally", "throw", "portal"]);
+const KEYWORDS = new Set(["source", "effect", "component", "ref", "await", "latest", "loading", "errored", "fallback", "on", "deferred", "action", "guess", "refresh", "affects", "if", "else", "pre", "peek", "fn", "let", "for", "in", "true", "false", "undefined", "null", "provide", "context", "use", "import", "export", "from", "pure", "return", "type", "interface", "try", "catch", "finally", "throw", "portal"]);
 
 export function parseProgram(src: string): Program {
   const c = new Cursor(src);
@@ -290,7 +288,6 @@ export function parseStmts(src: string): Stmt[] {
 
 function parseStmt(c: Cursor): Stmt {
   c.ws();
-  if (c.keyword("optimistic")) c.fail("AC-3: `optimistic` is not a statement");
   if (c.keyword("guess")) {
     c.ws(); const name = c.ident() ?? c.fail("target"); const path: Target["path"] = [];
     for (;;) { if (c.eat(".")) path.push(c.ident() ?? c.fail("member")); else if (c.eat("[")) { c.ws(); path.push(parseExpr(c)); c.ws(); c.expect("]"); } else break; }
