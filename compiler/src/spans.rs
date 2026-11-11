@@ -30,6 +30,9 @@ impl Spans<'_> {
         true
     }
     fn word_in(&mut self, at: Span, name: &str, what: &str) {
+        if name.starts_with("$$") {
+            return; // a destructuring's temp (RG-4b): the parser's own name for its right side
+        }
         let t = at.text(self.src);
         let found = t.match_indices(name).any(|(i, _)| {
             let before = t[..i].chars().next_back();
@@ -124,8 +127,9 @@ impl Spans<'_> {
     fn expr(&mut self, e: &Expr, parent: Span) {
         let at = e.span;
         if !self.inside(at, parent, e.kind()) {
-            // the one expression the parser makes: a statement-bodied arrow's `body`
-            if !matches!(e.k, ExprKind::Lit(Lit::Undefined)) {
+            // the expressions the parser makes: a statement-bodied arrow's `body`, and a destructured name's projection
+            // (RG-4b: `.field`, `[i]`, the default's `=== undefined ? d : v`, the right side's temp or `props`)
+            if !matches!(e.k, ExprKind::Lit(Lit::Undefined) | ExprKind::Lit(Lit::Num(_)) | ExprKind::Member { .. } | ExprKind::Index { .. } | ExprKind::If { .. } | ExprKind::Bin { .. } | ExprKind::Id(_)) {
                 self.bad(parent, format!("a {} expression has no span", e.kind()));
             }
             return;

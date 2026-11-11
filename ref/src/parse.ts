@@ -37,6 +37,8 @@ export function viewStart(src: string): number { parseProgram(src); return viewA
 
 class Cursor {
   i = 0;
+  pendingStmts: Stmt[] = [];           // a destructuring `let` (07 §5) is several statements: the rest of them, after the first
+  temps = 0;                           // `$$n`: the bound value of a destructuring whose right side is not a name (RG-4b)
   src: string;
   constructor(src: string) { this.src = src; }
   get line() { return this.src.slice(0, this.i).split("\n").length; }
@@ -116,7 +118,7 @@ export function parseProgram(src: string): Program {
   const c = new Cursor(src);
   const decls: Decl[] = [];
   c.ws();
-  while (!c.eof() && looksLikeDecl(c)) { decls.push(parseDecl(c)); c.ws(); c.eat(";"); c.ws(); }
+  while (!c.eof() && looksLikeDecl(c)) { decls.push(...parseDecls1(c)); c.ws(); c.eat(";"); c.ws(); }
   viewAt = c.i;
   const view = parseMarkup(c, null);
   c.ws();
@@ -156,6 +158,71 @@ export function parseDeclarations(src: string): JsDecl[] {
     out.push({ kind: "fn", name, pure, params, rejects, line, ptypes, ret, ...(side ? { side } : {}) });
   }
 }
+
+/** RG-4b, 07 §5: a destructuring pattern, `{ a, b: c, d = 1, e: { f } }` or `[a, , b]`. Rest (`...r`) is not yet. */
+type Pat = { k: "name"; name: string; line: number } | { k: "obj"; props: { key: string; pat: Pat; dflt?: Expr }[] } | { k: "arr"; items: ({ pat: Pat; dflt?: Expr } | null)[] };
+function parsePattern(c: Cursor): Pat {
+  c.ws();
+  if (c.eat("{")) {
+    const props: { key: string; pat: Pat; dflt?: Expr }[] = [];
+    for (;;) {
+      c.ws(); if (c.startsWith("}")) break;
+      if (c.startsWith("...")) c.fail("RG-4b: a rest pattern (`...rest`) is not supported yet: name the fields, or read them from the value");
+      const kline = c.line; const key = c.ident() ?? c.fail("a field name"); c.ws();
+      const pat: Pat = c.eat(":") ? parsePattern(c) : { k: "name", name: key, line: kline }; c.ws();
+      const dflt = c.peek() === "=" && c.peek(1) !== "=" && c.peek(1) !== ">" ? (c.i++, c.ws(), parseExpr(c)) : undefined;
+      props.push({ key, pat, dflt }); c.ws();
+      if (!c.eat(",")) break;
+    }
+    c.ws(); c.expect("}"); return { k: "obj", props };
+  }
+  if (c.eat("[")) {
+    const items: ({ pat: Pat; dflt?: Expr } | null)[] = [];
+    for (;;) {
+      c.ws(); if (c.startsWith("]")) break;
+      if (c.startsWith(",")) { c.i++; items.push(null); continue; }
+      if (c.startsWith("...")) c.fail("RG-4b: a rest pattern (`...rest`) is not supported yet: name the items, or read them from the value");
+      const pat = parsePattern(c); c.ws();
+      const dflt = c.peek() === "=" && c.peek(1) !== "=" && c.peek(1) !== ">" ? (c.i++, c.ws(), parseExpr(c)) : undefined;
+      items.push({ pat, dflt }); c.ws();
+      if (!c.eat(",")) break;
+    }
+    c.ws(); c.expect("]"); return { k: "arr", items };
+  }
+  const line = c.line; const name = c.ident(); if (!name || KEYWORDS.has(name)) c.fail("a name to bind");
+  return { k: "name", name: name!, line };
+}
+/** Each name a pattern binds, with its projection of `base` (a default applies when the field is `undefined`, as in JS). */
+function expandPattern(pat: Pat, base: Expr, out: { name: string; e: Expr; line: number }[]) {
+  const dfl = (v: Expr, d?: Expr): Expr => d ? { k: "if", c: { k: "bin", op: "==", l: v, r: { k: "lit", v: undefined } }, t: d, f: v } : v;
+  if (pat.k === "name") out.push({ name: pat.name, e: base, line: pat.line });
+  else if (pat.k === "obj") for (const p of pat.props) expandPattern(p.pat, dfl({ k: "member", o: base, p: p.key }, p.dflt), out);
+  else pat.items.forEach((it, i) => { if (it) expandPattern(it.pat, dfl({ k: "index", o: base, i: { k: "lit", v: i } }, it.dflt), out); });
+}
+/** A right side that is read again per name without asking twice: a name or a path of names. */
+const isPath = (e: Expr): boolean => e.k === "id" || (e.k === "member" && !e.opt && isPath(e.o));
+/** At a block's `{ … } = e` or `[ … ] = e`: a destructuring declaration, not a read in the view. */
+function destructuringAhead(c: Cursor): boolean {
+  const open = c.peek(); if (open !== "{" && open !== "[") return false;
+  let depth = 0, j = c.i;
+  for (; j < c.src.length; j++) { const ch = c.src[j]; if (ch === "{" || ch === "[") depth++; else if (ch === "}" || ch === "]") { depth--; if (depth === 0) break; } else if (ch === "\"" || ch === "'") { const q = ch; for (j++; j < c.src.length && c.src[j] !== q && c.src[j] !== "\n"; j++) if (c.src[j] === "\\") j++; } else if (ch === "\n" || ch === "<" || ch === "`") return false; }
+  const rest = c.src.slice(j + 1);
+  return /^[ \t]*=(?![=>])/.test(rest);
+}
+/** RG-4b: `{ a, b } = e` is one equation per name, each a projection of `e` that keeps updating. */
+function parseDestructuringDecl(c: Cursor): Decl[] {
+  const line = c.line;
+  const pat = parsePattern(c); c.ws(); c.expect("="); c.ws();
+  if (JS_APIS.exec(c.src.slice(c.i).split("\n", 1)[0])?.index === 0) c.fail("a hook's pair is not .rx");   // `[n, setN] = createSignal(0)`: JS_API's hint
+  let base = parseExpr(c);
+  const out: Decl[] = [];
+  if (!isPath(base)) { const t = `$$${++c.temps}`; out.push({ k: "eq", name: t, e: base, line }); base = { k: "id", name: t }; }
+  const names: { name: string; e: Expr; line: number }[] = []; expandPattern(pat, base, names);
+  for (const n of names) out.push({ k: "eq", name: n.name, e: n.e, line: n.line });
+  return out;
+}
+/** One declaration, or the several a destructuring declares. */
+function parseDecls1(c: Cursor): Decl[] { c.ws(); return destructuringAhead(c) ? parseDestructuringDecl(c) : [parseDecl(c)]; }
 
 function parseDecl(c: Cursor): Decl {
   c.ws();
@@ -244,14 +311,16 @@ function parseDecl(c: Cursor): Decl {
     if (c.eat("=>")) { c.ws(); return { k: "fn", name, params, decls: [], tail: parseExpr(c), line, ret }; }
     c.expect("{");
     const decls: Decl[] = [];
-    for (;;) { c.ws(); if (!looksLikeDecl(c)) break; decls.push(parseDecl(c)); c.ws(); c.eat(";"); }
+    for (;;) { c.ws(); if (!looksLikeDecl(c)) break; decls.push(...parseDecls1(c)); c.ws(); c.eat(";"); }
     c.ws(); const tail = parseExpr(c); c.ws(); c.expect("}");
     return { k: "fn", name, params, decls, tail, line, ret };
   }
   if (c.keyword("component")) {
     c.ws(); const name = c.ident() ?? c.fail("component name"); c.ws(); c.expect("("); c.ws();
-    const props = c.peek() === ")" ? "props" : (c.ident() ?? c.fail("props name")); const propsType = optType(c); c.ws(); c.expect(")"); c.ws(); c.expect("{");   // `component C()`: no props (found by S-ai2-tracker)
+    const sig = c.peek() === "{" ? parsePattern(c) : null;           // RG-4b: `component C({ a, b })` — each name a projection of props
+    const props = sig || c.peek() === ")" ? "props" : (c.ident() ?? c.fail("props name")); const propsType = optType(c); c.ws(); c.expect(")"); c.ws(); c.expect("{");   // `component C()`: no props (found by S-ai2-tracker)
     const { decls, body } = parseBlockBody(c);
+    if (sig) { const names: { name: string; e: Expr; line: number }[] = []; expandPattern(sig, { k: "id", name: props }, names); decls.unshift(...names.map(n => ({ k: "eq" as const, name: n.name, e: n.e, line: n.line }))); }
     return { k: "component", name, props, decls, view: body, line, propsType };
   }
   const save = c.i;
@@ -273,7 +342,7 @@ function parseDecl(c: Cursor): Decl {
 export function parseBlock(c: Cursor): Stmt[] {
   c.ws(); c.expect("{"); c.ws();
   const out: Stmt[] = [];
-  while (!c.startsWith("}")) { out.push(parseStmt(c)); c.ws(); c.eat(";"); c.ws(); }
+  while (!c.startsWith("}")) { out.push(parseStmt(c), ...c.pendingStmts.splice(0)); c.ws(); c.eat(";"); c.ws(); }
   c.expect("}");
   return out;
 }
@@ -282,7 +351,7 @@ export function parseStmts(src: string): Stmt[] {
   const c = new Cursor(src);
   const out: Stmt[] = [];
   c.ws();
-  while (!c.eof()) { out.push(parseStmt(c)); c.ws(); c.eat(";"); c.ws(); }
+  while (!c.eof()) { out.push(parseStmt(c), ...c.pendingStmts.splice(0)); c.ws(); c.eat(";"); c.ws(); }
   return out;
 }
 
@@ -296,7 +365,17 @@ function parseStmt(c: Cursor): Stmt {
   if (c.keyword("refresh")) { c.ws(); return { k: "refresh", name: c.ident() ?? c.fail("name") }; }
   if (c.keyword("affects")) { c.ws(); return { k: "affects", name: c.ident() ?? c.fail("name") }; }
   if (c.keyword("action")) { c.ws(); return { k: "action", body: parseBlock(c) }; }
-  if (c.keyword("let") || c.keyword("const")) { c.ws(); const name = c.ident() ?? c.fail("let name"); const type = optType(c); c.ws(); c.expect("="); c.ws(); return { k: "let", name, e: parseExpr(c), type }; }
+  if (c.keyword("let") || c.keyword("const")) { c.ws();
+    if (c.peek() === "{" || c.peek() === "[") {                      // 07 §5: a destructuring local — each name a snapshot, as in JS
+      const pat = parsePattern(c); c.ws(); c.expect("="); c.ws();
+      let base = parseExpr(c); const out: Stmt[] = [];
+      if (!isPath(base)) { const t = `$$${++c.temps}`; out.push({ k: "let", name: t, e: base }); base = { k: "id", name: t }; }
+      const names: { name: string; e: Expr; line: number }[] = []; expandPattern(pat, base, names);
+      for (const n of names) out.push({ k: "let", name: n.name, e: n.e });
+      if (!out.length) c.fail("a destructuring that binds nothing");
+      c.pendingStmts.push(...out.slice(1)); return out[0];
+    }
+    const name = c.ident() ?? c.fail("let name"); const type = optType(c); c.ws(); c.expect("="); c.ws(); return { k: "let", name, e: parseExpr(c), type }; }
   if (c.keyword("try")) {                                              // AC-7
     c.ws(); const body = parseBlock(c); c.ws();
     let catchName: string | undefined, handler: Stmt[] | undefined, fin: Stmt[] | undefined;
@@ -310,9 +389,9 @@ function parseStmt(c: Cursor): Stmt {
   if (c.keyword("return")) { c.ws(false); if (c.peek() === "}" || c.peek() === ";" || c.peek() === "\n" || c.eof()) return { k: "return" }; return { k: "return", e: parseExpr(c) }; }
   if (c.keyword("if")) {                                               // imperative `if (c) { … } else { … }`
     c.ws(); c.expect("("); c.ws(); const cond = parseExpr(c); c.ws(); c.expect(")"); c.ws();
-    const t = c.peek() === "{" ? parseBlock(c) : [parseStmt(c)]; c.ws();
+    const t = c.peek() === "{" ? parseBlock(c) : [parseStmt(c), ...c.pendingStmts.splice(0)]; c.ws();
     let f: Stmt[] = [];
-    if (c.keyword("else")) { c.ws(); f = c.peek() === "{" ? parseBlock(c) : [parseStmt(c)]; }
+    if (c.keyword("else")) { c.ws(); f = c.peek() === "{" ? parseBlock(c) : [parseStmt(c), ...c.pendingStmts.splice(0)]; }
     return { k: "sif", c: cond, t, f };
   }
   // write?  target := expr
@@ -579,13 +658,13 @@ function parseBlockBody(c: Cursor): { decls: Decl[]; body: Markup[] } {
   for (;;) {
     c.ws();
     if (!looksLikeDecl(c)) break;
-    decls.push(parseDecl(c)); c.ws(); c.eat(";");
+    decls.push(...parseDecls1(c)); c.ws(); c.eat(";");
   }
   return { decls, body: parseMarkup(c, "}") };
 }
 function looksLikeDecl(c: Cursor) {
   const save = c.i; c.ws();
-  const r = c.startsWith("source ") || c.startsWith("effect") || c.startsWith("fn ") || c.startsWith("component ") || c.startsWith("deferred ") || c.startsWith("action ") || c.startsWith("provide ") || c.startsWith("context ") || c.startsWith("import ") || c.startsWith("export ") || c.startsWith("type ") || c.startsWith("interface ") || /^error\s+[A-Z]/.test(c.src.slice(c.i)) || /^server\s+(fn|action)\b/.test(c.src.slice(c.i)) ||
+  const r = destructuringAhead(c) || c.startsWith("source ") || c.startsWith("effect") || c.startsWith("fn ") || c.startsWith("component ") || c.startsWith("deferred ") || c.startsWith("action ") || c.startsWith("provide ") || c.startsWith("context ") || c.startsWith("import ") || c.startsWith("export ") || c.startsWith("type ") || c.startsWith("interface ") || /^error\s+[A-Z]/.test(c.src.slice(c.i)) || /^server\s+(fn|action)\b/.test(c.src.slice(c.i)) ||
     (() => { const id = c.ident(); c.ws(false); if (!id || KEYWORDS.has(id)) return false; if (c.peek() === ":" && c.peek(1) !== "=") return true; const ok = (c.peek() === "=" && c.peek(1) !== "=") || /^key\s+[A-Za-z_$][\w$]*\s*=[^=>]/.test(c.src.slice(c.i)); return ok; })();
   c.i = save; return r;
 }
