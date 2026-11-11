@@ -1178,6 +1178,8 @@ impl<'p> Gen<'p> {
                 rtc("preOr", vec![call(id(p), vec![]), thunk(i)])
             }
             ExprKind::Peek(x) => rtc("untrack", vec![thunk(self.expr(x, env, &sub)?)]),
+            // RG-4b: Solid's live view
+            ExprKind::Omit { e: x, keys } => rtc("omit", std::iter::once(self.expr(x, env, &sub)).chain(keys.iter().map(|k| Ok(str(k.clone())))).collect::<Result<Vec<_>, _>>()?),
             ExprKind::Await { e: x, stream, .. } => {
                 if let Some(v) = self.hoisted.get(&(e as *const Expr)) {
                     return Ok(call(id(v.clone()), vec![]));

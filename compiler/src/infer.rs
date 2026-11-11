@@ -271,7 +271,7 @@ impl Walker {
                 self.read(l, st, sh, local, depth);
                 self.read(r, st, sh, local, depth);
             }
-            ExprKind::Un { e, .. } | ExprKind::Spread(e) | ExprKind::Throw(e) => self.read(e, st, sh, local, depth),
+            ExprKind::Un { e, .. } | ExprKind::Spread(e) | ExprKind::Omit { e, .. } | ExprKind::Throw(e) => self.read(e, st, sh, local, depth),
             ExprKind::Await { e, init, .. } => {
                 self.read(e, st, sh, local, depth);
                 if let Some(i) = init {
@@ -362,7 +362,7 @@ impl Walker {
                 self.deps(l, st, sh, out);
                 self.deps(r, st, sh, out);
             }
-            ExprKind::Un { e, .. } | ExprKind::Spread(e) | ExprKind::Throw(e) => self.deps(e, st, sh, out),
+            ExprKind::Un { e, .. } | ExprKind::Spread(e) | ExprKind::Omit { e, .. } | ExprKind::Throw(e) => self.deps(e, st, sh, out),
             ExprKind::If { c, t, f } => {
                 self.deps(c, st, sh, out);
                 self.deps(t, st, sh, out);

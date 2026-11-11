@@ -115,7 +115,7 @@ function freeNames(e: Expr, bound: Set<string>, out: Set<string>): void {
     case "pre": if (!bound.has(e.name)) out.add(`pre:${e.name}`); return;
     case "peek": go(e.e); return;
     case "await": go(e.e); if (e.init) go(e.init); return;
-    case "latest": case "pending": case "un": case "spread": go(e.e); return;
+    case "latest": case "pending": case "un": case "spread": case "omit": go(e.e); return;
     case "bin": go(e.l); go(e.r); return;
     case "if": go(e.c); go(e.t); go(e.f); return;
     case "tpl": for (const p of e.parts) if (typeof p !== "string") go(p); return;
@@ -721,7 +721,7 @@ class Checker {
       case "use": { if (ctx.server) this.err("SERVER_CAPTURE", "SF-3", `a server function's body reads \`use ${e.name}\`: a provision is the client's — pass it as an argument`); const c = this.ctxOf(e.name, env); if (c) this.model.read(c, ctx.scope === "imperative"); if (c && !c.ctx!.dflt) this.uses.push({ region: env.region, name: c.ctx!.key, line: this.line, display: e.name }); return; }
       case "peek": this.model.snap++; go(e.e); this.model.snap--; return;                  // E-5: a snapshot
       case "latest": case "pending": { const save = this.model.probe; this.model.probe = e.k; go(e.e); this.model.probe = save; return; }   // R-9, R-12: probes
-      case "un": case "spread": go(e.e); return;
+      case "un": case "spread": case "omit": go(e.e); return;
       case "await":
         if (ctx.scope === "imperative" && !this.stmtAwaits.has(e)) this.err("AWAIT_IN_EXPRESSION", "AC-1", `\`${show(e)}\` inside an expression of imperative scope: a run suspends only at a statement — bind it first, \`let v = ${show(e)}\` (a \`catch (e) => alt\` may follow it)`);
         this.awaitedCalls.add(e.e); go(e.e); if (e.init) go(e.init); return;

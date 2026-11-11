@@ -452,6 +452,7 @@ class Gen {
       case "un": return `(${e.op}${go(e.e)})`;
       case "draft": throw new CompileError("a draft is an equation's whole expression");
       case "spread": throw new CompileError("spread outside an array literal");
+      case "omit": return `__rt.omit(${[go(e.e), ...e.keys.map(k => J(k))].join(", ")})`;   // RG-4b: Solid's live view
     }
   }
   private ref(name: string, env: Env, ctx: Ctx): string {
