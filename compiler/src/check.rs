@@ -221,6 +221,8 @@ struct Sym<'a> {
     /// O-3: not a name but a prop's argument, stored — its captures are the caller's ("*": all of props)
     prop_of: Option<(RId, String)>,
     maps_records: bool,
+    /// a declared equation, and whether it is deferred: a guess may sit over one that is not (AC-3, ST-5c)
+    eq_decl: Option<bool>,
     rows: Option<RowsT<'a>>,
     comp: Option<&'a Decl>,
     expr: Option<(&'a Expr, EId)>,
@@ -253,6 +255,7 @@ impl<'a> Sym<'a> {
             ret_captures: None,
             prop_of: None,
             maps_records: false,
+            eq_decl: None,
             rows: None,
             comp: None,
             expr: None,
@@ -1166,7 +1169,8 @@ impl<'a> Checker<'a> {
                     let r = self.region(Some(region), "component", true, Some(name.clone()));
                     sym.comp_region = Some(r);
                 }
-                Decl::Eq { e, key, .. } => {
+                Decl::Eq { e, key, deferred, .. } => {
+                    sym.eq_decl = Some(*deferred);
                     sym.maps_records = key.is_none() && maps_into_records(e);
                     if let ExprKind::Id(n) = &e.k {
                         if let Some(t) = self.lookup(env, n) {
@@ -2332,7 +2336,16 @@ impl<'a> Checker<'a> {
                         self.model.write(tsym, op, !target.path.is_empty());
                         if let Some(t) = tsym {
                             let k = self.syms[t].kind;
-                            if k != SymKind::Source {
+                            // AC-3: a guess may sit over an equation (Solid's createOptimistic(fn)); it is not a write of the truth
+                            let guessable = op == "optimistic" && k == SymKind::Eq && self.syms[t].eq_decl.is_some() && !self.syms[t].param && self.syms[t].imported.is_none();
+                            if guessable && self.syms[t].eq_decl == Some(true) {
+                                self.err(
+                                    "GUESS_ON_DEFERRED",
+                                    "AC-3",
+                                    format!("{} is deferred: its value is a lagging copy (V-16), so nothing would confirm a guess on it — guess the equation it lags", target.name),
+                                );
+                            } else if guessable {
+                            } else if k != SymKind::Source {
                                 let what = match k {
                                     SymKind::Eq => "an equation".to_string(),
                                     SymKind::Props => "props".to_string(),

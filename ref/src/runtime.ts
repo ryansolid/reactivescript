@@ -1102,7 +1102,7 @@ export class Runtime {
     else if (s.k === "optimistic") {
       if (!run.action) throw new RuleError("GUESS_OUTSIDE_HOLD", "a guess outside an action body");
       const n = this.nodeNamed(s.target.name, region);
-      if (!n || !n.question) throw new RuleError("GUESS_NO_QUESTION", `${s.target.name} is not a source with a question (source x = e)`);
+      if (!n || !(n.question || (n.kind === "eq" && !n.deferred && n.compute))) throw new RuleError("GUESS_NO_QUESTION", `${s.target.name} is not a source with a question (source x = e)`);
       const path = s.target.path.map(p => typeof p === "string" ? p : String(this.ev(p, region, env)));
       this.pendingGuesses.push({ node: n, path, value: this.ev(s.e, region, env) });
     } else if (s.k === "write") {

@@ -626,8 +626,11 @@ impl<'p> Gen<'p> {
                 }
                 // SF-1d: a server fn, not an accessor
                 Decl::Eq { name, e, .. } if unwrap_server(e).is_some() => self.set(env, name, val(mg(name))),
-                Decl::Eq { name, .. } => {
+                Decl::Eq { name, e, deferred, .. } => {
                     let mut b = bind(Kind::Acc, mg(name));
+                    if self.guessed_eq(name, e, *deferred) {
+                        b.w = Some(format!("w${name}"));
+                    }
                     b.prev = self.u.prev_of.contains(name).then(|| format!("p${name}"));
                     self.set(env, name, b);
                 }
@@ -944,6 +947,19 @@ impl<'p> Gen<'p> {
                 let lv = self.loading_value(init, env)?;
                 let mode = obj(vec![("optimistic", E::Bool(self.u.optimistic.contains(name))), ("structured", E::Bool(self.u.paths.contains(name)))]);
                 let x = self.expr(init, env, &Ctx { tail: true, self_: Some(name.clone()), ..Ctx::default() })?;
+                let mut args = vec![str(name.clone()), arrow(&["__prev"], x), lv, mode];
+                if let Some(k) = key {
+                    args.push(str(k.clone()));
+                }
+                let mut out = vec![S::Const(pair(), rtc("question", args)), self.reg(name, b, true)];
+                prev(&mut out);
+                Ok(out)
+            }
+            Decl::Eq { name, e, key, deferred, .. } if self.guessed_eq(name, e, *deferred) => {
+                // AC-3 over an equation: createOptimistic(fn) / createOptimisticStore(fn, seed) — derived, its setter only guesses
+                let lv = self.loading_value(e, env)?;
+                let mode = obj(vec![("optimistic", E::Bool(true)), ("structured", E::Bool(self.u.paths.contains(name) || key.is_some())), ("derived", E::Bool(true))]);
+                let x = self.expr(e, env, &Ctx { tail: true, self_: Some(name.clone()), ..Ctx::default() })?;
                 let mut args = vec![str(name.clone()), arrow(&["__prev"], x), lv, mode];
                 if let Some(k) = key {
                     args.push(str(k.clone()));
@@ -1516,6 +1532,10 @@ impl<'p> Gen<'p> {
         Ok(out)
     }
     /// A region's body as a child: its declarations, then its view (a function body, so it is owned where it is called).
+    /// An equation a guess sits over (AC-3): not deferred, not a draft, not a wrapped server fn.
+    fn guessed_eq(&self, name: &str, e: &Expr, deferred: bool) -> bool {
+        self.u.optimistic.contains(name) && !deferred && !matches!(&e.k, ExprKind::Draft { .. }) && unwrap_server(e).is_none()
+    }
     fn region_fn(&mut self, decls: &[Decl], view: &[Markup], env: Env, param: Option<String>, narrow: Option<(String, Bind)>, bind_name: Option<String>) -> R<E> {
         let inner = self.new_env(Some(env));
         let mut pre = vec![];
