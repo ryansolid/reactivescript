@@ -10,7 +10,7 @@ import { Show, For, Loading, Errored } from "solid-js";
 import { getObserver } from "@solidjs/signals";
 import {
   createSignal, createMemo, createEffect, createOptimistic, createOptimisticStore, createStore, createProjection, createDeferred,
-  createRoot, createRenderEffect, flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, resetErrorHalt, createContext, getContext, setContext, getOwner, runWithOwner, $TARGET, createErrorBoundary
+  createRoot, createRenderEffect, flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, resetErrorHalt, createContext, getContext, setContext, getOwner, runWithOwner, $TARGET, createErrorBoundary, omit
 } from "@solidjs/signals";
 
 const noFlight = (v: unknown) => { if (v instanceof Flight || v instanceof Promise) throw new Unsupported("`await` not in tail position (the oracle lowers a tail `await` to the memo's result)"); };
@@ -282,6 +282,19 @@ export class Oracle {
             scope.vars.set(d.name, { k: "memo", get: () => proj });
             break;
           }
+          if (this.optimisticTargets.has(d.name) && !d.deferred) {     // AC-3 over an equation: Solid's createOptimistic(fn) / createOptimisticStore(fn, seed) — derived, its setter only guesses
+            const compute = this.computeOf(d.name, d.e, scope);
+            const plain = () => { throw new Unsupported("a plain write to an equation"); };
+            if (this.pathTargets.has(d.name) || d.key) {
+              const derive = async (draft: any) => { const r = compute(draft); const v = r instanceof Flight ? await r.first : await r; assignDraft(draft, v); };
+              const [store, setStore] = (createOptimisticStore as any)(derive, d.key ? [] : {}, d.key ? { key: d.key } : undefined);
+              scope.vars.set(d.name, { k: "store", get: () => store, set: plain, setPath: plain, question: true, setGuess: setStore });
+            } else {
+              const [get, setGuess] = createOptimistic(compute as any, this.loadingValue(d.e, scope) as any);
+              scope.vars.set(d.name, { k: "sig", get, set: plain as any, setGuess: setGuess as any, question: true, optimistic: true });
+            }
+            break;
+          }
           if (d.key) {                                                  // ST-4: a keyed projection
             const compute = this.computeOf(d.name, d.e, scope);
             const src = createMemo(() => compute(undefined) as any, this.loadingValue(d.e, scope) as any);   // the answer (sync, or the tail await's) is a memo; the projection reconciles it by key (found by S-ai2-search)
@@ -440,6 +453,7 @@ export class Oracle {
       case "draft": throw new Unsupported("draft outside an equation");
       case "use": { const b = this.provision(e.name, scope); return b.k === "const" ? b.value : (b as { get: () => unknown }).get(); }
       case "spread": throw new Error("spread outside an array literal");
+      case "omit": return omit(this.ev(e.e, scope, env) as Record<string, unknown>, ...e.keys);
     }
   }
 

@@ -30,6 +30,9 @@ impl Spans<'_> {
         true
     }
     fn word_in(&mut self, at: Span, name: &str, what: &str) {
+        if name.starts_with("$$") {
+            return; // a destructuring's temp (RG-4b): the parser's own name for its right side
+        }
         let t = at.text(self.src);
         let found = t.match_indices(name).any(|(i, _)| {
             let before = t[..i].chars().next_back();
@@ -124,8 +127,9 @@ impl Spans<'_> {
     fn expr(&mut self, e: &Expr, parent: Span) {
         let at = e.span;
         if !self.inside(at, parent, e.kind()) {
-            // the one expression the parser makes: a statement-bodied arrow's `body`
-            if !matches!(e.k, ExprKind::Lit(Lit::Undefined)) {
+            // the expressions the parser makes: a statement-bodied arrow's `body`, and a destructured name's projection
+            // (RG-4b: `.field`, `[i]`, the default's `=== undefined ? d : v`, the right side's temp or `props`, a rest's `omit`, `.slice(n)` or `{ ...omit }`)
+            if !matches!(e.k, ExprKind::Lit(Lit::Undefined) | ExprKind::Lit(Lit::Num(_)) | ExprKind::Member { .. } | ExprKind::Index { .. } | ExprKind::If { .. } | ExprKind::Bin { .. } | ExprKind::Id(_) | ExprKind::Omit { .. } | ExprKind::Call { .. } | ExprKind::Rec(_)) {
                 self.bad(parent, format!("a {} expression has no span", e.kind()));
             }
             return;
@@ -146,7 +150,7 @@ impl Spans<'_> {
                 sub(l);
                 sub(r);
             }
-            ExprKind::Un { e, .. } | ExprKind::Peek(e) | ExprKind::Latest(e) | ExprKind::Pending(e) | ExprKind::Spread(e) | ExprKind::Throw(e) => sub(e),
+            ExprKind::Un { e, .. } | ExprKind::Peek(e) | ExprKind::Latest(e) | ExprKind::Pending(e) | ExprKind::Spread(e) | ExprKind::Omit { e, .. } | ExprKind::Throw(e) => sub(e),
             ExprKind::Pre { init, .. } => init.iter().for_each(|x| sub(x)),
             ExprKind::Await { e, init, .. } => {
                 sub(e);
@@ -349,7 +353,7 @@ pub fn walk(p: &Program, f: &mut dyn FnMut(Span)) {
         match &e.k {
             ExprKind::Lit(_) | ExprKind::Id(_) | ExprKind::Use(_) | ExprKind::StyleMap { .. } => {}
             ExprKind::Bin { l, r, .. } => sub.extend([&**l, &**r]),
-            ExprKind::Un { e, .. } | ExprKind::Peek(e) | ExprKind::Latest(e) | ExprKind::Pending(e) | ExprKind::Spread(e) | ExprKind::Throw(e) => sub.push(e),
+            ExprKind::Un { e, .. } | ExprKind::Peek(e) | ExprKind::Latest(e) | ExprKind::Pending(e) | ExprKind::Spread(e) | ExprKind::Omit { e, .. } | ExprKind::Throw(e) => sub.push(e),
             ExprKind::Pre { init, .. } => sub.extend(init.iter().map(|x| &**x)),
             ExprKind::Await { e, init, .. } => sub.extend(std::iter::once(&**e).chain(init.iter().map(|x| &**x))),
             ExprKind::If { c, t, f } => sub.extend([&**c, &**t, &**f]),

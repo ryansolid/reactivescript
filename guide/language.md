@@ -27,6 +27,7 @@ source user = await fetchUser(id)          // state with a question: re-asked wh
 double = count * 2                         // an equation: always equal to its right side, never written
 label = `${user.name} (${count})`
 rows key id = items                        // a keyed collection (rows keep identity by `id`)
+{ name, age = 0 } = user                   // destructuring: one equation per name, each keeps updating
 fn area(w: number, h: number): number => w * h       // a pure function
 action save(n: string) { … }               // writes and awaits (async.md)
 component Row(props: { item: Item }) { … }
@@ -35,7 +36,9 @@ type Item = { id: number; name: string }
 ```
 
 There is no `let` at the top level or in a component: a value that changes is a `source`, and one computed from
-others is an equation. Equations are lazy and exact: an arm of `c ? a : b` that isn't taken isn't evaluated.
+others is an equation. Bare `x = e` is always an equation and `let x = e` (in imperative code) always a snapshot, as
+in JS; that holds for destructuring too. Mutation is only `:=` and `guess`. A rest, `{ id, ...rest } = props`, is the other fields
+(Solid's `omit`) and keeps updating too. Equations are lazy and exact: an arm of `c ? a : b` that isn't taken isn't evaluated.
 
 ## Expressions
 
@@ -95,7 +98,7 @@ effect (count) { log($0) }   // runs after `count` changes; `$0` is its value (a
 
 - A write is `x := v`, `x.field := v`, `xs[i].done := v`, or functional `x := old => …` (applied to the slot as it
   stands at the write).
-- `let`/`const`, `if`, `try`/`catch`/`finally`, `return`, `throw` work as in TypeScript (no `for`/`while` loops:
+- `let`/`const` (destructuring too: `let { a, b } = pair` takes snapshots), `if`, `try`/`catch`/`finally`, `return`, `throw` work as in TypeScript (no `for`/`while` loops:
   use array methods).
 - Browser and JS globals (`console`, `document`, `window`) are not in scope. `log(…)` prints; anything else from
   JS comes in through an import from a `.js` module.
@@ -117,6 +120,7 @@ component Card(props: { title: string; children: View }) {
 ```
 
 `props.x` stays live: don't copy it into a source unless you mean a one-time seed (`source draft := peek(props.x)`).
+Destructured props stay live too: `component Card({ title, open = false })` or `{ title } = props` (RG-4b).
 
 A prop that takes a handler is named `on…` and typed as a function: `props: { onPick: (id: number) => void }`, passed
 as `<Row onPick={id => { selected := id }} />` and called from the component's own handlers (`props.onPick(id)`).

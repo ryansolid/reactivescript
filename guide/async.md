@@ -85,7 +85,7 @@ by what the screen should do:
 
 | You want | Write |
 | --- | --- |
-| Show a value now, and take it back if the action fails | `guess x := v` (x is a source with a question: `source x = …`) |
+| Show a value now, and take it back if the action fails | `guess x := v` (x is an equation, `x = …`, or a source with a question, `source x = …`) |
 | `pending? x` true while the action runs | `affects x` |
 | Land a UI write now and keep it (close a menu, clear a message) | `onFlush(() => { x := v })` (EF-8) |
 | Record the server's answer | `x := answer` after the `await` |

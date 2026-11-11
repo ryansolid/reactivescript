@@ -241,7 +241,7 @@ class Gen {
       if (d.k === "error" || d.k === "context") env.vars.set(d.name, { kind: "val", js: mg(d.name) });
       if (d.k === "source") env.vars.set(d.name, { kind: "src", js: mg(d.name), w: `w$${d.name}`, prev: this.u.prevOf.has(d.name) ? `p$${d.name}` : undefined });
       if (d.k === "eq" && unwrapServer(d.e)) { env.vars.set(d.name, { kind: "val", js: mg(d.name) }); continue; }   // SF-1d: a server fn, not an accessor
-      if (d.k === "eq") env.vars.set(d.name, { kind: d.e.k === "call" && d.e.f.k === "id" && env.lookup(d.e.f.name)?.kind === "ifn" ? "acc" : "acc", js: mg(d.name), prev: this.u.prevOf.has(d.name) ? `p$${d.name}` : undefined });
+      if (d.k === "eq") env.vars.set(d.name, { kind: d.e.k === "call" && d.e.f.k === "id" && env.lookup(d.e.f.name)?.kind === "ifn" ? "acc" : "acc", js: mg(d.name), w: this.guessedEq(d) ? `w$${d.name}` : undefined, prev: this.u.prevOf.has(d.name) ? `p$${d.name}` : undefined });
     }
     for (const d of decls) if (d.k === "import" && !d.resolved) for (const { name, alias } of d.names) {
       const v = !d.from.startsWith(".") && !BUILTINS.has(name) && name !== "log" ? `w$${alias}` : name === "log" ? "__B.log" : d.declaredErrors?.includes(name) ? `__rt.jsError(${J(name)})` : BUILTINS.has(name) ? `__B.${name}` : d.from.endsWith("/api") ? `__rt.api(${J(name)})` : null;
@@ -313,6 +313,8 @@ class Gen {
     }).join("\n");
   }
   private hoistAll(es: Expr[], env: Env, pad: string): string[] { return es.map(x => this.hoist(null, x, env, pad, false)).filter(Boolean); }
+  /** An equation a guess sits over (AC-3): not deferred, not a draft, not a wrapped server fn. */
+  private guessedEq(d: Extract<Decl, { k: "eq" }>): boolean { return this.u.optimistic.has(d.name) && !d.deferred && d.e.k !== "draft" && !unwrapServer(d.e); }
   private value1(d: Decl, env: Env, ind: number, b: Bind): string {
     const pad = " ".repeat(ind * 2);
     const prev = b.prev ? `\n${pad}const ${b.prev} = __rt.pre(${b.js});` : "";
@@ -323,6 +325,11 @@ class Gen {
       return `${pad}const [${b.js}, ${b.w}] = __rt.question(${J(d.name)}, (__prev) => ${this.expr(d.init, env, { imp: false, tail: true, self: d.name })}, ${lv}, ${mode}${d.key ? `, ${J(d.key)}` : ""});\n${pad}__rt.reg(${J(d.name)}, { get: ${b.js}, w: ${b.w} });${prev}`;
     }
     if (d.k !== "eq") throw new CompileError("unreachable");
+    if (this.guessedEq(d)) {                                                                   // AC-3 over an equation: createOptimistic(fn) / createOptimisticStore(fn, seed) — derived, its setter only guesses
+      const lv = this.loadingValue(d.e, env);
+      const mode = `{ optimistic: true, structured: ${this.u.paths.has(d.name) || !!d.key}, derived: true }`;
+      return `${pad}const [${b.js}, ${b.w}] = __rt.question(${J(d.name)}, (__prev) => ${this.expr(d.e, env, { imp: false, tail: true, self: d.name })}, ${lv}, ${mode}${d.key ? `, ${J(d.key)}` : ""});\n${pad}__rt.reg(${J(d.name)}, { get: ${b.js}, w: ${b.w} });${prev}`;
+    }
     const reg = `\n${pad}__rt.reg(${J(d.name)}, { get: ${b.js} });${prev}`;
     if (d.e.k === "draft") {                                                                   // ST-3
       const seed = d.e.seed; if (seed.k !== "pre" || seed.name !== d.name || !seed.init) throw new CompileError("a draft's seed must be `pre self -> seed`");
@@ -445,6 +452,7 @@ class Gen {
       case "un": return `(${e.op}${go(e.e)})`;
       case "draft": throw new CompileError("a draft is an equation's whole expression");
       case "spread": throw new CompileError("spread outside an array literal");
+      case "omit": return `__rt.omit(${[go(e.e), ...e.keys.map(k => J(k))].join(", ")})`;   // RG-4b: Solid's live view
     }
   }
   private ref(name: string, env: Env, ctx: Ctx): string {

@@ -73,6 +73,7 @@ type SymKind = "source" | "eq" | "props" | "value" | "fn" | "action" | "comp" | 
 type Sym = {
   kind: SymKind; name: string; region: Region; line: number;
   question?: boolean;                  // source x = e
+  eqDecl?: Extract<Decl, { k: "eq" }>;  // a declared equation: a guess may sit over it (AC-3, ST-5c)
   io?: boolean;                        // calling it is io (R-io)
   param?: boolean;                     // a fn's parameter: never a write target (O-4)
   instantiating?: boolean;             // fn with ref params or declarations (E-9)
@@ -114,7 +115,7 @@ function freeNames(e: Expr, bound: Set<string>, out: Set<string>): void {
     case "pre": if (!bound.has(e.name)) out.add(`pre:${e.name}`); return;
     case "peek": go(e.e); return;
     case "await": go(e.e); if (e.init) go(e.init); return;
-    case "latest": case "pending": case "un": case "spread": go(e.e); return;
+    case "latest": case "pending": case "un": case "spread": case "omit": go(e.e); return;
     case "bin": go(e.l); go(e.r); return;
     case "if": go(e.c); go(e.t); go(e.f); return;
     case "tpl": for (const p of e.parts) if (typeof p !== "string") go(p); return;
@@ -377,6 +378,7 @@ class Checker {
       if (d.k === "action") sym.io = true;                                                 // R-io-2: an action is io
       if (d.k === "fn") { sym.params = d.params; sym.instantiating = d.params.some(p => p.ref) || d.decls.length > 0; sym.fnDecl = d; sym.declEnv = env; }
       if (d.k === "component") { sym.comp = d; sym.compRegion = this.region(env.region, "component", { component: true, name: d.name }); this.compSyms.set(sym.compRegion, sym); }
+      if (d.k === "eq") sym.eqDecl = d;
       if (d.k === "eq") { sym.mapsRecords = !d.key && mapsIntoRecords(d.e); if (d.e.k === "id") { const t = env.lookup(d.e.name); if (t?.io) sym.io = true; } }
       if (d.k === "eq") { const sf = unwrapServer(d.e); if (sf) { sym.kind = "server"; sym.params = sf.params.map(name => ({ name, ref: false })); this.serverExprs.set(sf, sym); } }   // SF-1d: a wrapped server fn is one, its rows the function's
       this.bind(env, d.name, sym);
@@ -719,7 +721,7 @@ class Checker {
       case "use": { if (ctx.server) this.err("SERVER_CAPTURE", "SF-3", `a server function's body reads \`use ${e.name}\`: a provision is the client's — pass it as an argument`); const c = this.ctxOf(e.name, env); if (c) this.model.read(c, ctx.scope === "imperative"); if (c && !c.ctx!.dflt) this.uses.push({ region: env.region, name: c.ctx!.key, line: this.line, display: e.name }); return; }
       case "peek": this.model.snap++; go(e.e); this.model.snap--; return;                  // E-5: a snapshot
       case "latest": case "pending": { const save = this.model.probe; this.model.probe = e.k; go(e.e); this.model.probe = save; return; }   // R-9, R-12: probes
-      case "un": case "spread": go(e.e); return;
+      case "un": case "spread": case "omit": go(e.e); return;
       case "await":
         if (ctx.scope === "imperative" && !this.stmtAwaits.has(e)) this.err("AWAIT_IN_EXPRESSION", "AC-1", `\`${show(e)}\` inside an expression of imperative scope: a run suspends only at a statement — bind it first, \`let v = ${show(e)}\` (a \`catch (e) => alt\` may follow it)`);
         this.awaitedCalls.add(e.e); go(e.e); if (e.init) go(e.init); return;
@@ -837,7 +839,10 @@ class Checker {
           }
           else {
             target = this.resolve(s.target.name, env, ctx); this.model.write(target, s.k, s.target.path.length > 0);
-            if (target && target.kind !== "source") this.err("WRITE_TO_NON_SOURCE", "W-1", `${s.target.name} is ${target.kind === "eq" ? "an equation" : target.kind === "props" ? "props" : `a ${target.kind}`}: only sources are written (W-1)${target.kind === "props" || target.kind === "value" || target.param ? " — a source is written only in the region that declares it: have its owner pass an action that writes it (O-4)" : ""}`);
+            const guessable = s.k === "optimistic" && target?.kind === "eq" && !!target.eqDecl && !target.param && !target.imported;   // AC-3: a guess may sit over an equation (Solid's createOptimistic(fn)); it is not a write of the truth
+            if (guessable && target!.eqDecl!.deferred) this.err("GUESS_ON_DEFERRED", "AC-3", `${s.target.name} is deferred: its value is a lagging copy (V-16), so nothing would confirm a guess on it — guess the equation it lags`);
+            else if (guessable) {}
+            else if (target && target.kind !== "source") this.err("WRITE_TO_NON_SOURCE", "W-1", `${s.target.name} is ${target.kind === "eq" ? "an equation" : target.kind === "props" ? "props" : `a ${target.kind}`}: only sources are written (W-1)${target.kind === "props" || target.kind === "value" || target.param ? " — a source is written only in the region that declares it: have its owner pass an action that writes it (O-4)" : ""}`);
             else if (target?.imported) this.err("WRITE_TO_NON_SOURCE", "MO-2", `${s.target.name} is a source of ${target.imported}: a module boundary is a value boundary — write it through an action ${target.imported} exports`);
           }
           if (s.k === "optimistic") {

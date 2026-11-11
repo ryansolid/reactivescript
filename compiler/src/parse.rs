@@ -72,10 +72,14 @@ pub struct Cursor<'a> {
     /// on with an empty one, so that what is being typed still projects
     pub recover: bool,
     pub errors: Vec<ParseError>,
+    /// a destructuring `let` (07 §5) is several statements: the rest of them, after the first
+    pub pending: Vec<Stmt>,
+    /// `$$n`: the bound value of a destructuring whose right side is not a name (RG-4b)
+    pub temps: usize,
 }
 impl<'a> Cursor<'a> {
     pub fn new(src: &'a str) -> Self {
-        Cursor { src, i: 0, recover: false, errors: vec![] }
+        Cursor { src, i: 0, recover: false, errors: vec![], pending: vec![], temps: 0 }
     }
     /// What `fail` would return, recorded instead (`recover`).
     fn note(&mut self, msg: &str) {
@@ -304,7 +308,7 @@ pub fn parse_program(src: &str) -> R<Program> {
     let mut decls = vec![];
     c.ws(true);
     while !c.eof() && looks_like_decl(&mut c) {
-        decls.push(parse_decl(&mut c)?);
+        decls.extend(parse_decls1(&mut c)?);
         c.ws(true);
         c.eat(";");
         c.ws(true);
@@ -357,8 +361,8 @@ pub fn parse_program_recovering(src: &str) -> (Program, Vec<ParseError>) {
             }
         } else {
             let (at, n) = (c.i, c.errors.len());
-            match parse_decl(&mut c) {
-                Ok(d) => decls.push(d),
+            match parse_decls1(&mut c) {
+                Ok(d) => decls.extend(d),
                 Err(e) => {
                     // what the failed attempt noted on the way is moot: the declaration is out
                     c.errors.truncate(n);
@@ -530,6 +534,221 @@ fn params_typed(c: &mut Cursor) -> R<(Vec<String>, Vec<Option<String>>)> {
         c.ws(true);
     }
     Ok((params, ptypes))
+}
+
+/// RG-4b, 07 §5: a destructuring pattern, `{ a, b: c, d = 1, e: { f }, ...rest }` or `[a, , b, ...rest]`.
+enum Pat {
+    Name { name: String, line: usize, span: Span },
+    Obj(Vec<(String, Pat, Option<Expr>)>, Option<Box<Pat>>),
+    Arr(Vec<Option<(Pat, Option<Expr>)>>, Option<Box<Pat>>),
+}
+/// `...name`, the last element of a pattern closed by `close`.
+fn parse_rest(c: &mut Cursor, close: &str) -> R<Pat> {
+    c.i += 3;
+    c.ws(true);
+    let (line, start) = (c.line(), c.i);
+    let name = match c.ident() {
+        Some(n) if !is_kw(&n) => n,
+        _ => return c.fail("a name for the rest"),
+    };
+    let span = Span::new(start, c.i);
+    c.ws(true);
+    if !c.starts_with(close) {
+        return c.fail(&format!("a rest element is last, with no default: `...{name}{close}`"));
+    }
+    Ok(Pat::Name { name, line, span })
+}
+fn pat_default(c: &mut Cursor) -> R<Option<Expr>> {
+    if c.peek() == '=' && c.peek_at(1) != '=' && c.peek_at(1) != '>' {
+        c.bump();
+        c.ws(true);
+        return Ok(Some(parse_expr(c)?));
+    }
+    Ok(None)
+}
+fn parse_pattern(c: &mut Cursor) -> R<Pat> {
+    c.ws(true);
+    if c.eat("{") {
+        let mut props = vec![];
+        loop {
+            c.ws(true);
+            if c.starts_with("}") {
+                break;
+            }
+            if c.starts_with("...") {
+                let rest = parse_rest(c, "}")?;
+                c.expect("}")?;
+                return Ok(Pat::Obj(props, Some(Box::new(rest))));
+            }
+            let (kline, kstart) = (c.line(), c.i);
+            let key = c.ident_or("a field name")?;
+            let kspan = Span::new(kstart, c.i);
+            c.ws(true);
+            let pat = if c.eat(":") { parse_pattern(c)? } else { Pat::Name { name: key.clone(), line: kline, span: kspan } };
+            c.ws(true);
+            let dflt = pat_default(c)?;
+            props.push((key, pat, dflt));
+            c.ws(true);
+            if !c.eat(",") {
+                break;
+            }
+        }
+        c.ws(true);
+        c.expect("}")?;
+        return Ok(Pat::Obj(props, None));
+    }
+    if c.eat("[") {
+        let mut items = vec![];
+        loop {
+            c.ws(true);
+            if c.starts_with("]") {
+                break;
+            }
+            if c.starts_with(",") {
+                c.bump();
+                items.push(None);
+                continue;
+            }
+            if c.starts_with("...") {
+                let rest = parse_rest(c, "]")?;
+                c.expect("]")?;
+                return Ok(Pat::Arr(items, Some(Box::new(rest))));
+            }
+            let pat = parse_pattern(c)?;
+            c.ws(true);
+            let dflt = pat_default(c)?;
+            items.push(Some((pat, dflt)));
+            c.ws(true);
+            if !c.eat(",") {
+                break;
+            }
+        }
+        c.ws(true);
+        c.expect("]")?;
+        return Ok(Pat::Arr(items, None));
+    }
+    let (line, start) = (c.line(), c.i);
+    let name = c.ident();
+    match name {
+        Some(n) if !is_kw(&n) => Ok(Pat::Name { name: n, line, span: Span::new(start, c.i) }),
+        _ => c.fail("a name to bind"),
+    }
+}
+/// Each name a pattern binds, with its projection of `base` (a default applies when the field is `undefined`, as in JS).
+/// The projections are the parser's own: they have no span (CP-8). An object rest is `omit` of the named keys: Solid's
+/// live view in reactive scope, a copy of it when `snap` (a `let`).
+fn expand_pattern(pat: &Pat, base: Expr, out: &mut Vec<(String, Expr, usize, Span)>, snap: bool) {
+    let syn = |k: ExprKind| Expr::new(k, Span::NONE);
+    let dfl = |v: Expr, d: &Option<Expr>| match d {
+        Some(d) => syn(ExprKind::If {
+            c: Box::new(syn(ExprKind::Bin { op: "==".into(), l: Box::new(v.clone()), r: Box::new(syn(ExprKind::Lit(Lit::Undefined))) })),
+            t: Box::new(d.clone()),
+            f: Box::new(v),
+        }),
+        None => v,
+    };
+    match pat {
+        Pat::Name { name, line, span } => out.push((name.clone(), base, *line, *span)),
+        Pat::Obj(props, rest) => {
+            for (key, p, d) in props {
+                let v = syn(ExprKind::Member { o: Box::new(base.clone()), p: key.clone(), opt: false });
+                expand_pattern(p, dfl(v, d), out, snap);
+            }
+            if let Some(r) = rest {
+                let o = syn(ExprKind::Omit { e: Box::new(base.clone()), keys: props.iter().map(|(k, _, _)| k.clone()).collect() });
+                expand_pattern(r, if snap { syn(ExprKind::Rec(vec![Field::Spread(o)])) } else { o }, out, snap);
+            }
+        }
+        Pat::Arr(items, rest) => {
+            for (i, it) in items.iter().enumerate() {
+                if let Some((p, d)) = it {
+                    let v = syn(ExprKind::Index { o: Box::new(base.clone()), i: Box::new(syn(ExprKind::Lit(Lit::Num(i as f64)))), opt: false });
+                    expand_pattern(p, dfl(v, d), out, snap);
+                }
+            }
+            if let Some(r) = rest {
+                let f = syn(ExprKind::Member { o: Box::new(base.clone()), p: "slice".into(), opt: false });
+                expand_pattern(r, syn(ExprKind::Call { f: Box::new(f), args: vec![syn(ExprKind::Lit(Lit::Num(items.len() as f64)))] }), out, snap);
+            }
+        }
+    }
+}
+/// A right side that is read again per name without asking twice: a name or a path of names.
+fn is_path(e: &Expr) -> bool {
+    match &e.k {
+        ExprKind::Id(_) => true,
+        ExprKind::Member { o, opt: false, .. } => is_path(o),
+        _ => false,
+    }
+}
+/// At a block's `{ … } = e` or `[ … ] = e`: a destructuring declaration, not a read in the view.
+fn destructuring_ahead(c: &Cursor) -> bool {
+    let open = c.peek();
+    if open != '{' && open != '[' {
+        return false;
+    }
+    let b = c.src.as_bytes();
+    let (mut depth, mut j) = (0i64, c.i);
+    while j < b.len() {
+        let ch = b[j];
+        if ch == b'{' || ch == b'[' {
+            depth += 1;
+        } else if ch == b'}' || ch == b']' {
+            depth -= 1;
+            if depth == 0 {
+                break;
+            }
+        } else if ch == b'"' || ch == b'\'' {
+            let q = ch;
+            j += 1;
+            while j < b.len() && b[j] != q && b[j] != b'\n' {
+                if b[j] == b'\\' {
+                    j += 1;
+                }
+                j += 1;
+            }
+        } else if ch == b'\n' || ch == b'<' || ch == b'`' {
+            return false;
+        }
+        j += 1;
+    }
+    let rest = &c.src[(j + 1).min(c.src.len())..];
+    let t = rest.trim_start_matches([' ', '\t']);
+    t.starts_with('=') && !t.starts_with("==") && !t.starts_with("=>")
+}
+/// RG-4b: `{ a, b } = e` is one equation per name, each a projection of `e` that keeps updating.
+fn parse_destructuring_decl(c: &mut Cursor) -> R<Vec<Decl>> {
+    let (line, start) = (c.line(), c.i);
+    let pat = parse_pattern(c)?;
+    c.ws(true);
+    c.expect("=")?;
+    c.ws(true);
+    // `[n, setN] = createSignal(0)`: JS_API's hint
+    if JS_APIS.find(c.src[c.i..].split('\n').next().unwrap_or("")).is_some_and(|m| m.start() == 0) {
+        return c.fail("a hook's pair is not .rx");
+    }
+    let mut base = parse_expr(c)?;
+    let mut out = vec![];
+    if !is_path(&base) {
+        c.temps += 1;
+        let t = format!("$${}", c.temps);
+        out.push(Decl::Eq { name: t.clone(), e: base, line, span: Span::new(start, c.i), deferred: false, key: None, ty: None, exported: false });
+        base = Expr::new(ExprKind::Id(t), Span::NONE);
+    }
+    let mut names = vec![];
+    expand_pattern(&pat, base, &mut names, false);
+    for (name, e, line, span) in names {
+        out.push(Decl::Eq { name, e, line, span, deferred: false, key: None, ty: None, exported: false });
+    }
+    Ok(out)
+}
+/// One declaration, or the several a destructuring declares.
+fn parse_decls1(c: &mut Cursor) -> R<Vec<Decl>> {
+    c.ws(true);
+    if destructuring_ahead(c) {
+        return parse_destructuring_decl(c);
+    }
+    Ok(vec![parse_decl(c)?])
 }
 
 fn parse_decl(c: &mut Cursor) -> R<Decl> {
@@ -821,7 +1040,7 @@ fn parse_decl_at(c: &mut Cursor) -> R<Decl> {
             if !looks_like_decl(c) {
                 break;
             }
-            decls.push(parse_decl(c)?);
+            decls.extend(parse_decls1(c)?);
             c.ws(true);
             c.eat(";");
         }
@@ -837,13 +1056,21 @@ fn parse_decl_at(c: &mut Cursor) -> R<Decl> {
         c.ws(true);
         c.expect("(")?;
         c.ws(true);
-        let props = if c.peek() == ')' { "props".to_string() } else { c.ident_or("props name")? };
+        // RG-4b: `component C({ a, b })` — each name a projection of props
+        let sig = if c.peek() == '{' { Some(parse_pattern(c)?) } else { None };
+        let props = if sig.is_some() || c.peek() == ')' { "props".to_string() } else { c.ident_or("props name")? };
         let props_type = opt_type(c, false)?;
         c.ws(true);
         c.expect(")")?;
         c.ws(true);
         c.expect("{")?;
-        let (decls, view) = parse_block_body(c)?;
+        let (mut decls, view) = parse_block_body(c)?;
+        if let Some(sig) = &sig {
+            let mut names = vec![];
+            expand_pattern(sig, Expr::new(ExprKind::Id(props.clone()), Span::NONE), &mut names, false);
+            let pre: Vec<Decl> = names.into_iter().map(|(name, e, line, span)| Decl::Eq { name, e, line, span, deferred: false, key: None, ty: None, exported: false }).collect();
+            decls.splice(0..0, pre);
+        }
         return Ok(Decl::Component { name, props, decls, view, line, span: Span::NONE, props_type, exported: false, is_default: false });
     }
     let save = c.i;
@@ -884,6 +1111,7 @@ pub fn parse_block(c: &mut Cursor) -> R<Vec<Stmt>> {
     let mut out = vec![];
     while !c.starts_with("}") {
         out.push(parse_stmt(c)?);
+        out.append(&mut c.pending);
         c.ws(true);
         c.eat(";");
         c.ws(true);
@@ -898,6 +1126,7 @@ pub fn parse_stmts(src: &str) -> R<Vec<Stmt>> {
     c.ws(true);
     while !c.eof() {
         out.push(parse_stmt(&mut c)?);
+        out.append(&mut c.pending);
         c.ws(true);
         c.eat(";");
         c.ws(true);
@@ -949,6 +1178,32 @@ fn parse_stmt(c: &mut Cursor) -> R<Stmt> {
     }
     if c.keyword("let") || c.keyword("const") {
         c.ws(true);
+        if c.peek() == '{' || c.peek() == '[' {
+            // 07 §5: a destructuring local — each name a snapshot, as in JS
+            let pat = parse_pattern(c)?;
+            c.ws(true);
+            c.expect("=")?;
+            c.ws(true);
+            let mut base = parse_expr(c)?;
+            let mut out = vec![];
+            if !is_path(&base) {
+                c.temps += 1;
+                let t = format!("$${}", c.temps);
+                out.push(st(start, StmtKind::Let { name: t.clone(), e: base, ty: None }, c));
+                base = Expr::new(ExprKind::Id(t), Span::NONE);
+            }
+            let mut names = vec![];
+            expand_pattern(&pat, base, &mut names, true);
+            for (name, e, _, span) in names {
+                out.push(Stmt { k: StmtKind::Let { name, e, ty: None }, span });
+            }
+            if out.is_empty() {
+                return c.fail("a destructuring that binds nothing");
+            }
+            let first = out.remove(0);
+            c.pending.extend(out);
+            return Ok(first);
+        }
         let name = c.ident_or("let name")?;
         let ty = opt_type(c, false)?;
         c.ws(true);
@@ -1009,12 +1264,12 @@ fn parse_stmt(c: &mut Cursor) -> R<Stmt> {
         c.ws(true);
         c.expect(")")?;
         c.ws(true);
-        let t = if c.peek() == '{' { parse_block(c)? } else { vec![parse_stmt(c)?] };
+        let t = if c.peek() == '{' { parse_block(c)? } else { let mut v = vec![parse_stmt(c)?]; v.append(&mut c.pending); v };
         c.ws(true);
         let mut f = vec![];
         if c.keyword("else") {
             c.ws(true);
-            f = if c.peek() == '{' { parse_block(c)? } else { vec![parse_stmt(c)?] };
+            f = if c.peek() == '{' { parse_block(c)? } else { let mut v = vec![parse_stmt(c)?]; v.append(&mut c.pending); v };
         }
         return Ok(st(start, StmtKind::Sif { c: cond, t, f }, c));
     }
@@ -1745,7 +2000,7 @@ fn parse_block_body(c: &mut Cursor) -> R<(Vec<Decl>, Vec<Markup>)> {
         if !looks_like_decl(c) {
             break;
         }
-        decls.push(parse_decl(c)?);
+        decls.extend(parse_decls1(c)?);
         c.ws(true);
         c.eat(";");
     }
@@ -1754,7 +2009,8 @@ fn parse_block_body(c: &mut Cursor) -> R<(Vec<Decl>, Vec<Markup>)> {
 fn looks_like_decl(c: &mut Cursor) -> bool {
     let save = c.i;
     c.ws(true);
-    let r = c.starts_with("source ")
+    let r = destructuring_ahead(c)
+        || c.starts_with("source ")
         || c.starts_with("effect")
         || c.starts_with("fn ")
         || c.starts_with("component ")

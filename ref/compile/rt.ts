@@ -8,7 +8,7 @@ import { getObserver } from "@solidjs/signals";
 import { Show, For, Loading, Errored } from "solid-js";
 import {
   createSignal, createMemo, createEffect, createRenderEffect, createRoot, createOptimistic, createOptimisticStore, createStore, createProjection, createDeferred,
-  flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, createContext, getContext, setContext, getOwner, runWithOwner, $TARGET, createErrorBoundary,
+  flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, createContext, getContext, setContext, getOwner, runWithOwner, $TARGET, createErrorBoundary, omit,
 } from "@solidjs/signals";
 
 // 05 H-9 / Solid D-23: `isPending(fn)` judges the reads fn makes, never its return value, so `pending? x` over a structured
@@ -181,13 +181,18 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
     },
     /** `source x = e` (ST-5): createSignal(fn); with a guess written to it, a createOptimistic layer over that truth (AC-3);
      *  written or probed by path, createStore(fn, {}) whose derive writes its draft. */
-    question(name: string, compute: (prev: unknown) => unknown, opts: { loadingValue?: unknown } | undefined, mode: { optimistic: boolean; structured: boolean }, key?: string): [Acc, Writer] {
+    question(name: string, compute: (prev: unknown) => unknown, opts: { loadingValue?: unknown } | undefined, mode: { optimistic: boolean; structured: boolean; derived?: boolean }, key?: string): [Acc, Writer] {
       const fn = named(name, compute);
       if (mode.optimistic && mode.structured) {                        // AC-3 path targets: createOptimisticStore(fn, seed) — the derive writes its draft; the setter guesses per key
         const [store, setStore] = (createOptimisticStore as any)((draft: any) => { const r = fn(draft); if (r instanceof Flight || r instanceof Promise) return (async () => assignDraft(draft, r instanceof Flight ? await r.first : await r))(); assignDraft(draft, r); }, key ? [] : {}, key ? { key } : undefined);
         const get = () => store; storeAccs.add(get);
         const plain = () => { throw new Error("a plain write to an optimistic store is not lowered yet"); };
         return [get, { set: plain, path: plain, guess: (v, keys = []) => setStore((d: any) => { if (keys.length === 0) return typeof v === "function" ? (v as (x: unknown) => unknown)(d) : v; /* a whole guess is the setter\'s return, which Solid diffs shallowly against the view as guesses */ let o = d; for (const k of keys.slice(0, -1)) o = o[k]; const last = keys[keys.length - 1]; o[last] = typeof v === "function" ? (v as (x: unknown) => unknown)(o[last]) : v; }) }];
+      }
+      if (mode.optimistic && mode.derived) {                             // AC-3 over an equation: createOptimistic(fn), whose setter only guesses
+        const plain = () => { throw new Error("a plain write to an equation"); };
+        const [get, setGuess] = createOptimistic(fn as any, opts as any);
+        return [get as Acc, { set: plain, path: plain, guess: setGuess as any }];
       }
       if (mode.optimistic) {
         const [truth, setTruth] = createSignal(fn as any, opts as any);
@@ -292,7 +297,7 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
     errorClass, isA, PANIC, catchMemo: catchAcc, tryCatch, catchRead: (f: () => unknown, match: (err: unknown) => boolean, alt: (err: unknown) => unknown) => catchAcc(f, match, alt)(),
     throw: (e: unknown): never => { throw e; },
     eq: (a: unknown, b: unknown) => raw(a) === raw(b),
-    untrack, latest: (f: () => unknown) => latest(() => latestWhole(f())), isPending: (f: () => unknown) => isPending(() => readWhole(f())),
+    untrack, omit, latest: (f: () => unknown) => latest(() => latestWhole(f())), isPending: (f: () => unknown) => isPending(() => readWhole(f())),
     fmt,
 
     // ---- views: compiled JSX (compile/jsx.ts) calls the renderer; these are the two helpers it calls on __rt ----

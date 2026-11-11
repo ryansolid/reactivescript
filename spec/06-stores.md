@@ -84,8 +84,18 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
   a `createOptimistic(() => truth())` layer.
 - **ST-5b.** Its question (V-9) is `e`'s inputs. `refresh x` re-asks it
   quietly; `affects x` declares that in-flight work will change it (H-9).
-- **ST-5c.** It is the only legal target of `guess` (AC-3): a guess
-  needs a truth that will confirm or correct it.
+- **ST-5c.** It and an equation (V-2) are the legal targets of `guess`
+  (AC-3): a guess needs a truth that will confirm or correct it, and an
+  equation's truth is its expression. A guess is not a write of the truth,
+  so an equation still takes no `:=` (W-1). A guessed equation lowers to
+  Solid's `createOptimistic(fn)` / `createOptimisticStore(fn, seed)`, whose
+  setter only guesses; a guessed source with a question to a
+  `createSignal(fn)` truth under a `createOptimistic` layer, because it is
+  also written plainly. Not a deferred equation (`GUESS_ON_DEFERRED`): its
+  value lags the one a guess would be confirmed by (V-16). Not `props` or a
+  parameter (O-4): guess over the child's own equation of a prop
+  (`shown = props.title`), which shows the guess where the child reads it
+  (S-guess-equation).
 
 ## ST-6 — Streams
 
@@ -220,7 +230,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
 - **AC-3 (guess).** `guess x := e`, legal only inside an action
   body, declared or inferred (AC-1b); in an `effect`'s apply block, which
   is never an action, it is `GUESS_OUTSIDE_HOLD`, and only on a source with a
-  question (ST-5; `GUESS_NO_QUESTION`): writes a guess that is the
+  question (ST-5) or on an equation (ST-5c; else `GUESS_NO_QUESTION`): writes a guess that is the
   graph's and the screen's value for `x` from the instant's settle,
   display-ahead and verdict-inert, until the hold it was made over commits
   or `x`'s own answer differs — the full rule is H-11. `x`'s truth is
@@ -304,6 +314,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
 | `STALE_OWN_READ` (new)          | S   | AC-1d: a read of the change's own write          |
 | `STALE_WRITE_BACK` (new)        | S   | AC-1e: a pre-`await` read written back after it  |
 | `GUESS_NO_QUESTION` (new)  | S   | AC-3 / ST-5c                                     |
+| `GUESS_ON_DEFERRED` (new)  | S   | AC-3 / ST-5c: a deferred equation lags its truth |
 
 ## Scenarios
 
