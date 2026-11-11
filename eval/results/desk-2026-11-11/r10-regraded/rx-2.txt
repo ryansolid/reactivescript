@@ -1,0 +1,15 @@
+== hidden
+✗ base: a failing list leaves the detail alone
+76/77 passed
+== overlap
+✗ base: comments that load while a post is out keep the post
+✗ labels that load while an add is out keep the add
+36/38 passed
+== fuzz
+desk10-rx-2: 3/20 seeds found a hole
+  seed 11 step 33: detail title: "#4 Typo in footerfooter says 2019retryfinding related helpas", server "Delta"
+    tab help ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; focus ; tab help ; tab issues ; land fetchIssues:open ; row-assign 1 ; land assign:3,guest ; filter closed ; user ann ; row-assign 0 ; focus ; land fetchIssues:open ; land assign:1,ann ; select #4 ; close ; land fetchIssues:closed ; close ; land fetchIssue:4 ; fail closeIssue:4 ; row-assign 0 ; close ; land fetchComments:4
+  seed 15 step 40: two views: row "#2 Bravo", detail "#2 Deltalong goneretrysaving filescrash "
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; fail fetchIssues:open ; tab help ; tab issues ; land fetchIssues:open ; focus ; filter closed ; land fetchIssues:closed ; select #2 ; land fetchIssue:2 ; rename Bravo ; select #2 ; assign ; land fetchComments:2 ; row-assign 0 ; select #2 ; land fetchLabels:2 ; assign ; remove-label 0 ; land assign:2,guest ; land search:Old bu
+  seed 18 step 36: detail title: "#4 Typo in footerfooter says 2019retrysaving filescrash repo", server "Delta"
+    land fetchIssues:open ; select #4 ; row-close 0 ; land fetchIssue:4 ; assign ; row-assign 0 ; row-close 1 ; assign ; rename Delta ; fail assign:4,guest ; fail closeIssue:4 ; land closeIssue:1 ; land renameIssue:4,Delta ; user bob ; row-assign 0 ; row-close 1 ; rename Delta ; assign ; row-assign 0 ; land fetchLabels:4 ; rename Alpha ; close ; fail renameIssue:4,Alpha ; focus ; close ; focus ; r

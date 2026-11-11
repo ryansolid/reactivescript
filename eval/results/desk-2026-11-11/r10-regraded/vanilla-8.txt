@@ -1,0 +1,18 @@
+== hidden
+✗ base: retry after not found shows the issue
+76/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: comments that load while a post is out keep the post
+✗ labels that load while an add is out keep the add
+33/38 passed
+== fuzz
+desk10-vanilla-8: 3/20 seeds found a hole
+  seed 3 step 38: count: tab Issues (3), 2 open rows shown
+    assign ; (move failed: locator.click: Timeout 2000ms exceeded.) ; assign ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; assign ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchIssues:open ; select #4 ; add-label p1 ; land fetchLabels:4 ; row-assign 2 ; select #4 ; land fetchLabels:4 ; add-label bug
+  seed 8 step 36: detail title: "#3 Crash on savestack trace attachedassign to bobrenameclose", server "Alpha"
+    land fetchIssues:open ; row-close 1 ; post me too ; (move failed: locator.fill: Timeout 2000ms exceeded.) ; select #4 ; land fetchComments:4 ; land fetchLabels:4 ; fail closeIssue:3 ; close ; remove-label 0 ; close ; rename Bravo ; land renameIssue:4,Bravo ; user bob ; add-label ui ; fail closeIssue:4 ; land addLabel:4,ui ; select #3 ; focus ; fail fetchLabels:3 ; row-assign 0 ; assign ; land 
+  seed 11 step 46: detail title: "#3 Crash on savestack trace attachedassign to guestrenameclo", server "Bravo"
+    close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchIssues:open ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; post fixed? ; (move failed: locator.fill: Timeo
