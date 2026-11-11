@@ -10,7 +10,7 @@ export default component App() {
   source error := ""
 
   <button onClick={() => {
-    optimistic liked := "yes"
+    guess liked := "yes"
     try {
       let r = await fetch("like")
       liked := r
@@ -30,7 +30,7 @@ that body.
 | instant | action                                                                                                   | frame  |
 | ------- | -------------------------------------------------------------------------------------------------------- | ------ |
 | 0       | mount                                                                                                    | `no `  |
-| 1       | handler `optimistic liked := "yes"; try { let r = await fetch("like"); liked := r } catch (e) { error := e.message }` | `yes ` |
+| 1       | handler `guess liked := "yes"; try { let r = await fetch("like"); liked := r } catch (e) { error := e.message }` | `yes ` |
 | 2       | resolve "like" "yes"                                                                                     | `yes ` |
 
 Instant 1: the guess shows at once (H-11). Instant 2: the truth confirms
@@ -41,7 +41,7 @@ it silently and the body ends.
 | instant | action                                                                                                   | frame        |
 | ------- | -------------------------------------------------------------------------------------------------------- | ------------ |
 | 0       | mount                                                                                                    | `no `        |
-| 1       | handler `optimistic liked := "yes"; try { let r = await fetch("like"); liked := r } catch (e) { error := e.message }` | `yes `       |
+| 1       | handler `guess liked := "yes"; try { let r = await fetch("like"); liked := r } catch (e) { error := e.message }` | `yes `       |
 | 2       | reject "like" "offline"                                                                                  | `no offline` |
 
 The guess reverts and the catch's write lands in the same frame (AC-7),
@@ -53,7 +53,7 @@ as in S-action-1.
 -- reject: UNCAUGHT_ACTION_FAILURE
 export default component App() {
   source liked = "no"
-  <button onClick={() => { optimistic liked := "yes"; let r = await fetch("like"); liked := r }}>{liked}</button>
+  <button onClick={() => { guess liked := "yes"; let r = await fetch("like"); liked := r }}>{liked}</button>
 }
 ```
 
@@ -61,11 +61,11 @@ An inferred action catches what its body can fail with, like a declared
 one (R-f-6): nothing awaits a handler.
 
 ```rx
--- reject: OPTIMISTIC_OUTSIDE_HOLD
+-- reject: GUESS_OUTSIDE_HOLD
 export default component App() {
   source draft := "a"
   source saved = "a"
-  effect (draft) { optimistic saved := $0 }
+  effect (draft) { guess saved := $0 }
   <p>{saved}</p>
 }
 ```

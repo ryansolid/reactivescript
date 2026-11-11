@@ -9,7 +9,7 @@ D-34 (`createOptimisticStore`).
 export default component App() {
   source todos key id = await fetch("todos")
   action toggle(i) {
-    try { optimistic todos[i].done := true; await fetch("save"); refresh todos } catch {}
+    try { guess todos[i].done := true; await fetch("save"); refresh todos } catch {}
   }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
@@ -21,7 +21,7 @@ export default component App() {
 }
 ```
 
-`optimistic todos[i].done := true` guesses one key of one row; the rest of
+`guess todos[i].done := true` guesses one key of one row; the rest of
 `todos` is the truth beneath it. The action saves, then re-asks the list
 (`refresh todos`) for the truth that confirms the guess.
 
@@ -65,7 +65,7 @@ corrected by the truth it was made over (D-34).
 export default component App() {
   source id := 1
   source state = await fetch("s:" + str(id))
-  action patch() { try { optimistic state.a := 5; await fetch("w") } catch {} }
+  action patch() { try { guess state.a := 5; await fetch("w") } catch {} }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
     {loading fallback { <p>loading</p> } { <p>{state.a} {state.b} {pending? state.a ? "a!" : "-"} {pending? state.b ? "b!" : "-"}</p> }}
@@ -87,10 +87,10 @@ body's end the guess reverts to the truth.
 ## Rejected variants
 
 ```rx
--- reject: OPTIMISTIC_NO_QUESTION
+-- reject: GUESS_NO_QUESTION
 export default component App() {
   source todos: { done: boolean }[] := [{ done: false }]
-  action toggle(i) { try { optimistic todos[i].done := true; await fetch("save") } catch {} }
+  action toggle(i) { try { guess todos[i].done := true; await fetch("save") } catch {} }
 
   <p>{len(todos)}</p>
 }

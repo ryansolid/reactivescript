@@ -9,10 +9,10 @@ export default component App() {
   source todos key id = await fetch("todos")
   shown = latest todos
   action toggle(i) {
-    try { optimistic todos[i].done := true; await fetch("save") } catch {}
+    try { guess todos[i].done := true; await fetch("save") } catch {}
   }
   action rename(i) {
-    try { optimistic todos[i].title := "Z"; await fetch("ren") } catch {}
+    try { guess todos[i].title := "Z"; await fetch("ren") } catch {}
   }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
@@ -49,10 +49,10 @@ export default component App() {
   source todos key id = await fetch("todos")
   shown = latest todos
   action first(i) {
-    try { optimistic todos[i].title := "X"; await fetch("one") } catch {}
+    try { guess todos[i].title := "X"; await fetch("one") } catch {}
   }
   action second(i) {
-    try { optimistic todos[i].title := "Y"; await fetch("two") } catch {}
+    try { guess todos[i].title := "Y"; await fetch("two") } catch {}
   }
 
   errored fallback(e) { <p>error: {e.message}</p> } {

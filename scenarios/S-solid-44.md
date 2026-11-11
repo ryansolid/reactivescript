@@ -8,7 +8,7 @@ Rules: H-9, H-11, AC-3, AC-4, ST-5.
 export default component App() {
   source sel := 3
   source comments = await fetch("c:" + sel)
-  action post() { try { optimistic comments := 9; await fetch("post"); refresh comments } catch {} }
+  action post() { try { guess comments := 9; await fetch("post"); refresh comments } catch {} }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
     <div><span>{sel} {comments}</span> <span>{latest comments}</span> <span>{str(pending? comments)}</span></div>

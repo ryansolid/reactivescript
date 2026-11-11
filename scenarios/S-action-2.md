@@ -12,7 +12,7 @@ export default component App() {
   source status := ""
   action rename(n) {
     try {
-      optimistic shown := n
+      guess shown := n
       await fetch("send")           // fire-and-forget: the answer is not the confirmation
       await until(() => shown == n) // the confirmation is the truth arriving
       status := "confirmed"

@@ -8,7 +8,7 @@ an interpreter (`lower.ts`):
 | form | lowering |
 | --- | --- |
 | `source x := e` | `createSignal`; structured (object/array) → `createStore` behind a signal slot (ST-1, ST-2a) |
-| `source x = e` | `createSignal(fn)`; `createOptimistic(fn)` when an `optimistic x :=` exists; `createStore(fn, {})` when written or probed by path (ST-5) |
+| `source x = e` | `createSignal(fn)`; `createOptimistic(fn)` when an `guess x :=` exists; `createStore(fn, {})` when written or probed by path (ST-5) |
 | `x = e`, `await e [-> v]` | `createMemo(fn, { loadingValue })`; the memo returns the flight (a promise/async iterable) |
 | `deferred x = e` | `createDeferred` |
 | `x = draft(pre x -> seed) { … }` | `createProjection((draft) => …, seed)` (ST-3) |
@@ -18,8 +18,8 @@ an interpreter (`lower.ts`):
 | `peek`, `latest`, `pending?` | `untrack`, `latest(fn)`, `isPending(fn)` |
 | `{if}` `{for}` `{loading}` `{errored}` | `Show`, `For`, `Loading`, `Errored` from `solid-js` |
 | `action`, inline `action { }` | `action(function* …)` — a statement-level `await` is a `yield` of the flight |
-| `optimistic`, `refresh`, `affects` | the setter of a `createOptimistic`, `refresh(x)`, `affects(x)` |
-| `source x = e` written both plainly and optimistically | `createSignal(fn)` as the truth + `createOptimistic(() => truth())` as the guess layer; plain writes go to the truth, `optimistic` to the layer |
+| `guess`, `refresh`, `affects` | the setter of a `createOptimistic`, `refresh(x)`, `affects(x)` |
+| `source x = e` written both plainly and optimistically | `createSignal(fn)` as the truth + `createOptimistic(() => truth())` as the guess layer; plain writes go to the truth, `guess` to the layer |
 | nested `await` | a tail-position `await` is the memo's result (the memo returns the flight); any other position is unsupported |
 | `provide` / `use` | `setContext` / `getContext` against the declaring owner; a provided source is the source binding (RG-7c) |
 | `x := f` | the setter's updater form (W-6) |

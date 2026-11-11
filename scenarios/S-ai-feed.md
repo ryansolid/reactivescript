@@ -62,11 +62,11 @@ change and lands with the body's end (AC-7).
 ## Rejected variants
 
 ```rx
--- reject: OPTIMISTIC_NO_QUESTION
+-- reject: GUESS_NO_QUESTION
 -- handler: pick()
 export default component App() {
   source selected := 1
-  action pick() { optimistic selected := 2; await fetch("x") }
+  action pick() { guess selected := 2; await fetch("x") }
 
   <p>{selected}</p>
 }

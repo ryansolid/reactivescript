@@ -1,7 +1,7 @@
 // TodoMVC against a server, built in layers (solid next's examples/todos). Each layer has its own lifetime and is
 // derived from the one below it; the screen reads only the top one.
 //
-//   3. guesses   `optimistic` writes on `todos` rows and on `adding`: shown now, gone when their action ends (AC-3)
+//   3. guesses   `guess` writes on `todos` rows and on `adding`: shown now, gone when their action ends (AC-3)
 //   2. client    `todos`: what the client owns over (1), here the failures awaiting a retry; the client writes it and
 //                a new answer from (1) re-derives it (ST-5a). The failures themselves outlive that, so they are a
 //                plain source `todos` is derived from
@@ -43,7 +43,7 @@ anyDone = live.some(t => t.done)
 // guess. A new row has no index yet, so an add guesses `adding`, a list of its own.
 action add(id: string, title: string) {
   try {
-    optimistic adding := as => [...as, { id: id, title: title, done: false, gone: false, saving: true, failure: null }]
+    guess adding := as => [...as, { id: id, title: title, done: false, gone: false, saving: true, failure: null }]
     await addTodo(id, title)
     failures := fs => without(fs, id)
   } catch (e) {
@@ -54,8 +54,8 @@ action add(id: string, title: string) {
 action toggle(id: string, done: boolean) {
   try {
     let i = todos.findIndex(t => t.id === id)
-    optimistic todos[i].done := done
-    optimistic todos[i].saving := true
+    guess todos[i].done := done
+    guess todos[i].saving := true
     await toggleTodo(id, done)
     failures := fs => without(fs, id)
   } catch (e) {
@@ -66,7 +66,7 @@ action toggle(id: string, done: boolean) {
 action remove(id: string) {
   try {
     let i = todos.findIndex(t => t.id === id)
-    optimistic todos[i].gone := true
+    guess todos[i].gone := true
     await removeTodo(id)
     failures := fs => without(fs, id)
   } catch (e) {
@@ -77,7 +77,7 @@ action remove(id: string) {
 // A bulk write that fails fans out to one failure per row, so each row gets its own retry.
 action clearDone(ids: string[]) {
   try {
-    optimistic todos := ts => ts.map(t => t.done ? { ...t, gone: true } : t)
+    guess todos := ts => ts.map(t => t.done ? { ...t, gone: true } : t)
     await removeTodos(ids)
     failures := fs => fs.filter(f => !ids.includes(f.id))
   } catch (e) {

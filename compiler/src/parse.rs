@@ -42,7 +42,7 @@ re!(LINE_COMMENT, r"//.*$");
 
 static KEYWORDS: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
     [
-        "source", "effect", "component", "ref", "await", "latest", "loading", "errored", "fallback", "on", "deferred", "action", "optimistic", "refresh", "affects", "if", "else", "pre", "peek", "fn", "let", "for", "in", "true", "false", "undefined",
+        "source", "effect", "component", "ref", "await", "latest", "loading", "errored", "fallback", "on", "deferred", "action", "guess", "optimistic", "refresh", "affects", "if", "else", "pre", "peek", "fn", "let", "for", "in", "true", "false", "undefined",
         "null", "provide", "context", "use", "import", "export", "from", "pure", "return", "type", "interface", "try", "catch", "finally", "throw", "portal",
     ]
     .into_iter()
@@ -262,6 +262,7 @@ re!(JS_APIS, r"\b(useState|useReducer|useMemo|useCallback|useEffect|useRef|creat
 re!(JS_FUNCTION, r"^(export\s+)?(default\s+)?(async\s+)?function\b");
 re!(JS_LOCAL, r"^(const|let|var)\b");
 re!(JS_RETURN, r"^return\b");
+re!(OLD_OPTIMISTIC, r"(^|[{;]\s*)optimistic\s+[A-Za-z_$]");
 re!(NAME_BEFORE, r"([A-Za-z_$][A-Za-z0-9_$.]*)\s*$");
 re!(ARROW_BEFORE, r"=>\s*[A-Za-z_$][A-Za-z0-9_$.]*\s*$");
 re!(OP_ASSIGN, r"^(\+\+|--|(\*\*|\|\||&&|\?\?|[-+*/%])=)");
@@ -278,6 +279,9 @@ pub fn hint(src: &str, i: usize, msg: &str) -> Option<(&'static str, String)> {
     let line = src[start..end].trim();
     let before = &src[src[..i].rfind('\n').map(|j| j + 1).unwrap_or(0)..i];
     let name = NAME_BEFORE.captures(before).map(|c| c[1].to_string()).unwrap_or_else(|| "x".into());
+    if OLD_OPTIMISTIC.is_match(line) {
+        return Some(("OPTIMISTIC", "`optimistic` is spelled `guess`: `guess x := e` shows a guess until the action's answer replaces it (AC-3); it lowers to `createOptimistic`".into()));
+    }
     if msg.starts_with("W-2") && rest.starts_with(":=") && ARROW_BEFORE.is_match(before) {
         return Some(("REACTIVE_WRITE_IN_OWNED_SCOPE", format!("an arrow that writes takes a braced body, `() => {{ {} := … }}`: an expression-bodied arrow is a pure function (SC-3)", name)));
     }
@@ -926,6 +930,9 @@ fn parse_stmt(c: &mut Cursor) -> R<Stmt> {
     c.ws(true);
     let start = c.i;
     if c.keyword("optimistic") {
+        return c.fail("AC-3: `optimistic` is not a statement");
+    }
+    if c.keyword("guess") {
         c.ws(true);
         let name = c.ident_or("target")?;
         let path = parse_path(c)?;

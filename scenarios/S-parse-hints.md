@@ -55,6 +55,14 @@ export default component App() {
 ```
 
 ```
+-- reject: OPTIMISTIC
+export default component App() {
+  source liked = false
+  <button onClick={() => { optimistic liked := true; liked := true }}>♥</button>
+}
+```
+
+```
 -- reject: JS_API
 export default component App() {
   [n, setN] = createSignal(0)

@@ -10,7 +10,7 @@ export default component App() {
   source n := 0
   source guess = n
   action save(amount) {
-    optimistic guess := value => value + amount
+    guess guess := value => value + amount
     try {
       let got = await fetch("r" + amount)
       n := value => value + got

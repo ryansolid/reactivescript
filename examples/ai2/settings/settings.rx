@@ -29,8 +29,8 @@ export action retryLoad() {
 }
 
 export action save(next: Settings) {
-  optimistic settings := next     // the page shows what is being saved, now (H-11)
-  optimistic saveError := ""      // and stops showing the previous failure
+  guess settings := next     // the page shows what is being saved, now (H-11)
+  guess saveError := ""      // and stops showing the previous failure
   affects settings                // `pending? settings` is true until the save ends (AC-5)
   try {
     let saved = await saveSettings(next)

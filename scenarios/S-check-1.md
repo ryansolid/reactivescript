@@ -199,21 +199,21 @@ export default component App() {
 ```
 
 ```rx
--- reject: OPTIMISTIC_OUTSIDE_HOLD
+-- reject: GUESS_OUTSIDE_HOLD
 export default component App() {
   source name := "Ann"
   source shown = name
-  effect (name) { optimistic shown := "Zed" }
+  effect (name) { guess shown := "Zed" }
 
   <p>{shown}</p>
 }
 ```
 
 ```rx
--- reject: OPTIMISTIC_NO_QUESTION
+-- reject: GUESS_NO_QUESTION
 export default component App() {
   source shown := "Ann"
-  action fix() { optimistic shown := "Zed"; await fetch("x") }
+  action fix() { guess shown := "Zed"; await fetch("x") }
 
   <p>{shown}</p>
 }

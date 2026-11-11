@@ -7,7 +7,7 @@ const typescript = require("highlight.js/lib/languages/typescript");
 /** The words .rx adds to TypeScript's: the ones syntaxes/rx.tmLanguage.json highlights (spec/07). */
 const RX_KEYWORDS = [
   "source", "component", "action", "pure", "server", "client", "fn", "error", "context", "use", "provide", "pre",
-  "latest", "peek", "pending", "optimistic", "affects", "refresh", "errored", "loading", "fallback", "portal",
+  "latest", "peek", "pending", "guess", "affects", "refresh", "errored", "loading", "fallback", "portal",
   "deferred", "key", "rejects", "fails", "effect",
 ];
 

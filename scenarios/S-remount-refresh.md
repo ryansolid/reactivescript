@@ -7,7 +7,7 @@ Rules exercised: AC-4, H-11, ST-4, O-2.
 ```rx
 component List() {
   source rows key id = tag(await fetch("l"))
-  action ren() { try { optimistic rows[0].title := "x"; await fetch("save"); refresh rows } catch (e) {} }
+  action ren() { try { guess rows[0].title := "x"; await fetch("save"); refresh rows } catch (e) {} }
   errored fallback(e) { <p>error</p> } { loading fallback { <p>loading</p> } { <b>{for r in rows { <i>{r.title}</i> }}</b> } }
 }
 fn tag(rs) => rs.map(r => ({ id: r.id, title: r.title, seen: true }))

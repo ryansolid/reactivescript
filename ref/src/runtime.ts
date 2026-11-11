@@ -1100,9 +1100,9 @@ export class Runtime {
     else if (s.k === "refresh") { const n = this.nodeNamed(s.name, region); if (!n || (n.kind !== "eq") || !(n.question || n.flight || n.compute)) throw new RuleError("INVALID_REFRESH_TARGET", `${s.name} has no question to re-ask`); n.refreshInAction = !!run.action; this.pendingRefresh.push(n); }
     else if (s.k === "affects") { const n = this.nodeNamed(s.name, region); if (!n) throw new RuleError("INVALID_AFFECTS_TARGET", `${s.name} is not reactive`); this.pendingAffects.push(n); }
     else if (s.k === "optimistic") {
-      if (!run.action) throw new RuleError("OPTIMISTIC_OUTSIDE_HOLD", "optimistic outside an action body");
+      if (!run.action) throw new RuleError("GUESS_OUTSIDE_HOLD", "a guess outside an action body");
       const n = this.nodeNamed(s.target.name, region);
-      if (!n || !n.question) throw new RuleError("OPTIMISTIC_NO_QUESTION", `${s.target.name} is not a source with a question (source x = e)`);
+      if (!n || !n.question) throw new RuleError("GUESS_NO_QUESTION", `${s.target.name} is not a source with a question (source x = e)`);
       const path = s.target.path.map(p => typeof p === "string" ? p : String(this.ev(p, region, env)));
       this.pendingGuesses.push({ node: n, path, value: this.ev(s.e, region, env) });
     } else if (s.k === "write") {

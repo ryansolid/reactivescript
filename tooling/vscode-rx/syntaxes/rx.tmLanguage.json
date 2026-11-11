@@ -247,7 +247,7 @@
           "name": "keyword.operator.reactive.rx"
         },
         {
-          "match": "\\b(optimistic|refresh|affects)\\b",
+          "match": "\\b(guess|refresh|affects)\\b",
           "name": "keyword.other.action.rx"
         },
         {

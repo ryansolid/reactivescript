@@ -41,7 +41,7 @@ see the list at the end.
 ## MO-2 — The value boundary
 
 - **MO-2a.** An imported source is read-only in the importing module:
-  `x := …` and `optimistic x := …` through an import are
+  `x := …` and `guess x := …` through an import are
   `WRITE_TO_NON_SOURCE` (rule MO-2). The exporting module exports actions as
   its write interface (`export action select(id) { selected := id }`).
 - **MO-2b.** `refresh x` and `affects x` of an imported question are
@@ -188,7 +188,7 @@ export component Save(props: { v: unrendered action go catches(nothing) })
   text (S-module-3 is S-module-1 with only the text). Beyond decision 5's
   words, a line carries:
   - a source's kind: `export source x … = …` asks a question (ST-5),
-    `:= …` does not (`refresh x` and `optimistic x := …` depend on it);
+    `:= …` does not (`refresh x` and `guess x := …` depend on it);
   - a fn's parameters (`ref`, with their written types), `rejects(…)` (absent:
     the fn returns nothing that rejects — unlike a JS declaration's, MO-8a,
     where absent is `Error`), and `instantiates` (RG-6);

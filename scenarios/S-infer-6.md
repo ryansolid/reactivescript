@@ -56,7 +56,7 @@ export default component App() {
   source items := []
   action add(x: string) {
     let before = items
-    optimistic items := [...before, x + "…"]
+    guess items := [...before, x + "…"]
     let r = await fetch(x) catch (e) => ""
     items := [...before, x]
   }

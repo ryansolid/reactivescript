@@ -9,7 +9,7 @@ export default component App() {
   source value := 0
   source double = await fetch("d:" + str(value))
   related = await fetch("r:" + str(double))
-  action bump() { value := 1; optimistic double := 3 }
+  action bump() { value := 1; guess double := 3 }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
     {loading fallback { <p>loading</p> } { <p>double={double} async={related}</p> }}

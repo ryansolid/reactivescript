@@ -22,7 +22,7 @@ source messages: Message[] = await* streamMessages(selected) -> []   // ST-5 + S
 msgs key id = messages                             // ST-4: each message keyed by id
 
 source draftText = ""                              // ST-5a: a constant question — provisional UI state a guess can clear
-source sending = false                             // same shape: `optimistic sending := true` reverts when the hold ends
+source sending = false                             // same shape: `guess sending := true` reverts when the hold ends
 source error := ""
 
 effect (len(msgs)) { log("count", $0) }            // EF: runs when the committed count changes
@@ -33,9 +33,9 @@ action send() {
     let text = draftText                           // snapshots (SC-2)
     let room = selected
     let msg = { id: len(messages) + 1, from: "me", text }
-    optimistic draftText := ""                     // AC-3: the guesses show now, display-ahead
-    optimistic sending := true
-    optimistic messages := m => [...m, msg]        // W-6: a functional guess appends
+    guess draftText := ""                     // AC-3: the guesses show now, display-ahead
+    guess sending := true
+    guess messages := m => [...m, msg]        // W-6: a functional guess appends
     await sendMessage(room, text)                  // AC-1: a hold-safe suspension
     draftText := ""                                // the truth, after the await (07 §5)
   } catch (e) {

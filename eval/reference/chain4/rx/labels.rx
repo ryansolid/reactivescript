@@ -19,9 +19,9 @@ export component Labels(props: { id: number }) {
   effect (props.id) { labelError := "" }
 
   action add(id: number, label: string) {
-    optimistic labelError := ""
+    guess labelError := ""
     try {
-      optimistic adding := [...adding, { id: id, label: label }]
+      guess adding := [...adding, { id: id, label: label }]
       await addLabel(id, label)
       refresh labels
     } catch (e) {
@@ -30,9 +30,9 @@ export component Labels(props: { id: number }) {
   }
 
   action remove(id: number, label: string) {
-    optimistic labelError := ""
+    guess labelError := ""
     try {
-      optimistic removing := [...removing, { id: id, label: label }]
+      guess removing := [...removing, { id: id, label: label }]
       await removeLabel(id, label)
       refresh labels
     } catch (e) {

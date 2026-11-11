@@ -804,8 +804,8 @@ class Checker {
   /** AC-1c, AC-1d, AC-1e over one imperative run (ref/src/infer.ts). */
   private runChecks(stmts: Stmt[], action: boolean, bound: string[], inferred = false) {
     for (const f of runFindings(stmts, action, bound, inferred)) {
-      if (f.code === "HELD_WRITE") this.err("HELD_WRITE", "AC-1c", `${f.name} := … comes before an \`await\` in a body that is an action because it writes and awaits (AC-1b), so it is held until the body ends (AC-1): for state that shows while the work runs, \`optimistic ${f.name} := …\` (a source with a question, ST-5c); for a reset that lands now, \`onFlush(() => { ${f.name} := … })\` (EF-8); to hold it on purpose, declare the action (\`action name() { … }\`); or write it after the \`await\``);
-      else if (f.code === "STALE_WRITE_BACK") this.err("STALE_WRITE_BACK", "AC-1e", `${f.name} := … after an \`await\` is computed from ${f.name} as it was read before that \`await\`: whatever changed ${f.name} in between (another action, a reload) is overwritten — write functionally (\`${f.name} := v => …\`, W-6), which applies to ${f.name} as it stands at the write, or guess it (\`optimistic\`, AC-3) and let the answer replace the guess`);
+      if (f.code === "HELD_WRITE") this.err("HELD_WRITE", "AC-1c", `${f.name} := … comes before an \`await\` in a body that is an action because it writes and awaits (AC-1b), so it is held until the body ends (AC-1): for state that shows while the work runs, \`guess ${f.name} := …\` (a source with a question, ST-5c); for a reset that lands now, \`onFlush(() => { ${f.name} := … })\` (EF-8); to hold it on purpose, declare the action (\`action name() { … }\`); or write it after the \`await\``);
+      else if (f.code === "STALE_WRITE_BACK") this.err("STALE_WRITE_BACK", "AC-1e", `${f.name} := … after an \`await\` is computed from ${f.name} as it was read before that \`await\`: whatever changed ${f.name} in between (another action, a reload) is overwritten — write functionally (\`${f.name} := v => …\`, W-6), which applies to ${f.name} as it stands at the write, or guess it (\`guess\`, AC-3) and let the answer replace the guess`);
       else this.err("STALE_OWN_READ", "AC-1d", `${f.name} is read after this change wrote it: the read sees the committed value, not the write (W-4) — keep the value you wrote in a local (\`let v = …; ${f.name} := v\`) and read that, or write functionally (\`${f.name} := v => …\`, W-6)`);
     }
   }
@@ -841,8 +841,8 @@ class Checker {
             else if (target?.imported) this.err("WRITE_TO_NON_SOURCE", "MO-2", `${s.target.name} is a source of ${target.imported}: a module boundary is a value boundary — write it through an action ${target.imported} exports`);
           }
           if (s.k === "optimistic") {
-            if (!ctx.inAction) this.err("OPTIMISTIC_OUTSIDE_HOLD", "AC-3", "optimistic outside an action: a guess needs a hold to live in — an apply block is never an action (its return is the cleanup, EF-5): declare one, `action save(v) { optimistic … }`, and call it from the block");
-            if (target && target.kind === "source" && !target.question) this.err("OPTIMISTIC_NO_QUESTION", "AC-3", `${s.target.name} is declared with := — a guess needs a question to confirm it (source ${s.target.name} = …, ST-5c)`);
+            if (!ctx.inAction) this.err("GUESS_OUTSIDE_HOLD", "AC-3", "a guess outside an action: it needs a hold to live in — an apply block is never an action (its return is the cleanup, EF-5): declare one, `action save(v) { guess … }`, and call it from the block");
+            if (target && target.kind === "source" && !target.question) this.err("GUESS_NO_QUESTION", "AC-3", `${s.target.name} is declared with := — a guess needs a question to confirm it (source ${s.target.name} = …, ST-5c)`);
           }
           s.target.path.forEach(p => typeof p !== "string" && this.expr(p, env, ctx));
           this.expr(s.e, env, ctx);

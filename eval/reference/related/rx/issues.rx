@@ -21,10 +21,10 @@ export component IssuesPage(props: { onOpenHelp: (query: string, id: number) => 
   source closeError: string = ""
 
   action assignTo(id: number, who: string) {
-    optimistic assignError := ""
+    guess assignError := ""
     try {
       let i = issues.findIndex(t => t.id == id)
-      optimistic issues[i].assignee := who
+      guess issues[i].assignee := who
       await assign(id, who)
       refresh issues
     } catch (e) {
@@ -33,14 +33,14 @@ export component IssuesPage(props: { onOpenHelp: (query: string, id: number) => 
   }
 
   action renameTo(id: number, title: string) {
-    optimistic renameError := ""
+    guess renameError := ""
     try {
       let i = issues.findIndex(t => t.id == id)
       if (i >= 0) {
-        optimistic issues[i].title := title
+        guess issues[i].title := title
       }
       if (detail != null && detail.id == id) {
-        optimistic detail.title := title
+        guess detail.title := title
       }
       await renameIssue(id, title)
       refresh issues
@@ -51,9 +51,9 @@ export component IssuesPage(props: { onOpenHelp: (query: string, id: number) => 
   }
 
   action closeOne(id: number) {
-    optimistic closeError := ""
+    guess closeError := ""
     try {
-      optimistic issues := issues.filter(t => t.id != id)
+      guess issues := issues.filter(t => t.id != id)
       await closeIssue(id)
       refresh issues
     } catch (e) {

@@ -8,7 +8,7 @@ Rules: AC-3, R-4, H-11.
 export default component App() {
   source id := 0
   source cat = await fetch("cat:" + str(id))
-  action pick(n, name) { try { id := n; optimistic cat := name; await fetch("w" + str(n)) } catch {} }
+  action pick(n, name) { try { id := n; guess cat := name; await fetch("w" + str(n)) } catch {} }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
     <p>{cat} / {latest cat} {pending? cat ? "p" : "-"}</p>

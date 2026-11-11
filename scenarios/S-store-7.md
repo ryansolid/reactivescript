@@ -9,7 +9,7 @@ export default component App() {
   source filter := "open"
   source rows key id = await fetch("l:" + filter)
   shown = latest rows
-  action ren(i) { try { optimistic rows[i].title := "x"; await fetch("save") } catch (e) {} }
+  action ren(i) { try { guess rows[i].title := "x"; await fetch("save") } catch (e) {} }
   errored fallback(e) { <p>error: {e.message}</p> } {
     <b>{len(shown)}</b>{loading on(filter) fallback { <p>loading</p> } { <ul>{for t in rows { <li>{t.title}</li> }}</ul> }}
   }

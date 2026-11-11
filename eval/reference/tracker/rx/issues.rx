@@ -42,8 +42,8 @@ export action select(id: number) {
 }
 
 export action assignToMe(id: number, user: string) {
-  optimistic assignError := ""
-  optimistic issues := list => withAssignee(list, id, user)
+  guess assignError := ""
+  guess issues := list => withAssignee(list, id, user)
   try {
     await assign(id, user)
     issues := list => withAssignee(list, id, user)

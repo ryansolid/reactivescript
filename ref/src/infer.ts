@@ -41,7 +41,7 @@ export function inferredAction(stmts: Stmt[]): Trigger | null {
   go(stmts, new Map());
   return guess ?? (write && wait ? "write+await" : null);
 }
-export const triggerText = (t: Trigger): string => t === "write+await" ? "it writes and awaits" : `it has \`${t}\``;
+export const triggerText = (t: Trigger): string => t === "write+await" ? "it writes and awaits" : `it has \`${t === "optimistic" ? "guess" : t}\``;
 
 export type Finding = { code: "HELD_WRITE" | "STALE_OWN_READ" | "STALE_WRITE_BACK"; name: string };
 type Path = string[];                                                   // keys from the source; "*" a computed key

@@ -43,7 +43,7 @@ export default component App() {
   source id := 1
   user = await fetch("u:" + id)
   source shown = user.name
-  action nick(n) { try { optimistic shown := n; await fetch("gate") } catch {} }
+  action nick(n) { try { guess shown := n; await fetch("gate") } catch {} }
 
   errored fallback(e) { <p>error: {e.message}</p> } {
     {loading fallback { <p>…</p> } { <div><p>{shown}</p> <p>{pending? shown ? "updating" : ""}</p></div> }}

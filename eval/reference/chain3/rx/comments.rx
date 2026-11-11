@@ -15,9 +15,9 @@ export component Comments(props: { id: number; user: string }) {
   effect (props.id) { postError := null }
 
   action postComment(id: number, author: string, text: string) {
-    optimistic postError := null
+    guess postError := null
     try {
-      optimistic sending := [...sending, { id: id, author: author, text: text }]
+      guess sending := [...sending, { id: id, author: author, text: text }]
       await addComment(id, author, text)
       refresh comments
     } catch (e) {

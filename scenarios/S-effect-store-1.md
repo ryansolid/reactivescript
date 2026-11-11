@@ -8,7 +8,7 @@ Rules exercised: EF-1, EF-2, H-11, ST-4, AC-3, AC-4.
 export default component App() {
   source rows key id = await fetch("l")
   effect (rows) { log(rows_title($0)) }
-  action ren() { try { optimistic rows[0].title := "x"; await fetch("save"); refresh rows } catch (e) {} }
+  action ren() { try { guess rows[0].title := "x"; await fetch("save"); refresh rows } catch (e) {} }
   errored fallback(e) { <p>error</p> } { loading fallback { <p>loading</p> } { <b>{for t in rows { <i>{t.title}</i> }}</b> } }
 }
 fn rows_title(rs) => rs.map(r => r.title).join(",")

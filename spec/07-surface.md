@@ -198,7 +198,7 @@ effect (count) {
 }
 
 action rename(n: string) {
-  optimistic user.name := n          // AC-3: only here
+  guess user.name := n          // AC-3: only here
   let saved = await api.rename(n)    // AC-1: a hold-safe suspension
   user := saved
 }
@@ -206,7 +206,7 @@ action rename(n: string) {
 action { refresh user; affects user }   // inline, one run (AC-1)
 
 <button onClick={() => {             // an action without the keyword: it guesses (AC-1b)
-  optimistic liked := true
+  guess liked := true
   try { let r = await api.like(id); liked := r } catch (e) { likeError := e.message }
 }}>♥</button>
 ```
@@ -230,7 +230,7 @@ action { refresh user; affects user }   // inline, one run (AC-1)
 - An arrow that guesses, declares `affects`, or both writes and awaits is
   an action (06 AC-1b); an `effect`'s apply block never is. In such an
   arrow a plain write before an `await` is `HELD_WRITE` (AC-1c): make it
-  `optimistic` if it is ephemeral state that shows while the work runs,
+  `guess` if it is ephemeral state that shows while the work runs,
   `onFlush(() => { … })` if it is a reset that lands now, or declare the
   action to hold it on purpose. In every run, reading a source the run's
   own change wrote is `STALE_OWN_READ` (AC-1d): keep the value in a local.
@@ -252,7 +252,7 @@ action { refresh user; affects user }   // inline, one run (AC-1)
   ```rx
   action placeOrder() {
     let items = cart              // a snapshot of what is being ordered
-    optimistic cart := []         // the guess shows now (AC-3)
+    guess cart := []         // the guess shows now (AC-3)
     affects cart                  // `pending? cart` is true until the body ends (AC-5) — the guess alone is verdict-inert
     try {
       let receipt = await checkout(items)
@@ -268,7 +268,7 @@ action { refresh user; affects user }   // inline, one run (AC-1)
   `await`, inside the `try`, and report failure from the `catch` (AC-7,
   R-f-6). An optimistic write over a *structured* question source is a
   root write (functional or whole); path targets are not in `ref/` yet.
-- `refresh x`, `affects x`, `optimistic x := e` are statements (AC-3..5).
+- `refresh x`, `affects x`, `guess x := e` are statements (AC-3..5).
 
 ## 6. Components (RG-4)
 
@@ -445,7 +445,7 @@ Control   ::= "if" Expr "{" RBlock "}" ("else" "{" RBlock "}")?
             | "loading" ("on" "(" Expr ")")? "fallback" "{" RBlock "}" "{" RBlock "}"
             | "errored" "fallback" ("(" Name (":" Classes)? ")")? "{" RBlock "}" "{" RBlock "}"
 Block     ::= "{" Stmt* "}"
-Stmt      ::= Target ":=" Expr | "optimistic" Target ":=" Expr      -- Target `use` Name Path: WRITE_TO_NON_SOURCE (O-4)
+Stmt      ::= Target ":=" Expr | "guess" Target ":=" Expr      -- Target `use` Name Path: WRITE_TO_NON_SOURCE (O-4)
             | "refresh" Name | "affects" Name | "action" Block
             | ("let" | "const") Name Type? "=" Expr
             | "if" "(" Expr ")" (Block | Stmt) ("else" (Block | Stmt))?
@@ -525,3 +525,13 @@ Expr      ::= TSExpr with §3's removals and additions
     apply block is not inferred (its return is the cleanup, EF-5). The
     declared `action` stays for names, reuse, and holding a write on
     purpose.
+18. **`guess x := e`, not `optimistic x := e`** (ruled 2026-11-11): the
+    statement is named for what it writes, a guess (AC-3, H-11), which the
+    answer replaces. The word was `optimistic` through 0.1, after Solid's
+    `createOptimistic`, which it still lowers to. A guess on state nothing
+    will answer reads wrong on its face (`guess saveError := …`: the eval's
+    pilot runs wrote that nine times as `optimistic`, `GUESS_NO_QUESTION`).
+    `optimistic` stays reserved, and a line that uses it is the parse error
+    `OPTIMISTIC`, which names `guess`. `source` was weighed against `state`
+    and `signal` the same day and kept (decision 2): `signal` reads as atomic
+    beside stores, and an equation is state too.

@@ -16,8 +16,8 @@ export component SettingsPage() {
   source saveError: string = ""
 
   action save(next: Settings) {
-    optimistic settings := next
-    optimistic saveError := ""
+    guess settings := next
+    guess saveError := ""
     affects settings
     try {
       let saved = await saveSettings(next)

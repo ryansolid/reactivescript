@@ -16,8 +16,8 @@ total = len(users)
 status = pending? users ? "loading…" : `${total} users`
 
 action rename(id: number, name: string) {
-  optimistic users := us => us.map(u => u.id === id ? { ...u, name } : u)   // AC-3: shown now, verdict-inert
-  optimistic editing := null                                                 // the editor closes now; the plain write below lands at the commit
+  guess users := us => us.map(u => u.id === id ? { ...u, name } : u)   // AC-3: shown now, verdict-inert
+  guess editing := null                                                 // the editor closes now; the plain write below lands at the commit
   editing := null
   saveError := ""
   try {
