@@ -1,0 +1,11 @@
+== hidden
+✗ base: retry after not found shows the issue
+✗ base: settings: retrying a failed load shows the settings
+75/77 passed
+== overlap
+✗ base: a declined assignment keeps a rename in flight on the same issue
+✗ base: a declined rename keeps an assignment in flight on the same issue
+✗ rows: a declined row close leaves a rename out on another issue
+35/38 passed
+== fuzz
+desk12-rx-8: 0/20 seeds found a hole

@@ -1,0 +1,17 @@
+== hidden
+✗ the results for a related hit may land after the help page opens
+✗ a related item that fails can be retried on the help page
+75/77 passed
+== overlap
+✗ base: a declined assignment keeps a rename in flight on the same issue
+✗ base: a declined rename keeps an assignment in flight on the same issue
+✗ base: settings: an earlier save landing while a later one is out keeps showing the later one
+✗ a label added on one issue does not show on another
+✗ rows: a declined row close leaves a rename out on another issue
+33/38 passed
+== fuzz
+desk12-rx-9: 2/20 seeds found a hole
+  seed 11 step 44: detail title: "retry#3 Crash on savestack trace attachedsaving filescrash r", server "Delta"
+    tab help ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; focus ; tab help ; tab issues ; land fetchIssues:open ; row-assign 1 ; land assign:3,guest ; filter closed ; user ann ; row-assign 0 ; focus ; land fetchIssues:open ; land assign:1,ann ; select #4 ; close ; land fetchIssues:closed ; row-assign 0 ; row-close 0 ; select #3 ; focus ; close ; land fetchIssue:4 ; post me too ; 
+  seed 15 step 24: detail title: "retry#2 Old buglong gonesaving filescrash reportsassign to g", server "Bravo"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; fail fetchIssues:open ; tab help ; tab issues ; land fetchIssues:open ; focus ; filter closed ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; rename Bravo ; select #2 ; assign ; land fetchIssue:2 ; row-assign 0 ; select #2 ; land fetchComments:2 ; assign ; remove-label 0 ; land search:Old bug ; land renameIssue:2

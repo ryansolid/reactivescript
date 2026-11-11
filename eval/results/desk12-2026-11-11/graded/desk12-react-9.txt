@@ -1,0 +1,13 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+33/38 passed
+== fuzz
+desk12-react-9: 1/20 seeds found a hole
+  seed 15 step 33: detail title: "#3 Crash on savestack trace attachedretryassign to guestrena", server "Delta"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; row-assign 0 ; fail assign:1,guest ; row-assign 0 ; focus ; row-assign 0 ; select #3 ; land fetchLabels:3 ; close ; row-close 0 ; row-close 0 ; land assign:1,guest ; add-label ui ; assign ; rename Alpha ; remove-label 0 ; post fixed? ; land assign:3,guest ; land fetchIssue:3 ; assign ; land assign:3,guest ; rename Delta ; lan

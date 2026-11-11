@@ -1,0 +1,27 @@
+== hidden
+✗ base: an accepted post stays after switching issues and back
+✗ base: settings: a failed save reverts the saved line, shows the error and keeps the draft
+✗ base: settings: edits made while a save is in flight survive its failure
+✗ base: settings: a failed save after a successful one reverts to the last save
+73/77 passed
+== overlap
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: settings: an earlier save landing while a later one is out keeps showing the later one
+✗ labels that load while an add is out keep the add
+✗ rows: a detail assign and a newer row assign on one issue: the newer shows while the older answers
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+33/38 passed
+== fuzz
+desk12-rx-11: 6/20 seeds found a hole
+  seed 2 step 15: row assignee: #2 shows guest, server eve
+    filter closed ; land fetchIssues:closed ; row-assign 0 ; select #2 ; land fetchLabels:2 ; assign ; rename Delta ; fail renameIssue:2,Delta ; fail fetchIssues:open ; close ; focus ; land fetchComments:2 ; fail fetchIssue:2 ; land closeIssue:2 ; fail assign:2,guest
+  seed 3 step 37: row assignee: #3 shows bob, server null
+    user bob ; land fetchIssues:open ; row-close 0 ; fail closeIssue:1 ; select #4 ; post ping ; land fetchIssue:4 ; row-assign 2 ; select #4 ; land assign:4,bob ; row-close 0 ; fail search:Typo in footer ; land fetchComments:4 ; row-close 1 ; row-assign 0 ; land closeIssue:1 ; close ; row-assign 0 ; row-close 0 ; post fixed? ; filter closed ; post ping ; assign ; land closeIssue:3 ; fail assign:3
+  seed 9 step 40: row assignee: #4 shows guest, server dana
+    land fetchIssues:open ; filter closed ; tab help ; land fetchIssues:closed ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; filter closed ; focus ; filter open ; user guest ; land fetchIssues:open ; land fetchIssues:closed ; select #4 ; assign ; land fetchComments:4 ; rename Bravo ; row-assign 0 ; rename Bravo ; row-assign 1 ; row-close 1 ; land closeIssue:3 ; row-assign 1 ; filt
+  seed 18 step 36: row assignee: #3 shows null, server bob
+    land fetchIssues:open ; select #4 ; row-close 0 ; land fetchIssue:4 ; assign ; row-assign 0 ; row-close 1 ; assign ; rename Delta ; fail assign:4,guest ; fail closeIssue:4 ; land closeIssue:1 ; land renameIssue:4,Delta ; user bob ; row-assign 0 ; row-close 1 ; rename Delta ; assign ; row-assign 0 ; land fetchComments:4 ; rename Alpha ; rename Alpha ; rename Delta ; row-close 0 ; focus ; close 
+  seed 19 step 17: dropped guess: #3 title: showed "Delta" while it was in flight, now "Alpha"
+    land fetchIssues:open ; user guest ; row-assign 1 ; row-close 2 ; land assign:3,guest ; fail closeIssue:4 ; select #3 ; post fixed? ; land fetchLabels:3 ; rename Alpha ; rename Delta ; row-assign 0 ; land assign:1,guest ; land fetchIssue:3 ; row-assign 1 ; land addComment:3,guest,fixed? ; land renameIssue:3,Alpha
+  seed 20 step 38: at rest: labels: #2 shows [p1,p1], server [p1]
+    filter closed ; filter open ; user guest ; filter closed ; user ann ; land fetchIssues:closed ; land fetchIssues:open ; select #2 ; land fetchLabels:2 ; filter open ; focus ; land fetchComments:2 ; land fetchIssue:2 ; fail fetchIssues:open ; close ; post ping ; add-label p1 ; land search:Old bug ; close ; land closeIssue:2 ; remove-label 1 ; close ; user ann ; assign ; land closeIssue:2 ; clos

@@ -1,0 +1,12 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: an earlier save failing after a later one succeeded leaves the later one
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ base: settings: an earlier save landing while a later one is out keeps showing the later one
+34/38 passed
+== fuzz
+desk12-xstate-11: 1/20 seeds found a hole
+  seed 16 step 39: at rest: comments: #2 shows [guest: fixed? | guest: me too | guest: me too], server [guest: fixed? | guest: me too]
+    user guest ; fail fetchIssues:open ; focus ; tab help ; tab issues ; filter closed ; land fetchIssues:open ; focus ; land fetchIssues:closed ; select #2 ; land fetchComments:2 ; close ; post me too ; fail addComment:2,guest,me too ; row-assign 0 ; close ; post fixed? ; post ping ; assign ; land addComment:2,guest,fixed? ; land fetchLabels:2 ; fail assign:2,guest ; select #2 ; rename Bravo ; as

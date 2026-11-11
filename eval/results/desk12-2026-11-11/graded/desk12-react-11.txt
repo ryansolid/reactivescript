@@ -1,0 +1,20 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+30/38 passed
+== fuzz
+desk12-react-11: 3/20 seeds found a hole
+  seed 2 step 15: row assignee: #2 shows guest, server eve
+    filter closed ; land fetchIssues:closed ; row-assign 0 ; select #2 ; land fetchComments:2 ; assign ; rename Delta ; fail renameIssue:2,Delta ; fail fetchIssues:open ; close ; focus ; land fetchLabels:2 ; fail fetchIssue:2 ; land closeIssue:2 ; fail assign:2,guest
+  seed 3 step 39: at rest: labels: #4 shows [docs,p1], server [docs,bug,p1]
+    user bob ; land fetchIssues:open ; row-close 0 ; fail closeIssue:1 ; select #4 ; add-label p1 ; land fetchIssue:4 ; row-assign 2 ; select #4 ; land assign:4,bob ; add-label bug ; fail search:Typo in footer ; land fetchLabels:4 ; row-close 2 ; row-close 0 ; land addLabel:4,bug ; row-assign 0 ; remove-label 0 ; close ; row-close 0 ; filter closed ; add-label p1 ; assign ; land assign:3,bob ; fai
+  seed 16 step 36: at rest: comments: #2 shows [guest: ping | guest: ping], server [guest: ping]
+    user guest ; fail fetchIssues:open ; focus ; tab help ; tab issues ; filter closed ; land fetchIssues:open ; focus ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; close ; post me too ; fail addComment:2,guest,me too ; row-assign 0 ; row-assign 0 ; close ; post ping ; assign ; land addComment:2,guest,ping ; land fetchIssue:2 ; fail assign:2,guest ; select #2 ; rename Bravo ; assign

@@ -1,0 +1,20 @@
+== hidden
+✗ base: an accepted assignment survives switching filters and back
+76/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a list that loads while a close is out keeps the row out
+✗ base: comments that load while a post is out keep the post
+✗ labels that load while an add is out keep the add
+33/38 passed
+== fuzz
+desk12-rx-2: 4/20 seeds found a hole
+  seed 5 step 23: detail title: "#3 Crash on savestack trace attachedrelated help failed: dec", server "Delta"
+    focus ; fail fetchIssues:closed ; tab help ; tab issues ; land fetchIssues:closed ; user bob ; land fetchIssues:open ; user guest ; row-assign 0 ; row-assign 0 ; land assign:1,guest ; land fetchIssues:open ; row-assign 1 ; row-assign 1 ; land assign:3,guest ; row-close 2 ; select #3 ; rename Delta ; select #3 ; land fetchIssue:3 ; land closeIssue:4 ; fail search:Crash on save ; land renameIssu
+  seed 8 step 22: detail title: "#4 Typo in footerfooter says 2019related help failed: declin", server "Alpha"
+    land fetchIssues:closed ; tab help ; tab issues ; fail fetchIssues:closed ; user bob ; land fetchIssues:open ; row-close 0 ; land closeIssue:1 ; user guest ; land fetchIssues:open ; row-close 0 ; select #4 ; land fetchComments:4 ; row-close 0 ; rename Alpha ; land fetchIssue:4 ; rename Alpha ; user guest ; fail search:Typo in footer ; close ; land fetchLabels:4 ; land renameIssue:4,Alpha
+  seed 13 step 8: closed row shown: #2 is closed on the server
+    filter closed ; fail fetchIssues:open ; land fetchIssues:closed ; row-assign 0 ; filter open ; land assign:2,guest ; land fetchIssues:closed ; land fetchIssues:open
+  seed 16 step 42: row title: #1 shows "Login fails", server "Bravo"
+    user guest ; fail fetchIssues:open ; tab help ; land fetchIssues:closed ; tab issues ; land fetchIssues:open ; row-assign 1 ; select #4 ; land fetchComments:4 ; close ; post me too ; fail addComment:4,guest,me too ; row-assign 1 ; row-assign 1 ; close ; post ping ; assign ; land addComment:4,guest,ping ; fail assign:3,guest ; fail assign:4,guest ; select #1 ; rename Bravo ; assign ; fail close
