@@ -1,0 +1,18 @@
+== hidden
+✗ base: selecting after not found shows loading, not the old message
+✗ base: help: selecting after a failure shows loading…, not the old failure
+75/77 passed
+== overlap
+✗ base: a declined assignment keeps a rename in flight on the same issue
+✗ base: a declined rename keeps an assignment in flight on the same issue
+✗ a label added on one issue does not show on another
+✗ rows: a declined row close leaves a rename out on another issue
+34/38 passed
+== fuzz
+desk11-rx-8: 3/20 seeds found a hole
+  seed 8 step 46: detail title: "assign to guest close retryrename#3 Crash on savestack trace", server "Alpha"
+    land fetchIssues:open ; row-close 1 ; filter closed ; fail fetchIssues:closed ; select #4 ; land closeIssue:3 ; select #1 ; land fetchIssues:closed ; post me too ; rename Bravo ; land fetchComments:1 ; rename Delta ; close ; row-assign 1 ; land fetchLabels:4 ; land assign:3,guest ; select #2 ; focus ; fail fetchComments:2 ; close ; fail addComment:1,guest,me too ; land closeIssue:2 ; land fetc
+  seed 11 step 44: detail title: "assign to ann close retryrename#3 Crash on savestack trace a", server "Delta"
+    tab help ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; focus ; tab help ; tab issues ; land fetchIssues:open ; row-assign 1 ; land assign:3,guest ; filter closed ; user ann ; row-assign 0 ; focus ; land fetchIssues:open ; land assign:1,ann ; select #4 ; close ; land fetchIssues:closed ; row-assign 0 ; row-close 0 ; select #3 ; focus ; close ; land fetchIssue:4 ; post me too ; 
+  seed 15 step 24: detail title: "assign to guest close retryrename#2 Old buglong gonesaving f", server "Bravo"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; fail fetchIssues:open ; tab help ; tab issues ; land fetchIssues:open ; focus ; filter closed ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; rename Bravo ; select #2 ; assign ; land fetchIssue:2 ; row-assign 0 ; select #2 ; land fetchComments:2 ; assign ; remove-label 0 ; land search:Old bug ; land renameIssue:2

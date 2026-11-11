@@ -1,0 +1,9 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a detail that loads while a rename is out keeps the new title
+37/38 passed
+== fuzz
+desk10-rx-8: 1/20 seeds found a hole
+  seed 13 step 31: page error: declined
+    filter closed ; fail fetchIssues:open ; land fetchIssues:closed ; row-assign 0 ; filter open ; land assign:2,guest ; land fetchIssues:open ; select #3 ; row-close 1 ; land fetchIssue:3 ; fail fetchLabels:3 ; land fetchComments:3 ; land search:Crash on save ; land closeIssue:3 ; fail fetchIssues:open ; assign ; assign ; land assign:3,guest ; land fetchIssues:open ; assign ; land assign:3,guest 

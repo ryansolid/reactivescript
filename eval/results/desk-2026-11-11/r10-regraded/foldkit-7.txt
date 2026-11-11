@@ -1,0 +1,21 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: a list that loads while a close is out keeps the row out
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ base: settings: an earlier save landing while a later one is out keeps showing the later one
+✗ labels that load while an add is out keep the add
+✗ open issues that load while a close is out keep it off the count
+✗ rows: a detail assign and a newer row assign on one issue: the newer shows while the older answers
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+✗ rows: open issues that load while a row close is out keep the row out
+25/38 passed
+== fuzz
+desk10-foldkit-7: 1/20 seeds found a hole
+  seed 4 step 24: closed row shown: #1 is closed on the server
+    filter closed ; land fetchIssues:open ; user guest ; tab help ; tab issues ; focus ; tab help ; tab issues ; focus ; filter closed ; land fetchIssues:open ; tab help ; fail fetchIssues:closed ; tab issues ; focus ; land fetchIssues:open ; row-assign 1 ; fail assign:3,guest ; row-close 0 ; filter closed ; filter open ; land fetchIssues:closed ; land fetchIssues:open ; land closeIssue:1

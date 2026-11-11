@@ -1,0 +1,10 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: comments that load while a post is out keep the post
+✗ labels that load while an add is out keep the add
+36/38 passed
+== fuzz
+desk11-vanilla-2: 1/20 seeds found a hole
+  seed 12 step 36: at rest: comments: #4 shows [guest: me too | guest: me too], server [guest: me too]
+    land fetchIssues:open ; focus ; select #1 ; row-close 1 ; select #4 ; land closeIssue:3 ; row-assign 1 ; rename Alpha ; close ; rename Alpha ; land fetchIssue:1 ; land fetchIssue:4 ; row-close 0 ; rename Alpha ; fail closeIssue:4 ; land assign:4,guest ; land fetchComments:1 ; land fetchLabels:1 ; post me too ; close ; fail renameIssue:4,Alpha ; assign ; land addComment:4,guest,me too ; close ;

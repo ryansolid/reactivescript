@@ -1,0 +1,11 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: a post on one issue does not show on another
+✗ a label added on one issue does not show on another
+35/38 passed
+== fuzz
+desk10-rx-6: 1/20 seeds found a hole
+  seed 19 step 39: detail title: "#1 Alphaon Safari onlysaving filescrash reportsassign to gue", server "Login fails"
+    land fetchIssues:open ; user guest ; row-assign 1 ; row-close 2 ; land assign:3,guest ; fail closeIssue:4 ; select #3 ; post fixed? ; land fetchIssue:3 ; rename Alpha ; rename Delta ; close ; land fetchLabels:3 ; select #1 ; filter closed ; close ; land search:Crash on save ; land renameIssue:3,Delta ; filter open ; rename Alpha ; row-close 1 ; select #1 ; assign ; fail renameIssue:3,Delta ; s

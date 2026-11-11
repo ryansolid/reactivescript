@@ -1,0 +1,11 @@
+== hidden
+77/77 passed
+== overlap
+✗ a label added on one issue does not show on another
+37/38 passed
+== fuzz
+desk11-rx-5: 2/20 seeds found a hole
+  seed 15 step 24: detail title: "retry#2 Old buglong gonesaving filescrash reportsassign to g", server "Bravo"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; fail fetchIssues:open ; tab help ; tab issues ; land fetchIssues:open ; focus ; filter closed ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; rename Bravo ; select #2 ; assign ; land fetchIssue:2 ; row-assign 0 ; select #2 ; land fetchComments:2 ; assign ; remove-label 0 ; land search:Old bug ; land renameIssue:2
+  seed 18 step 32: row assignee: #4 shows dana, server guest
+    land fetchIssues:open ; select #4 ; row-close 0 ; land fetchLabels:4 ; assign ; row-close 0 ; row-close 0 ; assign ; rename Delta ; fail closeIssue:3 ; fail closeIssue:4 ; land fetchComments:4 ; land renameIssue:4,Delta ; filter closed ; land fetchIssues:closed ; land closeIssue:1 ; close ; land closeIssue:4 ; land fetchIssues:closed ; rename Alpha ; land fetchIssues:open ; land renameIssue:4,

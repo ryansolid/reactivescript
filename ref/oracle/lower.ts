@@ -472,7 +472,7 @@ export class Oracle {
           const path = s.target.path.map(p => typeof p === "string" ? p : String(untrack(() => this.ev(p, scope, env))));
           if (s.k === "optimistic") {
             if (!b.setGuess) throw new Error("OPTIMISTIC_NO_QUESTION");
-            b.setGuess((d: any) => { if (path.length === 0) { assignDraft(d, typeof v === "function" ? (v as (x: unknown) => unknown)(d) : v); return; } let o = d; for (const k of path.slice(0, -1)) o = o[k]; const last = path[path.length - 1]; o[last] = typeof v === "function" ? (v as (x: unknown) => unknown)(o[last]) : v; });   // W-6 per key
+            b.setGuess((d: any) => { if (path.length === 0) return typeof v === "function" ? (v as (x: unknown) => unknown)(d) : v; /* a whole guess is the setter\'s return, which Solid diffs shallowly against the view as guesses */ let o = d; for (const k of path.slice(0, -1)) o = o[k]; const last = path[path.length - 1]; o[last] = typeof v === "function" ? (v as (x: unknown) => unknown)(o[last]) : v; });   // W-6 per key
             return;
           }
           if (path.length === 0) b.set(v);

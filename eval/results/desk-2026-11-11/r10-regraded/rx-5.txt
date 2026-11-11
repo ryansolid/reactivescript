@@ -1,0 +1,9 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a detail that loads while a rename is out keeps the new title
+37/38 passed
+== fuzz
+desk10-rx-5: 1/20 seeds found a hole
+  seed 8 step 34: open row in closed list: #4
+    land fetchIssues:open ; row-close 1 ; filter closed ; fail fetchIssues:closed ; user bob ; land closeIssue:3 ; tab help ; tab issues ; land fetchIssues:open ; row-assign 1 ; select #1 ; land fetchComments:1 ; select #4 ; land fetchComments:4 ; row-close 1 ; row-assign 0 ; land fetchLabels:1 ; row-assign 0 ; user guest ; fail assign:1,guest ; row-close 0 ; user ann ; focus ; land assign:4,guest

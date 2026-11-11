@@ -1,0 +1,10 @@
+== hidden
+✗ base: retry after not found shows the issue
+76/77 passed
+== overlap
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+37/38 passed
+== fuzz
+desk11-rx-4: 1/20 seeds found a hole
+  seed 15 step 38: detail title: "retry#2 Bravolong goneassign to guestcloserenamesaving files", server "Delta"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; fail fetchIssues:open ; tab help ; tab issues ; land fetchIssues:open ; focus ; filter closed ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; rename Bravo ; select #2 ; assign ; land fetchIssue:2 ; row-assign 0 ; select #2 ; land fetchComments:2 ; assign ; remove-label 0 ; land search:Old bug ; land renameIssue:2
