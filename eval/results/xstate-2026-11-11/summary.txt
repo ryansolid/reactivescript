@@ -1,0 +1,9 @@
+xstate-1 hidden/overlap=77/77 36/38  fuzz=0/20  defects=2
+xstate-2 hidden/overlap=77/77 36/38  fuzz=0/20  defects=2
+xstate-3 hidden/overlap=77/77 36/38  fuzz=0/20  defects=2
+xstate-4 hidden/overlap=77/77 35/38  fuzz=0/20  defects=3
+xstate-5 hidden/overlap=75/77 35/38  fuzz=0/20  defects=5
+xstate-6 hidden/overlap=74/77 35/38  fuzz=0/20  defects=6
+xstate-7 hidden/overlap=76/77 27/38  fuzz=4/20  defects=16
+xstate-8 hidden/overlap=77/77 37/38  fuzz=0/20  defects=1
+xstate-9 hidden/overlap=77/77 30/38  fuzz=3/20  defects=11

@@ -1,0 +1,9 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: settings: an earlier save failing after a later one succeeded leaves the later one
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ base: settings: an earlier save landing while a later one is out keeps showing the later one
+35/38 passed
+== fuzz
+desk12-xstate-4: 0/20 seeds found a hole

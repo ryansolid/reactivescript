@@ -1,0 +1,26 @@
+== hidden
+✗ base: a failing list leaves the detail alone
+76/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: a list that loads while a close is out keeps the row out
+✗ base: two closes at once: a declined one does not undo the other
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ open issues that load while a close is out keep it off the count
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+✗ rows: open issues that load while a row close is out keep the row out
+27/38 passed
+== fuzz
+desk12-xstate-7: 4/20 seeds found a hole
+  seed 3 step 38: at rest: detail: "loading #4retryassign to bobrenamecloseloading commentspostl", server "#4 Delta"
+    user bob ; land fetchIssues:open ; row-close 0 ; fail closeIssue:1 ; select #4 ; add-label p1 ; land fetchLabels:4 ; row-assign 2 ; select #4 ; land assign:4,bob ; add-label bug ; fail addLabel:4,bug ; land fetchIssue:4 ; row-close 2 ; row-close 0 ; land closeIssue:4 ; row-assign 0 ; remove-label 0 ; close ; row-close 0 ; filter closed ; add-label p1 ; assign ; land removeLabel:4,docs ; fail c
+  seed 4 step 24: closed row shown: #1 is closed on the server
+    filter closed ; land fetchIssues:open ; user guest ; tab help ; tab issues ; focus ; tab help ; tab issues ; focus ; filter closed ; land fetchIssues:open ; tab help ; fail fetchIssues:closed ; tab issues ; focus ; land fetchIssues:open ; row-assign 1 ; fail assign:3,guest ; row-close 0 ; filter closed ; filter open ; land fetchIssues:closed ; land fetchIssues:open ; land closeIssue:1
+  seed 16 step 36: at rest: detail: "loading #2retryassign to annrenamecloseclose error: declined", server "#2 Bravo"
+    user guest ; fail fetchIssues:open ; focus ; tab help ; tab issues ; filter closed ; land fetchIssues:open ; focus ; land fetchIssues:closed ; select #2 ; land fetchComments:2 ; close ; post me too ; fail addComment:2,guest,me too ; row-assign 0 ; close ; post fixed? ; post ping ; assign ; land addComment:2,guest,fixed? ; land fetchLabels:2 ; fail assign:2,guest ; select #2 ; rename Bravo ; as
+  seed 18 step 36: detail title: "#4 Typo in footerfooter says 2019retryassign to guestrenamec", server "Delta"
+    land fetchIssues:open ; select #4 ; row-close 0 ; land fetchLabels:4 ; assign ; row-close 0 ; row-close 0 ; assign ; rename Delta ; fail assign:4,guest ; fail closeIssue:4 ; land fetchComments:4 ; land closeIssue:3 ; user bob ; row-assign 0 ; add-label ui ; rename Delta ; assign ; row-close 0 ; fail closeIssue:1 ; rename Alpha ; close ; fail closeIssue:4 ; focus ; close ; focus ; row-assign 0 

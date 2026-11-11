@@ -1,0 +1,9 @@
+desk12-xstate-1 a696f287a3a667250
+desk12-xstate-2 a3363fbe4e9baf4ae
+desk12-xstate-3 a9248d39569a18575
+desk12-xstate-4 a54d219a267005bfd
+desk12-xstate-5 a3cc3ebeb5e9d7b54
+desk12-xstate-6 aee0f2d1c55f5a34a
+desk12-xstate-7 a0591e9fbd928c710
+desk12-xstate-8 a8f09afb82951c9a4
+desk12-xstate-9 a7261369155078e71

@@ -45,7 +45,7 @@ export function permutation(a, b, n = 100000, seed = 5) {
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [list, dir, out] = process.argv.slice(2);
   const runs = readFileSync(list, "utf8").trim().split("\n").map(l => l.trim().split(/\s+/)).map(([run, id]) => {
-    const [, task, arm, n] = run.match(/^(\w+)-(rx|react|solid|foldkit|vanilla)-(\d+)$/);
+    const [, task, arm, n] = run.match(/^(\w+)-(rx|react|xstate|solid|foldkit|vanilla)-(\d+)$/);
     return { run, task, arm, n: Number(n), ...usage(path.join(dir, `agent-${id}.jsonl`)) };
   });
   for (const r of runs) console.log(`${r.run.padEnd(16)} billed ${Math.round(r.billed).toString().padStart(7)}  calls ${r.calls}  out ${r.output}  cacheRead ${r.cacheRead}  cacheWrite ${r.cacheWrite}`);
