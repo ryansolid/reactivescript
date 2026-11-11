@@ -91,6 +91,9 @@ by what the screen should do:
 | Record the server's answer | `x := answer` after the `await` |
 | Handle a failure | `try { … } catch (e) { … }`: the catch's writes and the revert are one frame (AC-7) |
 
+To guess a value a component gets as a prop, guess its own equation of it: `shown = props.title`, then
+`guess shown := t` in the action. A prop itself is read-only (O-4), and the guess shows wherever the child reads `shown`.
+
 ### Writing one row of a list
 
 When several actions can each change a different row of one list, guess the row, not the list:

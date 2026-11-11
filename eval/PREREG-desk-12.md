@@ -33,9 +33,7 @@ Ryan, 2026-11-11: replication now, maintenance next. Maintenance moves to round 
 
 The guide follows all four. `rxc` is built from the commit that holds this file once it is frozen. Round 11's .rx desks use `optimistic`, so the gate below grades them with round 11's `rxc`, which isolates the Solid change.
 
-**Guide additions** (principle only, no task code):
-- **Guess over an equation:** `async.md` shows it.
-- **Held writes:** the section "What lands together, and what waits" now says that a write after `await` in one action waits for any other action guessing on the same source.
+**Guide addition** (principle only, no task code): `async.md` says how to guess a prop. You guess over the child's own equation of it, never `props.x`.
 
 **Solid:** `solid-next` at `next`, at a commit holding the fix for both cases of solidjs/solid#4762, built from source. TBD: 0a11dbb8 fixes the first case; the second, which is two guesses with one landing after a switch, is reported on the issue.
 
