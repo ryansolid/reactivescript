@@ -73,7 +73,7 @@ Round 10 as first published had .rx at 6.7 in both tiers. The Solid fixes since 
 - **rx-2, seeds 1, 3, 18: a Solid bug.** A keyed projection whose function returns another keyed projection loses a row when the question switches while a guess is out. In a browser this shows as a duplicated row. The plain Solid repro is filed as solidjs/solid#4762. It counts against .rx, as pre-registered.
 - **rx-5, rx-6, rx-7, the "row assignee" holes: agent mistakes.** The assign guess is written only when the row is in the list on screen (`if (i >= 0)`), so a row hidden by a close guess never gets it.
 - **rx-5 and rx-8, the "detail title" holes: agent mistakes.** rx-5 seed 15 was replayed; rx-8 has the same code shape and was not replayed. The rename guess is written to a source derived from the detail before the detail has loaded. Solid drops a guess that was never shown (D-34), so the old title stays on screen while the rename is out.
-- **Not traced:** rx-4 seed 15 (detail title, with the guesses kept in their own list).
+- **rx-4 seed 15 (detail title): agent mistake.** Rename guesses are kept in their own list, and the heading reads it with `find`, which returns the oldest guess. With two renames out, the heading shows the first one, while the row shows the second.
 
 ## Lines of source per app
 
