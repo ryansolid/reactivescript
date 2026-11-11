@@ -353,7 +353,7 @@ pub(crate) fn children<'a>(n: Node<'a>, paths: bool) -> Vec<Node<'a>> {
         Node::E(e) => match &e.k {
             ExprKind::Lit(_) | ExprKind::Id(_) | ExprKind::Use(_) | ExprKind::StyleMap { .. } => {}
             ExprKind::Bin { l, r, .. } => out.extend([Node::E(l), Node::E(r)]),
-            ExprKind::Un { e, .. } | ExprKind::Peek(e) | ExprKind::Latest(e) | ExprKind::Pending(e) | ExprKind::Spread(e) | ExprKind::Throw(e) => out.push(Node::E(e)),
+            ExprKind::Un { e, .. } | ExprKind::Peek(e) | ExprKind::Latest(e) | ExprKind::Pending(e) | ExprKind::Spread(e) | ExprKind::Omit { e, .. } | ExprKind::Throw(e) => out.push(Node::E(e)),
             ExprKind::Pre { init, .. } => out.extend(init.iter().map(|x| Node::E(x))),
             ExprKind::Await { e, init, .. } => {
                 out.push(Node::E(e));
@@ -438,7 +438,7 @@ fn free_names(e: &Expr, bound: &HashSet<String>, out: &mut IndexSet<String>) {
                 go(i, out);
             }
         }
-        ExprKind::Latest(x) | ExprKind::Pending(x) | ExprKind::Un { e: x, .. } | ExprKind::Spread(x) => go(x, out),
+        ExprKind::Latest(x) | ExprKind::Pending(x) | ExprKind::Un { e: x, .. } | ExprKind::Spread(x) | ExprKind::Omit { e: x, .. } => go(x, out),
         ExprKind::Bin { l, r, .. } => {
             go(l, out);
             go(r, out);
@@ -2051,7 +2051,7 @@ impl<'a> Checker<'a> {
                 self.expr(x, env, ctx, None);
                 self.model.probe = save;
             }
-            ExprKind::Un { e: x, .. } | ExprKind::Spread(x) => self.expr(x, env, ctx, None),
+            ExprKind::Un { e: x, .. } | ExprKind::Spread(x) | ExprKind::Omit { e: x, .. } => self.expr(x, env, ctx, None),
             ExprKind::Await { e: inner, init, .. } => {
                 if ctx.imperative && !self.stmt_awaits.contains(&(e as *const Expr)) {
                     let sh = show(e);

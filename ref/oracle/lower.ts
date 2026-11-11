@@ -10,7 +10,7 @@ import { Show, For, Loading, Errored } from "solid-js";
 import { getObserver } from "@solidjs/signals";
 import {
   createSignal, createMemo, createEffect, createOptimistic, createOptimisticStore, createStore, createProjection, createDeferred,
-  createRoot, createRenderEffect, flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, resetErrorHalt, createContext, getContext, setContext, getOwner, runWithOwner, $TARGET, createErrorBoundary
+  createRoot, createRenderEffect, flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, resetErrorHalt, createContext, getContext, setContext, getOwner, runWithOwner, $TARGET, createErrorBoundary, omit
 } from "@solidjs/signals";
 
 const noFlight = (v: unknown) => { if (v instanceof Flight || v instanceof Promise) throw new Unsupported("`await` not in tail position (the oracle lowers a tail `await` to the memo's result)"); };
@@ -453,6 +453,7 @@ export class Oracle {
       case "draft": throw new Unsupported("draft outside an equation");
       case "use": { const b = this.provision(e.name, scope); return b.k === "const" ? b.value : (b as { get: () => unknown }).get(); }
       case "spread": throw new Error("spread outside an array literal");
+      case "omit": return omit(this.ev(e.e, scope, env) as Record<string, unknown>, ...e.keys);
     }
   }
 

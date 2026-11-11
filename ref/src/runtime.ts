@@ -883,6 +883,7 @@ export class Runtime {
       }
       case "arr": { const items: unknown[] = []; let bad: unknown; for (const i of e.items) { if (i.k === "spread") { const v = this.ev(i.e, region, env); if (isAbsent(v)) bad ??= v; else items.push(...(v as unknown[])); } else { const v = this.ev(i, region, env); if (isAbsent(v)) bad ??= v; items.push(v); } } return bad ?? items; }
       case "spread": throw new RuleError("SYNTAX", "spread outside an array literal");
+      case "omit": { const v = this.ev(e.e, region, env); if (isAbsent(v)) return v; const o: Record<string, unknown> = {}; if (isObj(v)) for (const k of Object.keys(v)) if (!e.keys.includes(k)) { this.track(v, k); o[k] = v[k]; } return o; }   // RG-4b: an object rest
       case "rec": { const o: Record<string, unknown> = {}; let bad: unknown; for (const f of e.fields) { if ("spread" in f) { const v = this.ev(f.spread, region, env); if (isAbsent(v)) bad ??= v; else if (isObj(v)) { for (const k of Object.keys(v)) { this.track(v, k); o[k] = v[k]; } } continue; } const v = this.ev(f.v, region, env); if (isAbsent(v)) bad ??= v; o[f.key] = v; } return bad ?? o; }
       case "draft": {                                                  // ST-3: a copy of the seed, written only along `d`, is the value
         const seed = this.ev(e.seed, region, env); if (isAbsent(seed)) return seed;
@@ -1251,7 +1252,7 @@ function freeVars(e: Expr, out: Set<string>) {
     case "rec": e.fields.forEach(f => freeVars("spread" in f ? f.spread : f.v, out)); break;
     case "tpl": e.parts.forEach(p => { if (typeof p !== "string") freeVars(p, out); }); break;
     case "fn": { const o = new Set<string>(); freeVars(e.body, o); for (const st of e.stmts ?? []) if ("e" in st) freeVars(st.e, o); for (const n of o) if (!e.params.includes(n)) out.add(n); break; }
-    case "spread": freeVars(e.e, out); break;
+    case "spread": case "omit": freeVars(e.e, out); break;
     case "use": break;
     case "draft": { freeVars(e.seed, out); for (const st of e.body) { if (st.k === "write" || st.k === "let" || st.k === "expr" || st.k === "optimistic") freeVars(st.e, out); if (st.k === "write") for (const p of st.target.path) if (typeof p !== "string") freeVars(p, out); } out.delete("d"); break; }
   }

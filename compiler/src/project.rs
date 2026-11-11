@@ -803,6 +803,10 @@ impl Proj<'_> {
                 Code::of("({ ").c(Code::join(fs, ", ")).t(" })")
             }
             ExprKind::Spread(x) => Code::of("...").c(go!(x)),
+            ExprKind::Omit { e: x, keys } => {
+                let ks: String = keys.iter().map(|k| format!(", {}", js_str(k))).collect();
+                Code::of("__.omit(").c(go!(x)).t(&ks).t(")")
+            }
             ExprKind::Fn { params, body, stmts } => {
                 let mut from = sp.start as usize;
                 let ps = Code::join(params.iter().map(|p| self.name(p, sp, &mut from)).collect(), ", ");

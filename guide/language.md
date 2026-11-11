@@ -37,7 +37,8 @@ type Item = { id: number; name: string }
 
 There is no `let` at the top level or in a component: a value that changes is a `source`, and one computed from
 others is an equation. Bare `x = e` is always an equation and `let x = e` (in imperative code) always a snapshot, as
-in JS; that holds for destructuring too. Mutation is only `:=` and `guess`. Destructuring has no rest (`...r`) yet. Equations are lazy and exact: an arm of `c ? a : b` that isn't taken isn't evaluated.
+in JS; that holds for destructuring too. Mutation is only `:=` and `guess`. A rest, `{ id, ...rest } = props`, is the other fields
+(Solid's `omit`) and keeps updating too. Equations are lazy and exact: an arm of `c ? a : b` that isn't taken isn't evaluated.
 
 ## Expressions
 

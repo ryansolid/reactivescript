@@ -22,6 +22,7 @@ export type Expr =
   | { k: "draft"; seed: Expr; body: Stmt[] }                  // ST-3: the only writes in reactive scope, to `d`
   | { k: "use"; name: string }                                 // RG-7b: the nearest provision above
   | { k: "spread"; e: Expr }                                   // only inside an array literal
+  | { k: "omit"; e: Expr; keys: string[] }                      // RG-4b: an object rest, `{ a, ...rest } = e` (the parser's own; Solid's `omit`)
   | { k: "throw"; e: Expr }                                    // R-f-3: a failure; an expression in reactive scope too
   | { k: "catch"; e: Expr; name?: string; classes?: string[]; alt: Expr }
   | { k: "stylemap"; css: string; line?: number }                // 07 CSS-5: `styles = <style>…</style>` — a class map, a constant

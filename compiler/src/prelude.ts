@@ -9,6 +9,8 @@ export declare function eq<T>(v: T, ok: Async<T> extends true ? "MISSING_AWAIT: 
 export declare function first<T, I>(v: T, init: I): T | I;
 export declare function pre<T>(init?: T): T;
 export declare function pending(v: unknown): boolean;
+/** RG-4b: an object rest, \`{ a, ...rest } = e\` (Solid's \`omit\`). */
+export declare function omit<T, K extends string>(v: T, ...keys: K[]): Omit<T, K>;
 export declare function caught<T, R>(v: T, alt: (e: any) => R): T | R;
 export declare function raise(e: unknown): never;
 /** W-1/W-6: a write checks its value (or its function of the slot) against the target — whose type alone decides it. */

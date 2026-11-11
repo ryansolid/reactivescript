@@ -159,15 +159,20 @@ export function parseDeclarations(src: string): JsDecl[] {
   }
 }
 
-/** RG-4b, 07 §5: a destructuring pattern, `{ a, b: c, d = 1, e: { f } }` or `[a, , b]`. Rest (`...r`) is not yet. */
-type Pat = { k: "name"; name: string; line: number } | { k: "obj"; props: { key: string; pat: Pat; dflt?: Expr }[] } | { k: "arr"; items: ({ pat: Pat; dflt?: Expr } | null)[] };
+/** RG-4b, 07 §5: a destructuring pattern, `{ a, b: c, d = 1, e: { f }, ...rest }` or `[a, , b, ...rest]`. */
+type Pat = { k: "name"; name: string; line: number } | { k: "obj"; props: { key: string; pat: Pat; dflt?: Expr }[]; rest?: Pat } | { k: "arr"; items: ({ pat: Pat; dflt?: Expr } | null)[]; rest?: Pat };
+function parseRest(c: Cursor, close: string): Pat {
+  c.i += 3; c.ws(); const line = c.line; const name = c.ident(); if (!name || KEYWORDS.has(name)) c.fail("a name for the rest"); c.ws();
+  if (!c.startsWith(close)) c.fail(`a rest element is last, with no default: \`...${name}${close}\``);
+  return { k: "name", name: name!, line };
+}
 function parsePattern(c: Cursor): Pat {
   c.ws();
   if (c.eat("{")) {
     const props: { key: string; pat: Pat; dflt?: Expr }[] = [];
     for (;;) {
       c.ws(); if (c.startsWith("}")) break;
-      if (c.startsWith("...")) c.fail("RG-4b: a rest pattern (`...rest`) is not supported yet: name the fields, or read them from the value");
+      if (c.startsWith("...")) { const rest = parseRest(c, "}"); c.expect("}"); return { k: "obj", props, rest }; }
       const kline = c.line; const key = c.ident() ?? c.fail("a field name"); c.ws();
       const pat: Pat = c.eat(":") ? parsePattern(c) : { k: "name", name: key, line: kline }; c.ws();
       const dflt = c.peek() === "=" && c.peek(1) !== "=" && c.peek(1) !== ">" ? (c.i++, c.ws(), parseExpr(c)) : undefined;
@@ -181,7 +186,7 @@ function parsePattern(c: Cursor): Pat {
     for (;;) {
       c.ws(); if (c.startsWith("]")) break;
       if (c.startsWith(",")) { c.i++; items.push(null); continue; }
-      if (c.startsWith("...")) c.fail("RG-4b: a rest pattern (`...rest`) is not supported yet: name the items, or read them from the value");
+      if (c.startsWith("...")) { const rest = parseRest(c, "]"); c.expect("]"); return { k: "arr", items, rest }; }
       const pat = parsePattern(c); c.ws();
       const dflt = c.peek() === "=" && c.peek(1) !== "=" && c.peek(1) !== ">" ? (c.i++, c.ws(), parseExpr(c)) : undefined;
       items.push({ pat, dflt }); c.ws();
@@ -192,12 +197,18 @@ function parsePattern(c: Cursor): Pat {
   const line = c.line; const name = c.ident(); if (!name || KEYWORDS.has(name)) c.fail("a name to bind");
   return { k: "name", name: name!, line };
 }
-/** Each name a pattern binds, with its projection of `base` (a default applies when the field is `undefined`, as in JS). */
-function expandPattern(pat: Pat, base: Expr, out: { name: string; e: Expr; line: number }[]) {
+/** Each name a pattern binds, with its projection of `base` (a default applies when the field is `undefined`, as in JS).
+ *  An object rest is `omit` of the named keys: Solid's live view in reactive scope, a copy of it when `snap` (a `let`). */
+function expandPattern(pat: Pat, base: Expr, out: { name: string; e: Expr; line: number }[], snap = false) {
   const dfl = (v: Expr, d?: Expr): Expr => d ? { k: "if", c: { k: "bin", op: "==", l: v, r: { k: "lit", v: undefined } }, t: d, f: v } : v;
   if (pat.k === "name") out.push({ name: pat.name, e: base, line: pat.line });
-  else if (pat.k === "obj") for (const p of pat.props) expandPattern(p.pat, dfl({ k: "member", o: base, p: p.key }, p.dflt), out);
-  else pat.items.forEach((it, i) => { if (it) expandPattern(it.pat, dfl({ k: "index", o: base, i: { k: "lit", v: i } }, it.dflt), out); });
+  else if (pat.k === "obj") {
+    for (const p of pat.props) expandPattern(p.pat, dfl({ k: "member", o: base, p: p.key }, p.dflt), out, snap);
+    if (pat.rest) { const o: Expr = { k: "omit", e: base, keys: pat.props.map(p => p.key) }; expandPattern(pat.rest, snap ? { k: "rec", fields: [{ spread: o }] } : o, out, snap); }
+  } else {
+    pat.items.forEach((it, i) => { if (it) expandPattern(it.pat, dfl({ k: "index", o: base, i: { k: "lit", v: i } }, it.dflt), out, snap); });
+    if (pat.rest) expandPattern(pat.rest, { k: "call", f: { k: "member", o: base, p: "slice" }, args: [{ k: "lit", v: pat.items.length }] }, out, snap);
+  }
 }
 /** A right side that is read again per name without asking twice: a name or a path of names. */
 const isPath = (e: Expr): boolean => e.k === "id" || (e.k === "member" && !e.opt && isPath(e.o));
@@ -370,7 +381,7 @@ function parseStmt(c: Cursor): Stmt {
       const pat = parsePattern(c); c.ws(); c.expect("="); c.ws();
       let base = parseExpr(c); const out: Stmt[] = [];
       if (!isPath(base)) { const t = `$$${++c.temps}`; out.push({ k: "let", name: t, e: base }); base = { k: "id", name: t }; }
-      const names: { name: string; e: Expr; line: number }[] = []; expandPattern(pat, base, names);
+      const names: { name: string; e: Expr; line: number }[] = []; expandPattern(pat, base, names, true);
       for (const n of names) out.push({ k: "let", name: n.name, e: n.e });
       if (!out.length) c.fail("a destructuring that binds nothing");
       c.pendingStmts.push(...out.slice(1)); return out[0];

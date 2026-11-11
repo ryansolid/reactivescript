@@ -90,6 +90,8 @@ pub enum ExprKind {
     /// RG-7b
     Use(String),
     Spread(Box<Expr>),
+    /// RG-4b: an object rest, `{ a, ...rest } = e` (the parser's own; Solid's `omit`)
+    Omit { e: Box<Expr>, keys: Vec<String> },
     /// R-f-3
     Throw(Box<Expr>),
     /// R-f-4: `e catch (x: A | B) => alt`; classes absent: every failure
@@ -422,6 +424,7 @@ impl Expr {
             ExprKind::Draft { .. } => "draft",
             ExprKind::Use(_) => "use",
             ExprKind::Spread(_) => "spread",
+            ExprKind::Omit { .. } => "omit",
             ExprKind::Throw(_) => "throw",
             ExprKind::Catch { .. } => "catch",
             ExprKind::StyleMap { .. } => "stylemap",
@@ -439,6 +442,7 @@ impl Expr {
             ExprKind::Un { op, e } => obj(vec![("k", k), ("op", s(op)), ("e", b(e))]),
             ExprKind::Pre { name, init } => obj(vec![("k", k), ("name", s(name)), ("init", ob(init))]),
             ExprKind::Peek(e) | ExprKind::Latest(e) | ExprKind::Pending(e) | ExprKind::Spread(e) | ExprKind::Throw(e) => obj(vec![("k", k), ("e", b(e))]),
+            ExprKind::Omit { e, keys } => obj(vec![("k", k), ("e", b(e)), ("keys", Some(strs(keys)))]),
             ExprKind::Await { e, init, stream } => obj(vec![("k", k), ("e", b(e)), ("init", ob(init)), ("stream", Some(Value::Bool(*stream)))]),
             ExprKind::If { c, t, f } => obj(vec![("k", k), ("c", b(c)), ("t", b(t)), ("f", b(f))]),
             ExprKind::Tpl(parts) => obj(vec![

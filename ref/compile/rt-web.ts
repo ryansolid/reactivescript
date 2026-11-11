@@ -7,7 +7,7 @@ import { getObserver } from "solid-js";
 import {
   createSignal, createMemo, createEffect, createOptimistic, createOptimisticStore, createStore, createProjection, createDeferred, createErrorBoundary, createContext,
   Show, For, Loading, Errored, createComponent,
-  flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, getOwner, runWithOwner, sharedConfig,
+  flush, untrack, latest, isPending, action, refresh, affects, until, onSettled, onFlush, NotReadyError, getOwner, runWithOwner, sharedConfig, omit,
 } from "solid-js";
 import { getContext, setContext, $TARGET } from "@solidjs/signals";
 import { hydrate, render } from "@solidjs/web";
@@ -290,7 +290,7 @@ export function createApp(opts: { root: any; api?: Record<string, (...a: any[]) 
     isA, PANIC, catchMemo: catchAcc, tryCatch, catchRead: (f: () => unknown, match: (err: unknown) => boolean, alt: (err: unknown) => unknown) => catchAcc(f, match, alt)(),
     throw: (e: unknown): never => { throw e; },
     eq: (a: unknown, b: unknown) => raw(a) === raw(b),
-    untrack, latest: (f: () => unknown) => latest(() => latestWhole(f())), isPending: (f: () => unknown) => isPending(() => readWhole(f())),
+    untrack, omit, latest: (f: () => unknown) => latest(() => latestWhole(f())), isPending: (f: () => unknown) => isPending(() => readWhole(f())),
     fmt,
 
     // ---- views: compiled JSX (compile/jsx.ts, generate "dom") does the rest ----

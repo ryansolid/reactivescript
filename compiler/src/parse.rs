@@ -536,11 +536,27 @@ fn params_typed(c: &mut Cursor) -> R<(Vec<String>, Vec<Option<String>>)> {
     Ok((params, ptypes))
 }
 
-/// RG-4b, 07 §5: a destructuring pattern, `{ a, b: c, d = 1, e: { f } }` or `[a, , b]`. Rest (`...r`) is not yet.
+/// RG-4b, 07 §5: a destructuring pattern, `{ a, b: c, d = 1, e: { f }, ...rest }` or `[a, , b, ...rest]`.
 enum Pat {
     Name { name: String, line: usize, span: Span },
-    Obj(Vec<(String, Pat, Option<Expr>)>),
-    Arr(Vec<Option<(Pat, Option<Expr>)>>),
+    Obj(Vec<(String, Pat, Option<Expr>)>, Option<Box<Pat>>),
+    Arr(Vec<Option<(Pat, Option<Expr>)>>, Option<Box<Pat>>),
+}
+/// `...name`, the last element of a pattern closed by `close`.
+fn parse_rest(c: &mut Cursor, close: &str) -> R<Pat> {
+    c.i += 3;
+    c.ws(true);
+    let (line, start) = (c.line(), c.i);
+    let name = match c.ident() {
+        Some(n) if !is_kw(&n) => n,
+        _ => return c.fail("a name for the rest"),
+    };
+    let span = Span::new(start, c.i);
+    c.ws(true);
+    if !c.starts_with(close) {
+        return c.fail(&format!("a rest element is last, with no default: `...{name}{close}`"));
+    }
+    Ok(Pat::Name { name, line, span })
 }
 fn pat_default(c: &mut Cursor) -> R<Option<Expr>> {
     if c.peek() == '=' && c.peek_at(1) != '=' && c.peek_at(1) != '>' {
@@ -560,7 +576,9 @@ fn parse_pattern(c: &mut Cursor) -> R<Pat> {
                 break;
             }
             if c.starts_with("...") {
-                return c.fail("RG-4b: a rest pattern (`...rest`) is not supported yet: name the fields, or read them from the value");
+                let rest = parse_rest(c, "}")?;
+                c.expect("}")?;
+                return Ok(Pat::Obj(props, Some(Box::new(rest))));
             }
             let (kline, kstart) = (c.line(), c.i);
             let key = c.ident_or("a field name")?;
@@ -577,7 +595,7 @@ fn parse_pattern(c: &mut Cursor) -> R<Pat> {
         }
         c.ws(true);
         c.expect("}")?;
-        return Ok(Pat::Obj(props));
+        return Ok(Pat::Obj(props, None));
     }
     if c.eat("[") {
         let mut items = vec![];
@@ -592,7 +610,9 @@ fn parse_pattern(c: &mut Cursor) -> R<Pat> {
                 continue;
             }
             if c.starts_with("...") {
-                return c.fail("RG-4b: a rest pattern (`...rest`) is not supported yet: name the items, or read them from the value");
+                let rest = parse_rest(c, "]")?;
+                c.expect("]")?;
+                return Ok(Pat::Arr(items, Some(Box::new(rest))));
             }
             let pat = parse_pattern(c)?;
             c.ws(true);
@@ -605,7 +625,7 @@ fn parse_pattern(c: &mut Cursor) -> R<Pat> {
         }
         c.ws(true);
         c.expect("]")?;
-        return Ok(Pat::Arr(items));
+        return Ok(Pat::Arr(items, None));
     }
     let (line, start) = (c.line(), c.i);
     let name = c.ident();
@@ -615,8 +635,9 @@ fn parse_pattern(c: &mut Cursor) -> R<Pat> {
     }
 }
 /// Each name a pattern binds, with its projection of `base` (a default applies when the field is `undefined`, as in JS).
-/// The projections are the parser's own: they have no span (CP-8).
-fn expand_pattern(pat: &Pat, base: Expr, out: &mut Vec<(String, Expr, usize, Span)>) {
+/// The projections are the parser's own: they have no span (CP-8). An object rest is `omit` of the named keys: Solid's
+/// live view in reactive scope, a copy of it when `snap` (a `let`).
+fn expand_pattern(pat: &Pat, base: Expr, out: &mut Vec<(String, Expr, usize, Span)>, snap: bool) {
     let syn = |k: ExprKind| Expr::new(k, Span::NONE);
     let dfl = |v: Expr, d: &Option<Expr>| match d {
         Some(d) => syn(ExprKind::If {
@@ -628,18 +649,26 @@ fn expand_pattern(pat: &Pat, base: Expr, out: &mut Vec<(String, Expr, usize, Spa
     };
     match pat {
         Pat::Name { name, line, span } => out.push((name.clone(), base, *line, *span)),
-        Pat::Obj(props) => {
+        Pat::Obj(props, rest) => {
             for (key, p, d) in props {
                 let v = syn(ExprKind::Member { o: Box::new(base.clone()), p: key.clone(), opt: false });
-                expand_pattern(p, dfl(v, d), out);
+                expand_pattern(p, dfl(v, d), out, snap);
+            }
+            if let Some(r) = rest {
+                let o = syn(ExprKind::Omit { e: Box::new(base.clone()), keys: props.iter().map(|(k, _, _)| k.clone()).collect() });
+                expand_pattern(r, if snap { syn(ExprKind::Rec(vec![Field::Spread(o)])) } else { o }, out, snap);
             }
         }
-        Pat::Arr(items) => {
+        Pat::Arr(items, rest) => {
             for (i, it) in items.iter().enumerate() {
                 if let Some((p, d)) = it {
                     let v = syn(ExprKind::Index { o: Box::new(base.clone()), i: Box::new(syn(ExprKind::Lit(Lit::Num(i as f64)))), opt: false });
-                    expand_pattern(p, dfl(v, d), out);
+                    expand_pattern(p, dfl(v, d), out, snap);
                 }
+            }
+            if let Some(r) = rest {
+                let f = syn(ExprKind::Member { o: Box::new(base.clone()), p: "slice".into(), opt: false });
+                expand_pattern(r, syn(ExprKind::Call { f: Box::new(f), args: vec![syn(ExprKind::Lit(Lit::Num(items.len() as f64)))] }), out, snap);
             }
         }
     }
@@ -707,7 +736,7 @@ fn parse_destructuring_decl(c: &mut Cursor) -> R<Vec<Decl>> {
         base = Expr::new(ExprKind::Id(t), Span::NONE);
     }
     let mut names = vec![];
-    expand_pattern(&pat, base, &mut names);
+    expand_pattern(&pat, base, &mut names, false);
     for (name, e, line, span) in names {
         out.push(Decl::Eq { name, e, line, span, deferred: false, key: None, ty: None, exported: false });
     }
@@ -1038,7 +1067,7 @@ fn parse_decl_at(c: &mut Cursor) -> R<Decl> {
         let (mut decls, view) = parse_block_body(c)?;
         if let Some(sig) = &sig {
             let mut names = vec![];
-            expand_pattern(sig, Expr::new(ExprKind::Id(props.clone()), Span::NONE), &mut names);
+            expand_pattern(sig, Expr::new(ExprKind::Id(props.clone()), Span::NONE), &mut names, false);
             let pre: Vec<Decl> = names.into_iter().map(|(name, e, line, span)| Decl::Eq { name, e, line, span, deferred: false, key: None, ty: None, exported: false }).collect();
             decls.splice(0..0, pre);
         }
@@ -1164,7 +1193,7 @@ fn parse_stmt(c: &mut Cursor) -> R<Stmt> {
                 base = Expr::new(ExprKind::Id(t), Span::NONE);
             }
             let mut names = vec![];
-            expand_pattern(&pat, base, &mut names);
+            expand_pattern(&pat, base, &mut names, true);
             for (name, e, _, span) in names {
                 out.push(Stmt { k: StmtKind::Let { name, e, ty: None }, span });
             }

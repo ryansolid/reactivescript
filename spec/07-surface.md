@@ -439,8 +439,8 @@ Decl'     ::= "source" Name Type? ("key" Name)? (":=" | "=") Expr
             | "action" Name "(" Params ")" Block
             | "component" Name "(" (Name | ObjPattern) Type? ")" "{" RBlock "}"   -- a pattern projects props (RG-4b)
             | "error" Name ("(" Params ")")? ("=>" Expr)?                -- R-f-1
-Pattern   ::= ObjPattern | "[" (Bind? ",")* Bind? "]"                   -- no rest (`...r`) yet
-ObjPattern ::= "{" (Name (":" Bind | ("=" Expr)?)) ,* "}"
+Pattern   ::= ObjPattern | "[" (Bind? ",")* (Bind | "..." Name)? "]"   -- an array rest: the items after
+ObjPattern ::= "{" (Name (":" Bind | ("=" Expr)?)) ,* ("..." Name)? "}"   -- an object rest: Solid's `omit` of the named keys
 Bind      ::= (Name | Pattern) ("=" Expr)?                           -- a default applies when the field is `undefined`
 RBlock    ::= Decl* Markup*
 Markup    ::= JSXElement | "{" Expr "}" | Control
@@ -553,5 +553,7 @@ Expr      ::= TSExpr with §3's removals and additions
     snapshot local per name, as in JS. So bare `x = e` is always an equation
     and `let x = e` always a snapshot, and only `:=` and `guess` mutate: a
     destructured name is an equation, so `a := v` is `WRITE_TO_NON_SOURCE`.
-    Defaults apply on `undefined`, as in JS. Rest patterns (`...r`) are not
-    yet supported: they need `omit` on a live value (06).
+    Defaults apply on `undefined`, as in JS. A rest is last, as in JS: an
+    object rest `{ a, ...rest } = e` is Solid's `omit(e, "a")`, a live view
+    of the other fields (`rest.b` stays `e.b`), and an array rest
+    `[x, ...rest] = e` is `e.slice(1)`; in a `let`, each is a copy.
