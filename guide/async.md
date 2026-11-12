@@ -200,10 +200,10 @@ export action add(id: string, title: string) {
   with its retry.
 - **Guess only on a value that is shown.** A rename sent while the detail is still loading, or for a row the list
   does not show yet (`findIndex` gave -1), guesses nothing (D-34): the screen keeps the old value until the action's
-  `refresh` lands, and the change looks lost. Don't let a write go out against a value that isn't shown: what is
-  loading isn't editable. Put the control under the value's `loading` boundary, so it doesn't exist until the value
-  does, or disable it while the value is pending. (Keeping the write in a client-owned layer of its own, "three
-  layers" above, and guessing there also works, but it is more to get right.)
+  `refresh` lands, and the change looks lost. Don't let a write go out against a value that isn't shown. Any one of
+  these is enough: put the control under the value's `loading` boundary, so it doesn't exist until the value does;
+  disable it while the value is pending; or keep the write in a client-owned layer of its own ("three layers"
+  above) and guess there.
 
 ## 4. Things that look like bugs and aren't
 
