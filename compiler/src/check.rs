@@ -1028,6 +1028,7 @@ impl<'a> Checker<'a> {
         self.resolve_tree();
         self.loading_on_outside();
         self.snapshot_guards();
+        if std::env::var("RX_PROTO_GBS").is_ok() { self.guess_before_shown(); }
     }
     fn run_later(&mut self, job: Later<'a>) {
         match job {
@@ -3067,6 +3068,74 @@ impl<'a> Checker<'a> {
                 );
             }
         }
+    }
+
+    // ---- prototype (D-34): a guess that can be made before its value is shown is void ----
+    fn guess_before_shown(&mut self) {
+        let hs: Vec<(&'a [Attr], &'a Expr, EId, RId, i64, String)> = self.handlers.iter().map(|h| (h.attrs, h.h, h.env, h.region, h.line, h.what.clone())).collect();
+        let acts: Vec<(String, i64, &'a [Stmt], EId)> = self.actions.iter().map(|a| (a.name.clone(), a.line, a.body, a.env)).collect();
+        let mut memo: HashMap<SId, bool> = HashMap::new();
+        let mut done: HashSet<*const Expr> = HashSet::new();
+        for (attrs, h, env, region, line, what) in hs {
+            if !done.insert(h as *const Expr) { continue; }
+            // guesses: in the handler itself (an inferred or inline action), and in the actions it calls by name
+            let mut bodies: Vec<(Node<'a>, EId, String)> = vec![(Node::E(h), env, "this handler".into())];
+            let mut stack = vec![Node::E(h)];
+            while let Some(n) = stack.pop() {
+                if let Node::E(x) = n {
+                    if let ExprKind::Call { f, .. } = &x.k {
+                        if let ExprKind::Id(name) = &f.k {
+                            if let Some(a) = self.lookup(env, name) {
+                                if self.syms[a].kind == SymKind::Action {
+                                    let l = self.syms[a].line;
+                                    for (an, al, body, aenv) in &acts {
+                                        if an == name && *al == l { for st in body.iter() { bodies.push((Node::S(st), *aenv, format!("action {}", name))); } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                stack.extend(children(n, false));
+            }
+            // what the click is about: the reactive names the handler and its actions read (a selection, a row)
+            let mut inputs: Vec<SId> = vec![];
+            for (root, benv, _) in &bodies {
+                let mut st = vec![*root];
+                while let Some(n) = st.pop() {
+                    if let Node::E(x) = n { if let ExprKind::Id(name) = &x.k { if let Some(v) = self.lookup(*benv, name) { if matches!(self.syms[v].kind, SymKind::Source | SymKind::Eq | SymKind::Value | SymKind::Props) && !inputs.contains(&v) { inputs.push(v); } } } }
+                    if let Node::S(x) = n { if let StmtKind::Optimistic { .. } | StmtKind::Write { .. } = &x.k { continue; } }
+                    st.extend(children(n, false));
+                }
+            }
+            let mut seen: HashSet<SId> = HashSet::new();
+            for (root, benv, via) in bodies {
+                let mut st = vec![root];
+                while let Some(n) = st.pop() {
+                    if let Node::S(x) = n {
+                        if let StmtKind::Optimistic { target, .. } = &x.k {
+                            if let Some(t) = self.lookup(benv, &target.name) {
+                                if seen.insert(t) && self.absent(t, &mut memo, &mut HashSet::new()) && self.asks_about(t, &inputs)
+                                    && !attrs.iter().any(|a| a.name == "disabled" && self.depends(&a.e, env, t, &mut HashSet::new()))
+                                    && !self.region_reads(region, t, |r| r.provides.contains(HOLD)) {
+                                    self.line = line;
+                                    self.err("GUESS_BEFORE_SHOWN", "D-34", format!("{} can start {} (guess on {}) while {} has no value yet: a guess on a value never shown is void (D-34)", what, via, target.name, target.name));
+                                }
+                            }
+                        }
+                    }
+                    st.extend(children(n, false));
+                }
+            }
+        }
+    }
+    /// prototype: `t`'s question reads one of `inputs` (what a click is about), so a new subject can leave `t` unshown
+    fn asks_about(&self, t: SId, inputs: &[SId]) -> bool {
+        let Some((e, env)) = self.syms[t].expr else { return false };
+        inputs.iter().any(|&i| i != t && !self.depends_sym(i, t) && self.depends(e, env, i, &mut HashSet::new()))
+    }
+    fn depends_sym(&self, a: SId, b: SId) -> bool {
+        match self.syms[a].expr { Some((e, env)) => self.depends(e, env, b, &mut HashSet::new()), None => false }
     }
     /// R-8: `s` can be read before its first answer: an `await` with no first paint (`-> v`, R-7) in it or what it reads.
     fn absent(&self, s: SId, memo: &mut HashMap<SId, bool>, busy: &mut HashSet<SId>) -> bool {
