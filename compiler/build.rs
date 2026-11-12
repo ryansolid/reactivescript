@@ -67,21 +67,12 @@ fn setup_wasi_emnapi_v1(target: &str) {
     println!("cargo:rustc-link-arg=--no-check-features");
 
     let rustc = env::var_os("RUSTC").expect("RUSTC must be set by Cargo");
-    let sysroot = rustc_sysroot(&rustc);
-    let crt_reactor_path = sysroot
-        .join("lib")
-        .join("rustlib")
-        .join(target)
-        .join("lib")
-        .join("self-contained")
-        .join("crt1-reactor.o");
-    assert!(
-        crt_reactor_path.is_file(),
-        "failed to locate crt1-reactor.o for {target} at {}",
-        crt_reactor_path.display()
-    );
-    println!("cargo:rustc-link-arg={}", crt_reactor_path.display());
-    println!("cargo:rustc-link-arg=--export=_initialize");
+    // Rust 1.100 links crt1-reactor.o into a WASI cdylib itself; linking it again defines `_initialize` twice.
+    if rustc_minor(&rustc) >= 100 {
+        println!("cargo:rustc-link-arg=--export=_initialize");
+    } else {
+        link_crt_reactor(&rustc, target);
+    }
 
     if let Ok(wasi_sdk_path) = env::var("WASI_SDK_PATH") {
         let wasi_target = if has_threads {
@@ -99,6 +90,38 @@ fn setup_wasi_emnapi_v1(target: &str) {
             println!("cargo:rustc-link-lib=static=setjmp");
         }
     }
+}
+
+fn link_crt_reactor(rustc: &std::ffi::OsStr, target: &str) {
+    let sysroot = rustc_sysroot(rustc);
+    let crt_reactor_path = sysroot
+        .join("lib")
+        .join("rustlib")
+        .join(target)
+        .join("lib")
+        .join("self-contained")
+        .join("crt1-reactor.o");
+    assert!(
+        crt_reactor_path.is_file(),
+        "failed to locate crt1-reactor.o for {target} at {}",
+        crt_reactor_path.display()
+    );
+    println!("cargo:rustc-link-arg={}", crt_reactor_path.display());
+    println!("cargo:rustc-link-arg=--export=_initialize");
+}
+
+/// rustc's minor version (`rustc 1.100.0 (…)` is 100).
+fn rustc_minor(rustc: &std::ffi::OsStr) -> u32 {
+    let output = Command::new(rustc)
+        .arg("--version")
+        .output()
+        .unwrap_or_else(|err| panic!("failed to execute rustc --version: {err}"));
+    let text = String::from_utf8_lossy(&output.stdout);
+    text.split_whitespace()
+        .nth(1)
+        .and_then(|v| v.split('.').nth(1))
+        .and_then(|m| m.parse().ok())
+        .unwrap_or_else(|| panic!("unexpected rustc --version: {text}"))
 }
 
 fn rustc_sysroot(rustc: &std::ffi::OsStr) -> PathBuf {
