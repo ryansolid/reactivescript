@@ -74,3 +74,19 @@ Holm over HO-a and HO-b. If .rx is worse, that is the result.
   score. A new round would add one line to the brief ("other people use the tracker at the same time; the server can
   change at any moment"), which states the product without naming a race.
 
+
+## Addendum 1 (2026-11-12, after the first run, before any result was reported)
+
+The first run over the 60 apps (results not used) showed two problems:
+
+1. **A harness bug.** The at-rest heading check required the detail's text to *start* with `#<id> <title>`. Apps that
+   put the `retry` button first failed on every seed (35 of .rx's 54 holes). It now uses the same "contains" match as
+   round 9's every-frame check. The reverted-change check on the heading had the same anchor and is fixed too.
+2. **Most holes are not about shared data.** Most of the rest were round 9's existing classes (a row assignee no write
+   explains, a dropped guess, the count), found on new trails because the extra moves shift the random sequence.
+
+So a **control** is added: the same seeds with `FUZZ_OTHERS_DRY=1`. Each "other user" step then consumes the same
+three draws and leaves the server unchanged. The **primary measure** becomes, per app, the seeds with a hole under
+`--others` minus the seeds with a hole in the control. HO-a and HO-b are tested on that difference. The raw counts are
+reported beside it. Because this change was made after seeing a (buggy) first run, the result is labeled exploratory,
+not confirmatory.

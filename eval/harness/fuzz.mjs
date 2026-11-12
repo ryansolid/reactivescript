@@ -219,8 +219,8 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
     if (others) {
       const d = await text("detail");
       if (d && ui.selected != null && !/loading #|detail error|select an issue/.test(d)) {
-        const m = d.match(/^#(\d+) /);
-        if (m) { const id = Number(m[1]); const t = [...H(id, "title")].map(h => h.v).filter(v => d.startsWith(`#${id} ${v}`)).sort((a, b) => b.length - a.length)[0]; if (t !== undefined) reverted("head", id, "title", t); }
+        const m = d.match(/#(\d+) /);
+        if (m) { const id = Number(m[1]); const t = [...H(id, "title")].map(h => h.v).filter(v => d.includes(`#${id} ${v}`)).sort((a, b) => b.length - a.length)[0]; if (t !== undefined) reverted("head", id, "title", t); }
       }
       if (found.length) return;
     }
@@ -305,9 +305,9 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
     const id = ui.selected; const detail = await text("detail");
     if (detail && !/detail error|loading #/.test(detail)) {
       const t = told.head.get(id);
-      if (t !== undefined) { const ok = H(id, "title").some(h => detail.startsWith(`#${id} ${h.v}`) && notOlder(id, "title", h.v, t)) || (newest(id, "title") && detail.startsWith(`#${id} ${newest(id, "title")}`)); if (!ok) note("at rest: detail", `"${detail.slice(0, 60)}", older than the app was told`); }
+      if (t !== undefined) { const ok = H(id, "title").some(h => detail.includes(`#${id} ${h.v}`) && notOlder(id, "title", h.v, t)) || (newest(id, "title") && detail.includes(`#${id} ${newest(id, "title")}`)); if (!ok) note("at rest: detail", `"${detail.slice(0, 60)}", older than the app was told`); }
       const row = parsed.find(p => p.id === id);
-      if (row && !detail.startsWith(`#${id} ${row.title}`)) note("at rest: two views (stale)", `row "${row.title}", detail "${detail.slice(0, 40)}"`);
+      if (row && !detail.includes(`#${id} ${row.title}`)) note("at rest: two views (stale)", `row "${row.title}", detail "${detail.slice(0, 40)}"`);
     }
     if (await exists("label")) {
       const labelsText = await text("labels"); const k = told.labels.get(id);
@@ -324,6 +324,7 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
 
   // --others: another user changes the server (no request from this page is involved)
   function otherMove() {
+    if (process.env.FUZZ_OTHERS_DRY) { r(); r(); r(); trail.push("other: (dry)"); return; }   // control: the same step, the server unchanged
     const open = srv.issues.filter(i => i.open); const x = pick(srv.issues); const kind = pick(["rename", "assign", "close", "comment", "label"]);
     if (kind === "rename") { x.title = `Echo${++otherN}`; bump(x.id, "title", x.title); }
     else if (kind === "assign") { x.assignee = pick(["zoe", "yan"]); bump(x.id, "assignee", x.assignee); }
