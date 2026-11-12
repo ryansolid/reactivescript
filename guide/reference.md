@@ -21,14 +21,13 @@ Decl'     ::= "source" Name Type? ("key" Name)? (":=" | "=") Expr      -- `:=` s
             | "component" Name "(" Name Type? ")" "{" Decl* Markup* "}"
             | "error" Name ("(" Params ")")? ("=>" Expr)?
             | "context" Name (":" Type)? ("=" Expr)?  |  "provide" Name "=" Expr
-Control   ::= "if" Expr "{" … "}" ("else" "{" … "}")?               -- no `else if`: nest an `if` in the else
+Control   ::= "if" Expr "{" … "}" ("else" ("{" … "}" | "if" …))?    -- `else if` chains, in markup too
             | "for" Name "in" Expr "{" … "}"
             | "loading" ("on" "(" Expr ")")? "fallback" "{" … "}" "{" … "}"
             | "errored" "fallback" ("(" Name (":" Classes)? ")")? "{" … "}" "{" … "}"
 Stmt      ::= Target ":=" Expr | "guess" Target ":=" Expr | "refresh" Name | "affects" Name
             | ("let" | "const") Name "=" Expr | "await" Expr | ("let" | "const") Name "=" "await" Expr
             | "if" "(" Expr ")" … ("else" …)? | "try" … "catch" … "finally" … | "throw" Expr | "return" Expr? | Expr
-                                                             -- imperative `else if` works; markup `{if}` has no `else if`
 Expr      ::= TypeScript's, without assignment, `this`, `function`, `new` on reactive values
             | "await" Expr | "pending?" Expr | "latest" Expr | "peek" "(" Expr ")" | "use" Name
             | Expr "catch" ("(" Name (":" Classes)? ")")? "=>" Expr   -- the loosest form: parenthesise to catch one arm

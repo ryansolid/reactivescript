@@ -444,7 +444,7 @@ ObjPattern ::= "{" (Name (":" Bind | ("=" Expr)?)) ,* ("..." Name)? "}"   -- an 
 Bind      ::= (Name | Pattern) ("=" Expr)?                           -- a default applies when the field is `undefined`
 RBlock    ::= Decl* Markup*
 Markup    ::= JSXElement | "{" Expr "}" | Control
-Control   ::= "if" Expr "{" RBlock "}" ("else" "{" RBlock "}")?
+Control   ::= "if" Expr "{" RBlock "}" ("else" ("{" RBlock "}" | Control))?   -- `else if c {…}` is `else { if c {…} }`
             | "for" Name "in" Expr "{" RBlock "}"
             | "loading" ("on" "(" Expr ")")? "fallback" "{" RBlock "}" "{" RBlock "}"
             | "errored" "fallback" ("(" Name (":" Classes)? ")")? "{" RBlock "}" "{" RBlock "}"

@@ -34,8 +34,12 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v5
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned: Rust 1.100's wasi-libc defines __wasilibc_futex_wait_atomic_wait with a signature emnapi 1.x's
+      # libemnapi-napi-rs-mt.a does not match, and links crt1-reactor.o itself, so the WASI package breaks. Lift once
+      # emnapi follows.
+      - uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: 1.99.1
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
         with:

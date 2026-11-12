@@ -172,6 +172,10 @@ export component Save(props: { v: unrendered action go catches(nothing) })
   unless narrowed at the import. The declaration is unchecked against the
   JS, as `pure` is (CN-5): it is the boundary's one statement, written once
   instead of at every import (S-module-2).
+- **MO-8c.** A JS import, relative (`./util.js`) or a package's, stays an
+  ES import in the compiled module, for the bundler to resolve; no
+  `package.json` `#imports` alias is needed. The one exception is `./api`,
+  which is the app's injected API (`createApp({ api })`, CP-4).
 
 ## MO-9 — A signature read in place of its module
 

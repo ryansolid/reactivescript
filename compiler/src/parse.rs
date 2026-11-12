@@ -1888,7 +1888,7 @@ fn parse_markup(c: &mut Cursor, close: Close) -> R<Vec<Markup>> {
     }
 }
 
-/// Control forms of a view: `if c { … } else { … }`, `for x in e { … }`, `loading … { … }`, `errored …`, `portal …`.
+/// Control forms of a view: `if c { … } else if d { … } else { … }`, `for x in e { … }`, `loading … { … }`, `errored …`, `portal …`.
 fn parse_control(c: &mut Cursor) -> R<Option<Markup>> {
     let save = c.i;
     let mk = |kind| Some(Markup { kind, line: None, span: Span::NONE });
@@ -1906,8 +1906,18 @@ fn parse_control(c: &mut Cursor) -> R<Option<Markup>> {
         let (mut f_decls, mut f) = (vec![], vec![]);
         if c.keyword("else") {
             c.ws(true);
-            c.expect("{")?;
-            (f_decls, f) = parse_block_body(c)?;
+            let at = c.i;
+            if c.keyword("if") {
+                // `else if c { … }` is `else { if c { … } }`
+                c.i = at;
+                match parse_control(c)? {
+                    Some(next) => f = vec![next],
+                    None => return c.fail("a block after `else if`: else if c { … }"),
+                }
+            } else {
+                c.expect("{")?;
+                (f_decls, f) = parse_block_body(c)?;
+            }
         }
         return Ok(mk(MarkupKind::Mif { c: cond, t, t_decls, f, f_decls }));
     }
