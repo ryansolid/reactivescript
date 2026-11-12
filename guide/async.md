@@ -198,12 +198,11 @@ export action add(id: string, title: string) {
   lives in the client's layer, and a successful retry removes it.
 - **Generate ids on the client** in the handler, before calling the action, so a declined add can be shown again
   with its retry.
-- **Guess only on a value that is shown.** A rename sent while the detail is still loading, or for a row the list
-  does not show yet (`findIndex` gave -1), guesses nothing (D-34): the screen keeps the old value until the action's
-  `refresh` lands, and the change looks lost. A write against a value that isn't shown yet needs a place to show. Any
-  one of these works: put the control under the value's `loading` boundary, so it doesn't exist until the value does;
-  disable it while the value is pending; or keep the write in a client-owned layer of its own ("three layers"
-  above) and guess there.
+- **Guess only on a value that is shown.** A guess on a value that is still loading, or on an item that isn't in the
+  list on screen (`findIndex` gave -1), guesses nothing (D-34): the screen keeps the old value until the action's
+  `refresh` lands, and the change looks lost. A write against a value that isn't shown yet needs a place to show:
+  keep the control out until the value is shown (under its `loading` boundary, or disabled while it is pending), or
+  keep the write in a client-owned layer of its own ("three layers" above) and guess there.
 
 ## 4. Things that look like bugs and aren't
 
@@ -219,8 +218,8 @@ export action add(id: string, title: string) {
   `loading on(k)` above the `errored`.
 - **The server accepted, and the screen went back to the old value.** The action guessed on one question and
   refreshed another, or none. A guess ends with its action; only a new answer for the question it guessed on shows
-  what the server took. Refresh every question you guessed on (`guess detail.title := t` needs `refresh detail`,
-  not only `refresh issues`).
+  what the server took. Refresh every question you guessed on: a guess on one item's own question needs that
+  question re-asked, not only the list's.
 
 ## 5. Plain handlers
 
