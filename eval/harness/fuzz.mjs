@@ -28,6 +28,12 @@
 //   write responses for a row, the issue's answers and rename responses for the heading, the issue's answers and write
 //   responses for comments and labels), and the rows are the newest list answer's, less the user's accepted closes.
 // Under --others the at-rest "two views" disagreement between a stale row and a fresher heading is reported apart.
+// Tear (`--tear`, PREREG-others-12.md addendum 2, implies --others): the other user aims at the issue being written or
+// selected (0.7) and changes the server a little more often (0.2). The one oracle (Ryan, 2026-11-12: "the screen
+// disagreeing at any settled point" is a bug): whenever nothing is in flight, one moment of the server must explain
+// the whole issues page: the list's rows and their fields, the heading, the comments, the labels, and (with the open
+// list shown) the count. A stale screen from one moment passes; a mix of two moments is a settled tear. While anything
+// is in flight nothing is judged (guesses, "(sending…)", held lists are affordances).
 // Usage: node harness/fuzz.mjs <dir> [--seeds N] [--steps N] [--from S] [--r9] [--json out.json] [--log]
 import { writeFileSync } from "node:fs";
 import path from "node:path";
@@ -82,7 +88,7 @@ export function answer(srv, key, fail) {
 }
 
 /** one session; returns the violations it found (each with the step and the log so far) */
-async function session(browser, url, seed, steps, log, r9 = false, others = false) {
+async function session(browser, url, seed, steps, log, r9 = false, others = false, tear = false) {
   const r = rng(seed); const pick = xs => xs[Math.floor(r() * xs.length)];
   const page = await browser.newPage();
   const errors = []; page.on("pageerror", e => { errors.push(e.message); if (process.env.FUZZ_STACK) console.log("PAGEERROR after", trail.at(-1), trail.length, e.message); });
@@ -100,6 +106,9 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
   const ownPosts = new Map();      // issue -> [{ c, t }] accepted posts
   const maxShown = new Map();      // `${where}:${id}.${field}` -> newest history index shown
   const otherClosed = new Set();
+  // --tear: the server after every change (its own writes and the other user's), as one snapshot each
+  const snap = () => JSON.stringify({ issues: srv.issues.map(i => ({ id: i.id, title: i.title, assignee: i.assignee, open: i.open })), comments: srv.comments, labels: srv.labels });
+  const snaps = [snap()]; const snapNow = () => { const x = snap(); if (x !== snaps.at(-1)) snaps.push(x); };
   // writes in flight (key -> { issue, field, value }); declined values per issue/field during the busy period;
   // accepted writes per field in this busy period, in start order
   const writes = new Map(); let declined = []; let started = []; let seq = 0; let gen = 0; let stale = []; let held = { filters: new Set(), selections: new Set(), rows: new Set() }; const settledCount = new Map();
@@ -206,8 +215,46 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
   // --others: is `v` no older than what the server held at clock `t`?
   const notOlder = (id, field, v, t) => { const h = H(id, field); let i = 0; for (let j = 0; j < h.length; j++) if (h[j].t <= t) i = j; return h.slice(i).some(x => x.v === v); };
 
+  // --tear: is there one server moment that explains the whole issues page?
+  async function settledTear() {
+    if (ui.page !== "issues" || inFlight) return;
+    const listText = await text("list"); const listShown = !!listText && !/loading|error/.test(listText);
+    const parsed = listShown ? (await texts("issue")).map(t => t.match(/^#(\d+) (.*) \((.*)\)$/)).filter(Boolean).map(m => ({ id: Number(m[1]), title: m[2], assignee: m[3] === "unassigned" ? null : m[3] })) : null;
+    const d = await text("detail"); const head = d && ui.selected != null && !/loading #|detail error|select an issue/.test(d) ? d : null;
+    const cText = head ? await text("comments") : null; const cs = cText && !/loading|error/.test(cText) ? (await texts("comment")).join(" | ") : null;
+    const lText = head ? await text("labels") : null; const ls = lText && !/loading|error/.test(lText) ? (await texts("label")).join(",") : null;
+    const tab = await text("tab-issues"); const cm = tab && tab.match(/\((\d+)\)/); const count = parsed && ui.filter === "open" && cm ? Number(cm[1]) : null;
+    // the same fact shown two ways (the default): the selected issue's row and heading, the count and the open rows
+    if (!process.env.FUZZ_TEAR_STRICT) {
+      if (parsed && head) { const p = parsed.find(x => x.id === ui.selected); if (p && !head.includes(`#${p.id} ${p.title}`)) return note("settled tear", `row "#${p.id} ${p.title}", heading "${head.slice(0, 40)}"`); }
+      if (count != null && count !== parsed.length) return note("settled tear", `tab ${tab}, ${parsed.length} open rows shown`);
+      return;
+    }
+    // FUZZ_TEAR_STRICT=1: the whole page must be one moment of the server
+    const why = [];
+    const fits = js => {
+      const S = JSON.parse(js); const issue = id => S.issues.find(i => i.id === id);
+      if (parsed) {
+        const want = S.issues.filter(i => i.open === (ui.filter === "open")).map(i => i.id).sort().join(",");
+        if (parsed.map(p => p.id).sort().join(",") !== want) return "rows";
+        for (const p of parsed) { const x = issue(p.id); if (x.title !== p.title) return `#${p.id} title`; if (x.assignee !== p.assignee) return `#${p.id} assignee`; }
+      }
+      if (count != null && count !== S.issues.filter(i => i.open).length) return "count";
+      if (head) {
+        const id = ui.selected; const x = issue(id);
+        if (!head.includes(`#${id} ${x.title}`)) return "heading";
+        if (cs != null && cs !== (S.comments[id] ?? []).map(c => `${c.author}: ${c.text}`).join(" | ")) return "comments";
+        if (ls != null && ls !== (S.labels[id] ?? []).join(",")) return "labels";
+      }
+      return null;
+    };
+    for (let i = snaps.length - 1; i >= 0; i--) { const w = fits(snaps[i]); if (!w) return; why.push(w); }
+    note("settled tear", `no moment of the server explains the page (newest moment differs at ${why[0]}, oldest at ${why.at(-1)})`);
+  }
+
   async function everyFrame() {
     inFlight = (await pending()).length > 0;
+    if (tear) return settledTear();
     if (ui.page !== "issues") return;
     const rows = await texts("issue");
     const listText = await text("list");
@@ -248,6 +295,7 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
     if (ui.page !== "issues") return;
     const listText = await text("list");
     if (!listText || /error/.test(listText)) return;
+    if (tear) { inFlight = false; return settledTear(); }
     if (others) return atRestOthers(listText);
     const parsed = (await texts("issue")).map(t => t.match(/^#(\d+) (.*) \((.*)\)$/)).filter(Boolean).map(m => ({ id: Number(m[1]), title: m[2], assignee: m[3] === "unassigned" ? null : m[3] }));
     const want = srv.issues.filter(i => i.open === (ui.filter === "open") || (ui.filter === "open" && stale.some(t => t.issue === i.id && t.field === "open") && parsed.some(p => p.id === i.id)));
@@ -323,8 +371,31 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
   }
 
   // --others: another user changes the server (no request from this page is involved)
+  // --tear: the other user aims at the issue being written or selected
+  function otherMoveTear() {
+    const dry = !!process.env.FUZZ_OTHERS_DRY;
+    const pool = [...new Set([...[...writes.values()].map(w => w.issue), ...(ui.selected != null ? [ui.selected] : [])])].filter(id => srv.issues.some(i => i.id === id));
+    const u = r(); const aim = u < 0.7 && pool.length ? pick(pool) : null; const x = aim != null ? srv.issues.find(i => i.id === aim) : pick(srv.issues);
+    let kind = pick(["rename", "assign", "close", "comment", "label"]); const who = kind === "assign" ? pick(["zoe", "yan"]) : null;
+    if (kind === "close" && (!x.open || srv.issues.filter(i => i.open && !(dry && otherClosed.has(i.id))).length < 2 || (dry && otherClosed.has(x.id)))) kind = "rename";
+    trail.push(`other: ${dry ? "(dry) " : ""}${kind} #${x.id}`);
+    if (kind === "close") otherClosed.add(x.id);
+    if (dry) { if (kind === "rename" || kind === "comment" || kind === "label") ++otherN; return; }
+    if (kind === "rename") { x.title = `Echo${++otherN}`; bump(x.id, "title", x.title); }
+    else if (kind === "assign") { x.assignee = who; bump(x.id, "assignee", x.assignee); }
+    else if (kind === "close") { x.open = false; bump(x.id, "open", false); }
+    else if (kind === "comment") srv.comments[x.id] = [...(srv.comments[x.id] ?? []), { author: "zoe", text: `note ${++otherN}` }];
+    else { const l = `x${++otherN}`; srv.labels[x.id] = [...(srv.labels[x.id] ?? []), l]; }
+    snapNow();
+  }
   function otherMove() {
-    if (process.env.FUZZ_OTHERS_DRY) { r(); r(); r(); trail.push("other: (dry)"); return; }   // control: the same step, the server unchanged
+    if (tear) return otherMoveTear();
+    if (process.env.FUZZ_OTHERS_DRY) {   // control: the same draws as a real change (on a shadow of who closed what), the server unchanged
+      const x = pick(srv.issues); const kind = pick(["rename", "assign", "close", "comment", "label"]);
+      if (kind === "assign") pick(["zoe", "yan"]);
+      if (kind === "close") { const open = srv.issues.filter(i => i.open && !otherClosed.has(i.id)); if (open.length < 2) return otherMove(); const y = pick(open); otherClosed.add(y.id); trail.push(`other: (dry) close #${y.id}`); return; }
+      trail.push(`other: (dry) ${kind} #${x.id}`); return;
+    }
     const open = srv.issues.filter(i => i.open); const x = pick(srv.issues); const kind = pick(["rename", "assign", "close", "comment", "label"]);
     if (kind === "rename") { x.title = `Echo${++otherN}`; bump(x.id, "title", x.title); }
     else if (kind === "assign") { x.assignee = pick(["zoe", "yan"]); bump(x.id, "assignee", x.assignee); }
@@ -358,7 +429,8 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
     settledCount.set(key, (settledCount.get(key) ?? 0) + times);
     let a; for (let t = 0; t < times; t++) a = answer(srv, key, fail);
     if (others && w && !fail && target && ["title", "assignee", "open"].includes(w.field)) bump(w.issue, w.field, target[w.field]);
-    if (!(w && w.gen !== gen)) learn(key, a);   // A4: a write answering after the page was left tells the new page nothing
+    if (!(w && w.gen !== gen)) learn(key, a);
+    snapNow();   // A4: a write answering after the page was left tells the new page nothing
     if (w && !fail && w.gen !== gen && target) stale.push({ issue: w.issue, field: w.field, before });   // A4
     trail.push(`${fail ? "fail" : "land"} ${key}`);
     if (w) { writes.delete(key); if (fail) declined.push(w); else w.accepted = true; }
@@ -412,7 +484,7 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
     for (let s = 0; s < steps; s++) {
       await track();
       const keys = await pending();
-      if (others && r() < 0.15) { otherMove(); await settle(); }
+      if (others && r() < (tear ? 0.2 : 0.15)) { otherMove(); await settle(); }
       else if (keys.length && r() < (r9 ? 0.4 : 0.5)) await answerOne(keys); else await move().catch(e => { trail.push(`(move failed: ${e.message.split("\n")[0].slice(0, 80)})`); });
       await track();
       await everyFrame();
@@ -432,7 +504,7 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
   return [...found.filter(f => !f.kind.includes("(stale)")), ...found.filter(f => f.kind.includes("(stale)"))].slice(0, 1);
 }
 
-export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false, r9 = false, others = false } = {}) {
+export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false, r9 = false, others = false, tear = false } = {}) {
   const b = await build(dir);
   if (!b.ok) return { dir, build: false, seeds, violations: [] };
   const server = await serve(b.dist); let browser = await launch();
@@ -440,7 +512,7 @@ export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false,
   try {
     for (let s = from; s < from + seeds; s++) {
       // a page that crashes or hangs the browser is a hole of its own; the next seed gets a fresh browser
-      try { let t; violations.push(...await Promise.race([session(browser, server.url, s, steps, log, r9 || others, others), new Promise((_, rej) => { t = setTimeout(() => rej(new Error("session timed out (120 s): the page hangs")), 120000); })]).finally(() => clearTimeout(t))); }
+      try { let t; violations.push(...await Promise.race([session(browser, server.url, s, steps, log, r9 || others || tear, others || tear, tear), new Promise((_, rej) => { t = setTimeout(() => rej(new Error("session timed out (120 s): the page hangs")), 120000); })]).finally(() => clearTimeout(t))); }
       catch (e) { violations.push({ seed: s, step: -1, kind: "page crash", detail: e.message.split("\n")[0].slice(0, 120), trail: [] }); await browser.close().catch(() => {}); browser = await launch(); }
     }
   }
@@ -450,7 +522,7 @@ export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false,
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const a = process.argv.slice(2); const opt = (k, d) => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : d; };
-  const res = await fuzz(path.resolve(a[0]), { seeds: Number(opt("--seeds", 40)), steps: Number(opt("--steps", 30)), from: Number(opt("--from", 1)), log: a.includes("--log"), r9: a.includes("--r9"), others: a.includes("--others") });
+  const res = await fuzz(path.resolve(a[0]), { seeds: Number(opt("--seeds", 40)), steps: Number(opt("--steps", 30)), from: Number(opt("--from", 1)), log: a.includes("--log"), r9: a.includes("--r9"), others: a.includes("--others"), tear: a.includes("--tear") });
   console.log(`${path.basename(res.dir)}: ${res.build ? `${res.violations.length}/${res.seeds} seeds found a hole` : "build failed"}`);
   for (const v of res.violations) console.log(`  seed ${v.seed} step ${v.step}: ${v.kind}: ${v.detail}\n    ${v.trail.join(" ; ")}`);
   if (opt("--json")) writeFileSync(opt("--json"), JSON.stringify(res, null, 2) + "\n");

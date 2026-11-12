@@ -85,8 +85,35 @@ The first run over the 60 apps (results not used) showed two problems:
 2. **Most holes are not about shared data.** Most of the rest were round 9's existing classes (a row assignee no write
    explains, a dropped guess, the count), found on new trails because the extra moves shift the random sequence.
 
-So a **control** is added: the same seeds with `FUZZ_OTHERS_DRY=1`. Each "other user" step then consumes the same
-three draws and leaves the server unchanged. The **primary measure** becomes, per app, the seeds with a hole under
+So a **control** is added: the same seeds with `FUZZ_OTHERS_DRY=1`. Each "other user" step then makes the same random
+draws as a real change would (tracking a shadow of which issues "the other user" closed) and leaves the server
+unchanged. Up to the first point where the changed data makes the app behave differently, the two runs take the same
+trail. (A first version of the control drew a fixed three numbers, so its trails diverged at once; it is not used.) The **primary measure** becomes, per app, the seeds with a hole under
 `--others` minus the seeds with a hole in the control. HO-a and HO-b are tested on that difference. The raw counts are
 reported beside it. Because this change was made after seeing a (buggy) first run, the result is labeled exploratory,
 not confirmatory.
+
+## Addendum 2 (2026-11-12): settled tears, written before the tear family ran on any agent app
+
+Ryan, 2026-11-12: "I don't think we have to tell them to freshly fetch but I think we should consider the screen
+disagreeing at any settled point a bug." And: "there is a difference in using tearing as an affordance and showing
+literally inconsistent data."
+
+**Family 3, `fuzz.mjs --tear`** (it implies `--others`). The other user aims at the issue being written or selected
+(probability 0.7, otherwise any issue) and changes the server a little more often (0.2 per step). The one oracle is
+checked at every **settled** frame, meaning nothing is in flight, and at rest. While anything is in flight nothing is
+judged, because guesses, "(sending…)" rows and held lists are affordances.
+
+- **Settled tear (counted):** the same fact is shown two ways. Either the selected issue's row title and the detail
+  heading disagree, or the tab count disagrees with the open rows shown.
+- **Strict variant (`FUZZ_TEAR_STRICT=1`, reported apart):** one moment of the server must explain the whole page.
+  On the references this flags independent sections loaded at different times, which no app avoids without
+  refetching everything. rx, React and Foldkit each fail 5 of 20 seeds, Solid 3. That's why it isn't the counted rule;
+  Ryan's call is pending on the card.
+
+References under the counted rule: React 0/20, Foldkit 0/20, rx 1/20, Solid 1/20. Both rx and Solid fail seed 13: an
+assign refreshes the list but not the detail, so after another user's rename the row and heading disagree.
+
+Primary measure: data-induced settled tears per app. A seed counts when it has a tear under `--tear` and none in the
+`FUZZ_OTHERS_DRY=1` control. HO3-a: small .rx < small React. HO3-b: frontier .rx < frontier React. Same tests and
+Holm as above.
