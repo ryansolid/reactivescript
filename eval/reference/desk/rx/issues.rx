@@ -104,7 +104,7 @@ export component IssuesPage() {
           <p data-testid="assign-error">{assignError}</p>
         }}
         <input data-testid="title-input" value={titleInput} onInput={e => { titleInput := e.target.value }} />
-        <button data-testid="rename" onClick={() => { if (titleInput != "") { renameTo(selected, titleInput) } }}>rename</button>
+        <button data-testid="rename" disabled={pending? detail} onClick={() => { if (titleInput != "") { renameTo(selected, titleInput) } }}>rename</button>
         {if renameError != "" {
           <p>rename error: {renameError}</p>
         }}

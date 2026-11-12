@@ -198,11 +198,13 @@ export action add(id: string, title: string) {
   lives in the client's layer, and a successful retry removes it.
 - **Generate ids on the client** in the handler, before calling the action, so a declined add can be shown again
   with its retry.
-- **Guess only on a value that is shown.** A guess on a value that is still loading, or on an item that isn't in the
-  list on screen (`findIndex` gave -1), guesses nothing (D-34): the screen keeps the old value until the action's
-  `refresh` lands, and the change looks lost. A write against a value that isn't shown yet needs a place to show:
-  keep the control out until the value is shown (under its `loading` boundary, or disabled while it is pending), or
-  keep the write in a client-owned layer of its own ("three layers" above) and guess there.
+- **Guess only on a value that is shown.** A guess on a value that is loading a new question composes on the previous
+  answer, and the new answer replaces it (D-34); a guess on an item that isn't in the list on screen (`findIndex`
+  gave -1) guesses nothing. Either way the screen doesn't show the change until the action's `refresh` lands, and it
+  looks lost. A write against a value that isn't shown yet needs a place to show: keep the control out until the
+  value is shown (under its `loading` boundary, or disabled while it is pending), or keep the write in a
+  client-owned layer of its own ("three layers" above) and guess there. The compiler flags a control that can guess
+  while its value loads (`GUESS_WHILE_LOADING`).
 
 ## 4. Things that look like bugs and aren't
 

@@ -338,6 +338,25 @@ fn snapshot_reads<'a>(n: Node<'a>, caught: bool, locals: &mut HashSet<String>, o
         snapshot_reads(c, caught, locals, out);
     }
 }
+/// AC-3a: the submit buttons of a form's markup (a `<button>` without `type`, or `type="submit"`), not through components.
+fn submit_buttons<'a>(ms: &'a [Markup], out: &mut Vec<&'a [Attr]>) {
+    for m in ms {
+        match &m.kind {
+            MarkupKind::El { tag, attrs, children } => {
+                if tag == "button" && !attrs.iter().any(|a| a.name == "type" && !matches!(&a.e.k, ExprKind::Lit(Lit::Str(v)) if v == "submit")) {
+                    out.push(attrs);
+                }
+                submit_buttons(children, out);
+            }
+            MarkupKind::Mif { t, f, .. } => {
+                submit_buttons(t, out);
+                submit_buttons(f, out);
+            }
+            MarkupKind::Mfor { body, .. } | MarkupKind::Loading { body, .. } | MarkupKind::Errored { body, .. } | MarkupKind::Portal { body, .. } => submit_buttons(body, out),
+            _ => {}
+        }
+    }
+}
 /// A node the reference walks generically (`Object.values`): an expression, or a statement inside one.
 #[derive(Clone, Copy)]
 pub(crate) enum Node<'a> {
@@ -770,6 +789,8 @@ struct ReaderRec<'a> {
 /// R-8: an event handler on an element, with the element's attributes (its `disabled` covers the handler).
 struct HandlerRec<'a> {
     attrs: &'a [Attr],
+    /// the element's children: a `<form>`'s submit buttons cover its `onSubmit` (AC-3a)
+    kids: &'a [Markup],
     h: &'a Expr,
     env: EId,
     region: RId,
@@ -1028,7 +1049,7 @@ impl<'a> Checker<'a> {
         self.resolve_tree();
         self.loading_on_outside();
         self.snapshot_guards();
-        if std::env::var("RX_PROTO_GBS").is_ok() { self.guess_before_shown(); }
+        self.guess_while_loading();
     }
     fn run_later(&mut self, job: Later<'a>) {
         match job {
@@ -2766,7 +2787,7 @@ impl<'a> Checker<'a> {
                         if !h {
                             self.readers.push(ReaderRec { region, e: &a.e, env, line: self.line });
                         } else {
-                            self.handlers.push(HandlerRec { attrs, h: &a.e, env, region, line: self.line, what: format!("<{}> {}", tag, a.name) });
+                            self.handlers.push(HandlerRec { attrs, kids: children, h: &a.e, env, region, line: self.line, what: format!("<{}> {}", tag, a.name) });
                         }
                     }
                     self.markup(children, env, false);
@@ -3070,26 +3091,37 @@ impl<'a> Checker<'a> {
         }
     }
 
-    // ---- prototype (D-34): a guess that can be made before its value is shown is void ----
-    fn guess_before_shown(&mut self) {
-        let hs: Vec<(&'a [Attr], &'a Expr, EId, RId, i64, String)> = self.handlers.iter().map(|h| (h.attrs, h.h, h.env, h.region, h.line, h.what.clone())).collect();
+    // ---- AC-3a: a guess a click can make while its target loads a new question ----
+    /// AC-3a (D-34, Solid's `OPTIMISTIC_WRITE_WHILE_LOADING`): a handler starts a guess (in its own body, an inferred
+    /// or inline action, or a named action it calls) on an equation or source that awaits, whose question reads what
+    /// the click reads (a selection, a row), from an element that is not covered (R-8: inside a `loading` region whose
+    /// content reads the target, or `disabled` reading it). While that question is out the guess composes on the
+    /// previous answer, and the new answer replaces it: the user's change disappears while its action is out.
+    fn guess_while_loading(&mut self) {
+        let hs: Vec<(&'a [Attr], &'a [Markup], &'a Expr, EId, RId, i64, String)> = self.handlers.iter().map(|h| (h.attrs, h.kids, h.h, h.env, h.region, h.line, h.what.clone())).collect();
         let acts: Vec<(String, i64, &'a [Stmt], EId)> = self.actions.iter().map(|a| (a.name.clone(), a.line, a.body, a.env)).collect();
-        let mut memo: HashMap<SId, bool> = HashMap::new();
         let mut done: HashSet<*const Expr> = HashSet::new();
-        for (attrs, h, env, region, line, what) in hs {
-            if !done.insert(h as *const Expr) { continue; }
-            // guesses: in the handler itself (an inferred or inline action), and in the actions it calls by name
-            let mut bodies: Vec<(Node<'a>, EId, String)> = vec![(Node::E(h), env, "this handler".into())];
+        for (attrs, kids, h, env, region, line, what) in hs {
+            if !done.insert(h as *const Expr) {
+                continue;
+            }
+            // a form submits only through its buttons: disabled submit buttons block it (HTML implicit submission)
+            let mut submits: Vec<&'a [Attr]> = vec![];
+            if what == "<form> onSubmit" {
+                submit_buttons(kids, &mut submits);
+            }
+            // the bodies the click runs: the handler, and the actions it calls by name
+            let mut bodies: Vec<(Node<'a>, EId, Option<String>)> = vec![(Node::E(h), env, None)];
             let mut stack = vec![Node::E(h)];
             while let Some(n) = stack.pop() {
-                if let Node::E(x) = n {
-                    if let ExprKind::Call { f, .. } = &x.k {
-                        if let ExprKind::Id(name) = &f.k {
-                            if let Some(a) = self.lookup(env, name) {
-                                if self.syms[a].kind == SymKind::Action {
-                                    let l = self.syms[a].line;
-                                    for (an, al, body, aenv) in &acts {
-                                        if an == name && *al == l { for st in body.iter() { bodies.push((Node::S(st), *aenv, format!("action {}", name))); } }
+                if let Node::E(Expr { k: ExprKind::Call { f, .. }, .. }) = n {
+                    if let ExprKind::Id(name) = &f.k {
+                        if let Some(a) = self.lookup(env, name) {
+                            if self.syms[a].kind == SymKind::Action {
+                                let l = self.syms[a].line;
+                                for (an, al, body, aenv) in &acts {
+                                    if an == name && *al == l {
+                                        bodies.extend(body.iter().map(|st| (Node::S(st), *aenv, Some(name.clone()))));
                                     }
                                 }
                             }
@@ -3098,13 +3130,24 @@ impl<'a> Checker<'a> {
                 }
                 stack.extend(children(n, false));
             }
-            // what the click is about: the reactive names the handler and its actions read (a selection, a row)
+            // what the click is about: the names those bodies read, outside their own writes and guesses
             let mut inputs: Vec<SId> = vec![];
             for (root, benv, _) in &bodies {
                 let mut st = vec![*root];
                 while let Some(n) = st.pop() {
-                    if let Node::E(x) = n { if let ExprKind::Id(name) = &x.k { if let Some(v) = self.lookup(*benv, name) { if matches!(self.syms[v].kind, SymKind::Source | SymKind::Eq | SymKind::Value | SymKind::Props) && !inputs.contains(&v) { inputs.push(v); } } } }
-                    if let Node::S(x) = n { if let StmtKind::Optimistic { .. } | StmtKind::Write { .. } = &x.k { continue; } }
+                    match n {
+                        Node::S(x) if matches!(x.k, StmtKind::Optimistic { .. } | StmtKind::Write { .. }) => continue,
+                        Node::E(x) => {
+                            if let ExprKind::Id(name) = &x.k {
+                                if let Some(v) = self.lookup(*benv, name) {
+                                    if matches!(self.syms[v].kind, SymKind::Source | SymKind::Eq | SymKind::Value | SymKind::Props) && !inputs.contains(&v) {
+                                        inputs.push(v);
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
+                    }
                     st.extend(children(n, false));
                 }
             }
@@ -3115,11 +3158,23 @@ impl<'a> Checker<'a> {
                     if let Node::S(x) = n {
                         if let StmtKind::Optimistic { target, .. } = &x.k {
                             if let Some(t) = self.lookup(benv, &target.name) {
-                                if seen.insert(t) && self.absent(t, &mut memo, &mut HashSet::new()) && self.asks_about(t, &inputs)
+                                if seen.insert(t)
+                                    && self.awaits(t, &mut HashSet::new())
+                                    && self.asks_about(t, &inputs)
                                     && !attrs.iter().any(|a| a.name == "disabled" && self.depends(&a.e, env, t, &mut HashSet::new()))
-                                    && !self.region_reads(region, t, |r| r.provides.contains(HOLD)) {
+                                    && !(!submits.is_empty() && submits.iter().all(|b| b.iter().any(|a| a.name == "disabled" && self.depends(&a.e, env, t, &mut HashSet::new()))))
+                                    && !self.region_reads(region, t, |r| r.provides.contains(HOLD))
+                                {
+                                    let n = &target.name;
                                     self.line = line;
-                                    self.err("GUESS_BEFORE_SHOWN", "D-34", format!("{} can start {} (guess on {}) while {} has no value yet: a guess on a value never shown is void (D-34)", what, via, target.name, target.name));
+                                    self.err(
+                                        "GUESS_WHILE_LOADING",
+                                        "AC-3a",
+                                        format!(
+                                            "{what} {} `guess {n}` while {n} is loading a new question (its question reads what the click reads): the guess composes on the previous answer, and the new answer replaces it, so the change disappears while it is out (D-34) — put the element inside the `loading` region whose content reads {n}, or give it `disabled={{pending? {n}}}`, or keep the pending change in a source of its own until it lands",
+                                            match &via { Some(a) => format!("starts `{a}`, which can run"), None => "can run".into() }
+                                        ),
+                                    );
                                 }
                             }
                         }
@@ -3129,13 +3184,37 @@ impl<'a> Checker<'a> {
             }
         }
     }
-    /// prototype: `t`'s question reads one of `inputs` (what a click is about), so a new subject can leave `t` unshown
+    /// AC-3a: `t`'s value comes from an `await` (with or without a first paint), here or in what it reads.
+    fn awaits(&self, t: SId, busy: &mut HashSet<SId>) -> bool {
+        let Some((e, env)) = self.syms[t].expr else { return false };
+        if !busy.insert(t) {
+            return false;
+        }
+        let mut stack = vec![Node::E(e)];
+        while let Some(n) = stack.pop() {
+            if let Node::E(x) = n {
+                match &x.k {
+                    ExprKind::Fn { .. } | ExprKind::ServerFn { .. } | ExprKind::Peek(_) => continue,
+                    ExprKind::Await { .. } => return true,
+                    ExprKind::Id(name) => {
+                        if let Some(u) = self.lookup(env, name) {
+                            if u != t && matches!(self.syms[u].kind, SymKind::Eq | SymKind::Source) && self.awaits(u, busy) {
+                                return true;
+                            }
+                        }
+                        continue;
+                    }
+                    _ => {}
+                }
+            }
+            stack.extend(children(n, false));
+        }
+        false
+    }
+    /// AC-3a: `t`'s question reads one of `inputs` (what a click reads) that does not itself follow `t`.
     fn asks_about(&self, t: SId, inputs: &[SId]) -> bool {
         let Some((e, env)) = self.syms[t].expr else { return false };
-        inputs.iter().any(|&i| i != t && !self.depends_sym(i, t) && self.depends(e, env, i, &mut HashSet::new()))
-    }
-    fn depends_sym(&self, a: SId, b: SId) -> bool {
-        match self.syms[a].expr { Some((e, env)) => self.depends(e, env, b, &mut HashSet::new()), None => false }
+        inputs.iter().any(|&i| i != t && !self.syms[i].expr.is_some_and(|(ie, ienv)| self.depends(ie, ienv, t, &mut HashSet::new())) && self.depends(e, env, i, &mut HashSet::new()))
     }
     /// R-8: `s` can be read before its first answer: an `await` with no first paint (`-> v`, R-7) in it or what it reads.
     fn absent(&self, s: SId, memo: &mut HashMap<SId, bool>, busy: &mut HashSet<SId>) -> bool {
@@ -4190,6 +4269,51 @@ mod tests {
         let read = |p: &str| if p == "/app.rx" { Some(src.to_string()) } else { None };
         let set = load_modules("/app.rx", &read).unwrap();
         check_modules(&set, spa).diags.iter().map(|d| (d.line, d.code.clone())).collect()
+    }
+
+    /// 06 AC-3a: a guess a click can make while its value loads a new question, unless the element is covered.
+    #[test]
+    fn guess_while_loading() {
+        let src = r#"export default component App() {
+  source sel := 1
+  source filter := "open"
+  source detail = await fetch("issue:" + sel)
+  source rows = await fetch("rows:" + filter)
+  source note := ""
+  action rename(t: string) {
+    try {
+      guess detail := d => d == null ? d : { ...d, title: t }
+      guess rows := rs => rs
+      await fetch("rename:" + sel + "," + t)
+      refresh detail
+    } catch (e) {
+      note := e.message
+    }
+  }
+  errored fallback(e) { <p>failed</p> } {
+    loading on(sel) fallback { <p>loading</p> } {
+      <h2>{detail.title}</h2>
+      <button onClick={() => { rename("in") }}>in</button>
+    }
+    loading on(filter) fallback { <p>loading</p> } {
+      <p>{rows.length}</p>
+    }
+  }
+  <button onClick={() => { sel := sel + 1 }}>next</button>
+  <button onClick={() => { rename("out") }}>out</button>
+  <button disabled={pending? detail} onClick={() => { rename("off") }}>off</button>
+  <form onSubmit={() => { rename("form") }}>
+    <button disabled={pending? detail}>go</button>
+  </form>
+  <form onSubmit={() => { rename("form2") }}>
+    <button>go</button>
+  </form>
+}
+"#;
+        let got: Vec<i64> = codes(src, false).iter().filter(|(_, c)| c == "GUESS_WHILE_LOADING").map(|(l, _)| *l).collect();
+        // `out` and the second form: `detail` asks about `sel`, which `rename` reads; `rows` asks about `filter`,
+        // which the click never reads; `in` sits in detail's region, `off` and the first form are disabled on it
+        assert_eq!(got, vec![27, 32], "{:?}", codes(src, false));
     }
 
     /// 08 CN-3d: in a client-only build, a reader the first load surely waits on needs a `loading` above it.

@@ -55,12 +55,13 @@ component RoomItem(props: { room: Room }) {
   <li onClick={() => { (use room).pick(props.room.id) }}>{props.room.name} {active ? "*" : "-"}{" "}</li>
 }
 
+// AC-3a: the send button is disabled while a new room's messages load, so a guess never composes on the old room's list
 component Compose(props: {}) {
   <form onSubmit={() => { send() }}>
     <input value={draftText} onInput={e => { draftText := e.target.value }} />
     <span>{draftText}</span>
     {if draftText != "" { <i>typing…</i> }}
-    <button>{sending ? "sending…" : "send"}</button>
+    <button disabled={pending? messages}>{sending ? "sending…" : "send"}</button>
     <p>{error}</p>
   </form>
 }

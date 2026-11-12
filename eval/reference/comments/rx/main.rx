@@ -94,7 +94,7 @@ export default component App() {
           }}
         </div>
         <input data-testid="comment-input" value={commentInput} onInput={e => { commentInput := e.target.value }} />
-        <button data-testid="post" onClick={() => {
+        <button data-testid="post" disabled={pending? comments} onClick={() => {
           if (commentInput != "") {
             let text = commentInput
             onFlush(() => { commentInput := "" })
