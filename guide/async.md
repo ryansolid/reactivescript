@@ -198,6 +198,12 @@ export action add(id: string, title: string) {
   lives in the client's layer, and a successful retry removes it.
 - **Generate ids on the client** in the handler, before calling the action, so a declined add can be shown again
   with its retry.
+- **Guess only on a value that is shown.** A rename sent while the detail is still loading, or for a row the list
+  does not show yet (`findIndex` gave -1), guesses nothing (D-34): the screen keeps the old value until the action's
+  `refresh` lands, and the change looks lost. Don't let a write go out against a value that isn't shown. Any one of
+  these is enough: put the control under the value's `loading` boundary, so it doesn't exist until the value does;
+  disable it while the value is pending; or keep the write in a client-owned layer of its own ("three layers"
+  above) and guess there.
 
 ## 4. Things that look like bugs and aren't
 
@@ -215,10 +221,6 @@ export action add(id: string, title: string) {
   refreshed another, or none. A guess ends with its action; only a new answer for the question it guessed on shows
   what the server took. Refresh every question you guessed on (`guess detail.title := t` needs `refresh detail`,
   not only `refresh issues`).
-- **A write landed and nothing showed it until the reload answered.** A guess needs a value to guess on. A rename sent
-  while the detail is still loading, or for a row the list does not show yet (`findIndex` gave -1), guesses nothing,
-  so the accepted value appears only when the action's `refresh` lands. If that window matters, keep the accepted
-  write in the client-owned layer ("three layers" above) until the server's answer confirms it.
 
 ## 5. Plain handlers
 
