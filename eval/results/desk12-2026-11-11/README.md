@@ -11,7 +11,7 @@
 **Grading:** `harness/grade.sh`, with hidden 77, overlap 38 and 20 fuzz seeds.
 - Defects are failed hidden tests, plus failed overlap tests, plus fuzz seeds that found a hole.
 - Only defects are counted.
-- No fuzz hole has been traced to a legal hold yet, so nothing is excluded. The traces so far are below.
+- No fuzz hole was traced to a legal hold, so nothing is excluded. Two holes are Solid bugs (filed), and they count against .rx, as pre-registered.
 
 ## Defects per app
 
@@ -92,24 +92,32 @@ Lines are non-blank source lines, without the given `api` and `flights` files.
 
 - **Small-tier outliers:** XState is bimodal (1, 5 against 17–19). In the high desks, most defects are overlap: late loads drop changes still in flight.
 
-### .rx traces so far
+### .rx traces
 
-- **rx-1, seed 15 ("closed row shown"): a Solid bug.**
+- **rx-1, seed 15 ("closed row shown"): a Solid bug, filed as solidjs/solid#4786.**
   - The app guesses two closes on a `createOptimistic` list of hidden ids and an assign on the optimistic issues store.
-  - When the first close lands, its `refresh` drops both close guesses while the refresh is still out. Under D-33 and F-11, they should hold until it answers.
-  - The plain-Solid repro is `repro/two-close-guesses.spec.tsx`. It passes without the assign guess.
-  - It also fails on round 11's Solid (6751472f), so it is not caused by #4769.
-  - Not filed yet.
-- **rx-7, seed 12 ("closed row shown"): an agent mistake, most likely.**
-  - After its await, each close writes `closed := [...closed, r.id]`. With two closes out, the second write reads `closed` without the first close's id, so an accepted close comes back.
-  - The guide's functional form (`closed := c => [...c, r.id]`) avoids this.
-  - AC-1e only covers a read made before the await, so no check fired.
-- **rx-2, seed 13 ("closed row shown"): not yet classified.**
-  - The app keeps two lists and chooses between them with `filter == "open" ? openIssues : closedIssues`.
-  - After a failed open load, an accepted assign on the closed list and a switch to open, the open view shows the closed list's rows, still at rest after the open list lands.
-  - This is the shape of #4762 (a keyed derivation over a choice of projections). It needs a plain-Solid repro.
-- **The tab-count holes (rx-3, rx-10, rx-12):** each app passes the count to the app from an `effect` inside the list's loading region. While a row guess is out, the tab shows the count from before the guess. These are a tear between two views, not a hold, so they count.
-- **The rest have not been traced.** That covers detail title, row assignee and dropped guess.
+  - When both closes have landed, both close guesses are gone, although `assign:4` and both refetches are still out.
+  - It passes without the assign guess. It also fails on round 11's Solid (6751472f).
+  - Repro: `repro/two-close-guesses.spec.tsx`.
+- **rx-2, seed 13 ("closed row shown"): a Solid bug, filed as solidjs/solid#4787.**
+  - The app chooses between two keyed lists with `filter == "open" ? openIssues : closedIssues`.
+  - When it switches back to a list whose load failed, the refetch never clears the error.
+  - With an accepted guess on the other list, the open view shows the closed list's rows, at rest. It also fails on 6751472f.
+  - Repro: `repro/switch-after-failed-list.spec.tsx`.
+- **rx-7, seed 12 ("closed row shown"): an agent mistake.**
+  - After its await, each close writes `closed := [...closed, r.id]`. With two closes out, the second write loses the first close's id.
+  - The guide's functional form avoids this. AC-1e only covers a read made before the await, so no check fired.
+- **Detail title (rx-2 seeds 5 and 8, rx-9 seed 15, rx-10 seed 15, replayed): agent mistakes, the same kind as round 11's.** Two shapes:
+  - The rename is made while the detail is still loading. A guess on a value that was never shown is void (D-34), so the heading shows the old title through the whole rename.
+  - The app puts no guess on the heading at all (rx-2).
+  - rx-3 seed 15 and rx-9 seed 11 have the same trail shape but were not replayed.
+- **Tab count (rx-3 ×2, rx-10, rx-12): counted.** Each app passes the count up from an `effect` inside the list's loading region. While a row guess is out, the tab shows the count from before the guess. This is a tear between two views, not a hold.
+- **Not classified:**
+  - rx-7 seed 8: a close declined on #4 also drops the assign guess on #4. Both guesses are functional guesses on one source, so this may be H-11.
+  - rx-11 (row assignee ×4, a dropped rename guess, doubled labels): the desk fails 9 hidden and overlap tests on its own rename and save logic, so these are most likely its own.
+  - rx-3 seed 5.
+
+**Without the two Solid bugs**, frontier .rx is 3.0 instead of 3.2 (rx-1 0, rx-2 9), and small .rx is unchanged at 6.0. The tests above do not move.
 
 ## Deviations
 
@@ -128,10 +136,17 @@ Lines are non-blank source lines, without the given `api` and `flights` files.
 - **A filter switch held by a row guess (rx-2, rx-3, rx-5):** with one list whose question reads the filter, a guess on it holds the filter switch. All three split the list per filter.
 - **A hold at mount (rx-4, rx-8, rx-9, rx-12):** `pending?` or a mount-time read outside a loading region holds the tab switch. rx-9 never solved it.
 
+## Sensitivity (not pre-registered)
+
+- **Without the worst small desk** (rx-11, 15 defects), small .rx averages 4.2, and every Holm comparison clears 0.05 (React p = 0.009).
+- **A rank test**, which one outlier cannot dominate, gives small .rx < React p = 0.036.
+- **Without the worst frontier desk** (rx-2, 10), frontier .rx averages 1.8, level with React.
+- **Spread:** the standard deviation of small-tier defects is 7.9 for XState, 5.1 for .rx, 3.9 for React and 1.9 for Foldkit. Frontier is 3.6 for .rx and 1.2 for React.
+
 ## Reading
 
 - **Small tier:** .rx still has the fewest defects, about half of React's, plain's, XState's and Foldkit's. With the pre-registered Holm family, only the Foldkit comparison clears 0.05, so the primary hypothesis is not supported this round.
-- **Frontier tier:** .rx is the worst arm, at 3.2, though its median is 2. One desk (rx-2, 10 defects) accounts for much of that, and one of rx-1's holes is a Solid bug. React is best at 1.8.
+- **Frontier tier:** .rx is the worst arm, at 3.2, though its median is 2. One desk (rx-2, 10 defects) accounts for much of that, and two .rx holes are Solid bugs (#4786, #4787). React is best at 1.8.
 - **XState:** level with React at the frontier. In the small tier it lost the side check's advantage (7.0 → 13.0) and is now level with Foldkit and plain.
 - **Cost:** frontier .rx costs $2.38 per run, against $1.31 for React. That is up from round 11's $2.05.
 
@@ -142,4 +157,4 @@ Lines are non-blank source lines, without the given `api` and `flights` files.
 - `stats.py`, `stats.txt`.
 - `cost.json`, `usd.json`.
 - `agents-12.txt`: desk to transcript.
-- `repro/`: the plain-Solid repro.
+- `repro/`: the plain-Solid repros.

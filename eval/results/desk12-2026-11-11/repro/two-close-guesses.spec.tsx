@@ -12,6 +12,7 @@ test("two close guesses on one list: both hold until the refresh lands", async (
   const ask = (key: string) => new Promise<any>(res => asks.push({ key, res }));
   const pick = (key: string) => { const i = asks.findIndex(a => a.key === key); if (i < 0) throw new Error("no ask " + key + " in " + asks.map(a => a.key)); return asks.splice(i, 1)[0]; };
   const c = document.body.appendChild(document.createElement("div"));
+  const frames: string[] = []; const snap = (l: string) => frames.push(`${l.padEnd(18)} ${c.textContent || "(empty)"}`);
   let close!: (id: number) => any, assign!: (id: number) => any;
   let server = [{ id: 1, a: "" }, { id: 4, a: "dana" }];
   render(() => {
@@ -24,16 +25,15 @@ test("two close guesses on one list: both hold until the refresh lands", async (
     return <Loading fallback={<i>loading</i>}><For each={shown()}>{r => <i>[#{r.id}]</i>}</For></Loading>;
   }, c);
   await tick();
-  pick("fetch").res(server.map(x => ({ ...x }))); await tick();
-  expect(c.textContent).toBe("[#1][#4]");
-  close(1); await tick();
-  if (V !== "noassign") { assign(4); await tick(); }
-  close(4); await tick();
-  expect(c.textContent).toBe("");
+  pick("fetch").res(server.map(x => ({ ...x }))); await tick(); snap("loaded");
+  close(1); await tick(); snap("close #1");
+  if (V !== "noassign") { assign(4); await tick(); snap("assign #4"); }
+  close(4); await tick(); snap("close #4");
   server = server.filter(x => x.id !== 4);
-  pick("close:4").res({}); await tick();
-  expect(c.textContent).toBe("");
+  pick("close:4").res({}); await tick(); snap("close #4 accepted");
   server = server.filter(x => x.id !== 1);
-  pick("close:1").res({}); await tick();
+  pick("close:1").res({}); await tick(); snap("close #1 accepted");
+  frames.push("still out: " + asks.map(a => a.key).join(", "));
+  console.log(frames.join("\n"));
   expect(c.textContent).toBe("");   // the fetch the closes asked is still out: both guesses hold (D-33, F-11)
 });
