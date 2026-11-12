@@ -619,7 +619,7 @@ function parseMarkup(c: Cursor, closeTag: string | null): Markup[] {
     if (s) out.push({ k: "text", s });
   }
 }
-/** Control forms of a view: `if c { … } else { … }`, `for x in e { … }`, `loading … { … }`. Bare at block level, braced inside elements. */
+/** Control forms of a view: `if c { … } else if d { … } else { … }`, `for x in e { … }`, `loading … { … }`. Bare at block level, braced inside elements. */
 function parseControl(c: Cursor): Markup | null {
   const save = c.i;
   if (c.keyword("if")) {
@@ -628,7 +628,14 @@ function parseControl(c: Cursor): Markup | null {
     c.expect("{");
       const t = parseBlockBody(c); c.ws();
       let f: { decls: Decl[]; body: Markup[] } = { decls: [], body: [] };
-      if (c.keyword("else")) { c.ws(); c.expect("{"); f = parseBlockBody(c); }
+      if (c.keyword("else")) {
+        c.ws(); const at = c.i;
+        if (c.keyword("if")) {                                          // `else if c { … }` is `else { if c { … } }`
+          c.i = at; const next = parseControl(c);
+          if (!next) c.fail("a block after `else if`: else if c { … }");
+          f = { decls: [], body: [next] };
+        } else { c.expect("{"); f = parseBlockBody(c); }
+      }
       return { k: "mif", c: cond, t: t.body, tDecls: t.decls, f: f.body, fDecls: f.decls };
   }
   if (c.keyword("loading")) {

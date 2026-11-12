@@ -255,6 +255,12 @@ struct Gen<'p> {
 }
 
 impl<'p> Gen<'p> {
+    /// A JS import that becomes a real ES import (MO-8): a package's always; a relative one too when the modules go to a
+    /// bundler (`by_source`, the product), where `./util.js` is the app's own file. `./api` stays the app's injected API
+    /// (`createApp({ api })`, CP-4), and in the scenario runners every relative import is the harness's.
+    fn js_import(&self, from: &str) -> bool {
+        !from.starts_with('.') || (self.by_source && !from.ends_with("/api"))
+    }
     fn new(u: Usage, set: &'p ModuleSet) -> Self {
         Gen {
             u,
@@ -338,7 +344,7 @@ impl<'p> Gen<'p> {
         // a package's JS (`@solidjs/web/server-functions`): a real import at module level, where a hoisted server fn's wrappers are
         for d in decls {
             if let Decl::Import { resolved: None, from, names, .. } = d {
-                if from.starts_with('.') {
+                if !self.js_import(from) {
                     continue;
                 }
                 let ns: Vec<(String, String)> = names.iter().filter(|n| !builtin(&n.name) && n.name != "log").map(|n| (n.name.clone(), format!("w${}", n.alias))).collect();
@@ -361,7 +367,7 @@ impl<'p> Gen<'p> {
             ExprKind::ServerFn { params, body, .. } => self.server_hoist(name, params, body, true),
             ExprKind::Call { f, args } if matches!(&f.k, ExprKind::Id(_)) => {
                 let ExprKind::Id(fname) = &f.k else { unreachable!() };
-                let found = self.mod_decls.iter().any(|d| matches!(d, Decl::Import { resolved: None, from, names, .. } if !from.starts_with('.') && names.iter().any(|n| &n.alias == fname)));
+                let found = self.mod_decls.iter().any(|d| matches!(d, Decl::Import { resolved: None, from, names, .. } if self.js_import(from) && names.iter().any(|n| &n.alias == fname)));
                 if !found {
                     return fail(format!("{name}: a server fn's wrapper is a package's function (here, {fname})"));
                 }
@@ -402,7 +408,7 @@ impl<'p> Gen<'p> {
                         if n.name == "log" || builtin(&n.name) {
                             continue;
                         }
-                        if !from.starts_with('.') {
+                        if self.js_import(from) {
                             self.set(env, &n.alias, val(format!("w${}", n.alias)));
                             continue;
                         }
@@ -642,7 +648,7 @@ impl<'p> Gen<'p> {
             let n0 = out.len();
             for n in names {
                 let (name, alias) = (&n.name, &n.alias);
-                let v = if !from.starts_with('.') && !builtin(name) && name != "log" {
+                let v = if self.js_import(from) && !builtin(name) && name != "log" {
                     id(format!("w${alias}"))
                 } else if name == "log" {
                     dot(id("__B"), "log")

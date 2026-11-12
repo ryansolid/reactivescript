@@ -3,6 +3,8 @@
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 
 const { app } = createRequire(import.meta.url)("../index.js");
 const examples = fileURLToPath(new URL("../../examples/", import.meta.url));
@@ -17,4 +19,21 @@ for (const [entry, target, spa] of [["todo.rx", "dom"], ["todo.rx", "ssr"], ["sh
 }
 const bad = JSON.parse(app(path.join(examples, "missing.rx")));
 if (!bad.error) { fail++; console.log("✗ a missing entry is not an error"); } else console.log("✓ a missing entry is an error");
+// a relative JS import is the app's own file (MO-8): it stays an ES import, no package.json `#imports` needed; `./api`
+// stays the injected API (CP-4)
+const dir = mkdtempSync(path.join(tmpdir(), "rx-import-"));
+writeFileSync(path.join(dir, "util.js"), "export const greet = n => `hi ${n}`;\n");
+writeFileSync(path.join(dir, "main.rx"), [
+  'import pure { greet } from "./util.js"',
+  'import { save } from "./api"',
+  'export default component App() {',
+  '  source n := 1',
+  '  <p onClick={() => { save(n) }}>{greet(n)}</p>',
+  '}',
+].join("\n"));
+const rel = JSON.parse(app(path.join(dir, "main.rx"), "dom", null, true));
+const code = Object.values(rel.modules ?? {}).map(m => m.code).join("\n");
+const relOk = !rel.error && !rel.diagnostics && /from "\.\/util\.js"/.test(code) && !/from "\.\/api"/.test(code);
+if (!relOk) fail++;
+console.log(`${relOk ? "✓" : "✗"} a relative JS import stays an ES import${relOk ? "" : `: ${JSON.stringify(rel).slice(0, 300)}`}`);
 process.exit(fail ? 1 : 0);
