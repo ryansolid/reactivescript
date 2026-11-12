@@ -19,6 +19,15 @@
 // - two views: an issue's row and the detail heading show the same title;
 // - count: with the open list on screen, the tab count equals its rows.
 // Writes weigh twice as much among the moves and answers come a little less often (0.4), so writes overlap.
+// Others (`--others`, PREREG-others-12.md, implies --r9): the data is shared, so the server also changes on its own
+// between any two steps (another user renames, assigns or closes an issue, posts a comment, adds a label). A client
+// need not learn of a change it never asked about: every frame, a field may show any value the server has held. What
+// counts instead:
+// - reverted change: a field that showed one server value later shows an older one (not the user's own write in flight);
+// - at rest: each shown value is no older than the newest answer the app received for it (the list's answers and
+//   write responses for a row, the issue's answers and rename responses for the heading, the issue's answers and write
+//   responses for comments and labels), and the rows are the newest list answer's, less the user's accepted closes.
+// Under --others the at-rest "two views" disagreement between a stale row and a fresher heading is reported apart.
 // Usage: node harness/fuzz.mjs <dir> [--seeds N] [--steps N] [--from S] [--r9] [--json out.json] [--log]
 import { writeFileSync } from "node:fs";
 import path from "node:path";
@@ -73,7 +82,7 @@ export function answer(srv, key, fail) {
 }
 
 /** one session; returns the violations it found (each with the step and the log so far) */
-async function session(browser, url, seed, steps, log, r9 = false) {
+async function session(browser, url, seed, steps, log, r9 = false, others = false) {
   const r = rng(seed); const pick = xs => xs[Math.floor(r() * xs.length)];
   const page = await browser.newPage();
   const errors = []; page.on("pageerror", e => { errors.push(e.message); if (process.env.FUZZ_STACK) console.log("PAGEERROR after", trail.at(-1), trail.length, e.message); });
@@ -81,6 +90,16 @@ async function session(browser, url, seed, steps, log, r9 = false) {
   const sel = id => `[data-testid="${id}"]`;
   const srv = freshServer();
   const ui = { page: "issues", filter: "open", selected: null };
+  // --others: each issue field's server history [{ v, t }], the clock of server changes, what the app was told and when
+  let clock = 0; let otherN = 0;
+  const hist = new Map(); const H = (id, f) => { const k = `${id}.${f}`; if (!hist.has(k)) hist.set(k, []); return hist.get(k); };
+  for (const x of srv.issues) for (const f of ["title", "assignee", "open"]) H(x.id, f).push({ v: x[f], t: 0 });
+  const bump = (id, f, v) => { const h = H(id, f); if (h.at(-1).v !== v) h.push({ v, t: ++clock }); };
+  const told = { row: new Map(), head: new Map(), list: { open: null, closed: null }, comments: new Map(), labels: new Map() };
+  const ownClosedAt = new Map();   // issue -> clock when the user's own close was accepted
+  const ownPosts = new Map();      // issue -> [{ c, t }] accepted posts
+  const maxShown = new Map();      // `${where}:${id}.${field}` -> newest history index shown
+  const otherClosed = new Set();
   // writes in flight (key -> { issue, field, value }); declined values per issue/field during the busy period;
   // accepted writes per field in this busy period, in start order
   const writes = new Map(); let declined = []; let started = []; let seq = 0; let gen = 0; let stale = []; let held = { filters: new Set(), selections: new Set(), rows: new Set() }; const settledCount = new Map();
@@ -116,6 +135,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     if (inFlight) for (const d of declined) if (d.issue === id && d.field === field) vals.add(d.value);   // A1
     for (const t of stale) if (t.issue === id && t.field === field) vals.add(t.before);   // A4
     for (const w of started) if (w.accepted && w.issue === id && w.field === field && (busy() || w === started.filter(s => s.accepted && s.issue === id && s.field === field).at(-1))) vals.add(w.value);   // A2
+    if (others) for (const h of H(id, field)) vals.add(h.v);   // a client may not have heard of a change yet
     return vals;
   };
 
@@ -126,7 +146,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
       if (!x) { out.push(["unknown row", `#${p.id}`]); continue; }
       if (valuesToo && !allowed(p.id, "title").has(p.title)) out.push(["row title", `#${p.id} shows "${p.title}", server "${x.title}"`]);
       if (valuesToo && !allowed(p.id, "assignee").has(p.assignee)) out.push(["row assignee", `#${p.id} shows ${p.assignee}, server ${x.assignee}`]);
-      if (filter === "open" && !x.open && ![...writes.values()].some(w => w.issue === p.id && w.field === "open") && !stale.some(t => t.issue === p.id && t.field === "open")) {
+      if (filter === "open" && !x.open && !(others && otherClosed.has(p.id)) && ![...writes.values()].some(w => w.issue === p.id && w.field === "open") && !stale.some(t => t.issue === p.id && t.field === "open")) {
         const lingering = inFlight && declined.some(d => d.issue === p.id && d.field === "open");
         if (!lingering) out.push(["closed row shown", `#${p.id} is closed on the server`]);
       }
@@ -163,7 +183,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
       if (declined.some(o => o.issue === w.issue && o.field === w.field && o.seq > w.seq && o.value === v)) continue;
       if (w.shown && !newer) return note("dropped guess", `#${w.issue} ${w.field}: showed ${JSON.stringify(w.value)} while it was in flight, now ${JSON.stringify(v)}`);
     }
-    if (listShown && detail && ui.selected != null) {
+    if (listShown && detail && ui.selected != null && !others) {   // --others: a stale row beside a fresher heading is reported at rest, apart
       const p = parsed.find(x => x.id === ui.selected);
       const m = detail.match(/^#(\d+) /);
       if (p && m && Number(m[1]) === p.id && !detail.startsWith(`#${p.id} ${p.title}`)) return note("two views", `row "#${p.id} ${p.title}", detail "${detail.slice(0, 40)}"`);
@@ -172,12 +192,38 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     if (listShown && ui.filter === "open" && cm && Number(cm[1]) !== parsed.length) note("count", `tab ${tab}, ${parsed.length} open rows shown`);
   }
 
+  // --others: a field that showed server value k must not later show an older one, unless it is the user's own write
+  // in flight (a guess) or a declined write lingering (A1)
+  function reverted(where, id, field, v) {
+    if ([...writes.values()].some(w => w.issue === id && w.field === field && w.value === v)) return;
+    if (inFlight && declined.some(d => d.issue === id && d.field === field && d.value === v)) return;
+    const h = H(id, field); let idx = -1; for (let i = h.length - 1; i >= 0; i--) if (h[i].v === v) { idx = i; break; }
+    if (idx < 0) return;
+    const k = `${where}:${id}.${field}`; const max = maxShown.get(k) ?? -1;
+    if (idx < max) return note("reverted change", `${where} #${id} ${field}: showed ${JSON.stringify(h[max].v)}, now the older ${JSON.stringify(v)}`);
+    maxShown.set(k, idx);
+  }
+  // --others: is `v` no older than what the server held at clock `t`?
+  const notOlder = (id, field, v, t) => { const h = H(id, field); let i = 0; for (let j = 0; j < h.length; j++) if (h[j].t <= t) i = j; return h.slice(i).some(x => x.v === v); };
+
   async function everyFrame() {
     inFlight = (await pending()).length > 0;
     if (ui.page !== "issues") return;
     const rows = await texts("issue");
     const listText = await text("list");
     const parsed = rows.map(t => t.match(/^#(\d+) (.*) \((.*)\)$/)).filter(Boolean).map(m => ({ id: Number(m[1]), title: m[2], assignee: m[3] === "unassigned" ? null : m[3] }));
+    if (others && listText && !/loading|error/.test(listText)) {
+      for (const p of parsed) for (const f of ["title", "assignee"]) reverted("row", p.id, f, p[f]);
+      if (found.length) return;
+    }
+    if (others) {
+      const d = await text("detail");
+      if (d && ui.selected != null && !/loading #|detail error|select an issue/.test(d)) {
+        const m = d.match(/^#(\d+) /);
+        if (m) { const id = Number(m[1]); const t = [...H(id, "title")].map(h => h.v).filter(v => d.startsWith(`#${id} ${v}`)).sort((a, b) => b.length - a.length)[0]; if (t !== undefined) reverted("head", id, "title", t); }
+      }
+      if (found.length) return;
+    }
     if (r9) {
       const listShown = !!listText && !/loading|error/.test(listText);
       const d = await text("detail"); const detail = d && !/loading #|detail error|select an issue/.test(d) ? d : null;
@@ -202,6 +248,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     if (ui.page !== "issues") return;
     const listText = await text("list");
     if (!listText || /error/.test(listText)) return;
+    if (others) return atRestOthers(listText);
     const parsed = (await texts("issue")).map(t => t.match(/^#(\d+) (.*) \((.*)\)$/)).filter(Boolean).map(m => ({ id: Number(m[1]), title: m[2], assignee: m[3] === "unassigned" ? null : m[3] }));
     const want = srv.issues.filter(i => i.open === (ui.filter === "open") || (ui.filter === "open" && stale.some(t => t.issue === i.id && t.field === "open") && parsed.some(p => p.id === i.id)));
     const newest = (id, field) => { const ws = started.filter(w => w.issue === id && w.field === field && w.accepted); return ws.length ? ws.at(-1).value : undefined; };
@@ -234,6 +281,71 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     }
   }
 
+  async function atRestOthers(listText) {
+    const parsed = (await texts("issue")).map(t => t.match(/^#(\d+) (.*) \((.*)\)$/)).filter(Boolean).map(m => ({ id: Number(m[1]), title: m[2], assignee: m[3] === "unassigned" ? null : m[3] }));
+    const filt = ui.filter; const L = told.list[filt];
+    const now = srv.issues.filter(i => i.open === (filt === "open")).map(i => i.id);
+    if (L) {
+      const ownGone = id => filt === "open" && ownClosedAt.has(id) && ownClosedAt.get(id) > L.t;
+      const required = L.ids.filter(id => !ownGone(id) && now.includes(id));
+      const permitted = new Set([...L.ids.filter(id => !ownGone(id)), ...now]);
+      const ids = parsed.map(p => p.id);
+      const missing = required.filter(id => !ids.includes(id)); const extra = ids.filter(id => !permitted.has(id));
+      if (missing.length || extra.length) note("at rest: rows", `shows [${ids}], newest list answer [${L.ids}]${missing.length ? `, missing ${missing}` : ""}${extra.length ? `, extra ${extra}` : ""}`);
+    }
+    const newest = (id, field) => { const ws = started.filter(w => w.issue === id && w.field === field && w.accepted); return ws.length ? ws.at(-1).value : undefined; };
+    for (const p of parsed) for (const f of ["title", "assignee"]) {
+      const t = told.row.get(`${p.id}.${f}`); if (t === undefined) continue;
+      if (!notOlder(p.id, f, p[f], t) && p[f] !== newest(p.id, f)) note(`at rest: row ${f}`, `#${p.id} shows ${JSON.stringify(p[f])}, older than the app was told (${JSON.stringify(srv.issues.find(i => i.id === p.id)[f])} now)`);
+    }
+    const tab = await text("tab-issues");
+    const cm = tab && tab.match(/\((\d+)\)/);
+    if (cm && filt === "open" && Number(cm[1]) !== parsed.length) note("at rest: count", `tab ${tab}, ${parsed.length} open rows shown`);
+    if (ui.selected == null) return;
+    const id = ui.selected; const detail = await text("detail");
+    if (detail && !/detail error|loading #/.test(detail)) {
+      const t = told.head.get(id);
+      if (t !== undefined) { const ok = H(id, "title").some(h => detail.startsWith(`#${id} ${h.v}`) && notOlder(id, "title", h.v, t)) || (newest(id, "title") && detail.startsWith(`#${id} ${newest(id, "title")}`)); if (!ok) note("at rest: detail", `"${detail.slice(0, 60)}", older than the app was told`); }
+      const row = parsed.find(p => p.id === id);
+      if (row && !detail.startsWith(`#${id} ${row.title}`)) note("at rest: two views (stale)", `row "${row.title}", detail "${detail.slice(0, 40)}"`);
+    }
+    if (await exists("label")) {
+      const labelsText = await text("labels"); const k = told.labels.get(id);
+      if (labelsText && !/error|loading/.test(labelsText) && k) { const ls = (await texts("label")).join(","); if (ls !== k.join(",") && ls !== (srv.labels[id] ?? []).join(",")) note("at rest: labels", `#${id} shows [${ls}], newest answer [${k}], server [${srv.labels[id]}]`); }
+    }
+    const commentsText = await text("comments"); const k = told.comments.get(id);
+    if (commentsText && !/error|loading/.test(commentsText) && k) {
+      const fmt = cs => cs.map(c => `${c.author}: ${c.text}`).join(" | ");
+      const cs = (await texts("comment")).join(" | ");
+      const want = fmt([...k.value, ...(ownPosts.get(id) ?? []).filter(o => o.t > k.t).map(o => o.c)]);
+      if (cs !== want && cs !== fmt(srv.comments[id] ?? [])) note("at rest: comments", `#${id} shows [${cs}], newest answer + own posts [${want}]`);
+    }
+  }
+
+  // --others: another user changes the server (no request from this page is involved)
+  function otherMove() {
+    const open = srv.issues.filter(i => i.open); const x = pick(srv.issues); const kind = pick(["rename", "assign", "close", "comment", "label"]);
+    if (kind === "rename") { x.title = `Echo${++otherN}`; bump(x.id, "title", x.title); }
+    else if (kind === "assign") { x.assignee = pick(["zoe", "yan"]); bump(x.id, "assignee", x.assignee); }
+    else if (kind === "close") { if (open.length < 2) return otherMove(); const y = pick(open); y.open = false; otherClosed.add(y.id); bump(y.id, "open", false); trail.push(`other: close #${y.id}`); return; }
+    else if (kind === "comment") srv.comments[x.id] = [...(srv.comments[x.id] ?? []), { author: "zoe", text: `note ${++otherN}` }];
+    else { const l = `x${++otherN}`; srv.labels[x.id] = [...(srv.labels[x.id] ?? []), l]; }
+    trail.push(`other: ${kind} #${x.id}`);
+  }
+  // --others: what an answer tells the app, at this clock
+  function learn(key, a) {
+    if (!others || a.fail) return;
+    const name = key.slice(0, key.indexOf(":")); const arg = key.slice(key.indexOf(":") + 1).split(",");
+    if (name === "fetchIssues") { told.list[arg[0]] = { ids: a.value.map(r => r.id), t: clock }; for (const r of a.value) for (const f of ["title", "assignee"]) told.row.set(`${r.id}.${f}`, clock); }
+    if (name === "fetchIssue" && a.value) told.head.set(a.value.id, clock);
+    if (name === "assign") told.row.set(`${arg[0]}.assignee`, clock);
+    if (name === "renameIssue") { told.row.set(`${arg[0]}.title`, clock); told.head.set(Number(arg[0]), clock); }
+    if (name === "closeIssue") ownClosedAt.set(Number(arg[0]), clock);
+    if (name === "fetchComments") told.comments.set(Number(arg[0]), { value: a.value, t: clock });
+    if (name === "addComment") { const id = Number(arg[0]); ownPosts.set(id, [...(ownPosts.get(id) ?? []), { c: a.value, t: clock }]); }
+    if (["fetchLabels", "addLabel", "removeLabel"].includes(name)) told.labels.set(Number(arg[0]), a.value);
+  }
+
   async function answerOne(keys) {
     const key = pick(keys); const name = key.slice(0, key.indexOf(":"));
     const fail = r() < (WRITES.has(name) ? 0.3 : 0.1);
@@ -244,6 +356,8 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     const times = Math.max(1, (await page.evaluate(k => globalThis.__flights.asked().filter(x => x === k).length, key)) - (settledCount.get(key) ?? 0));
     settledCount.set(key, (settledCount.get(key) ?? 0) + times);
     let a; for (let t = 0; t < times; t++) a = answer(srv, key, fail);
+    if (others && w && !fail && target && ["title", "assignee", "open"].includes(w.field)) bump(w.issue, w.field, target[w.field]);
+    if (!(w && w.gen !== gen)) learn(key, a);   // A4: a write answering after the page was left tells the new page nothing
     if (w && !fail && w.gen !== gen && target) stale.push({ issue: w.issue, field: w.field, before });   // A4
     trail.push(`${fail ? "fail" : "land"} ${key}`);
     if (w) { writes.delete(key); if (fail) declined.push(w); else w.accepted = true; }
@@ -286,7 +400,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
       case "filter": { const f = ui.filter === "open" ? "closed" : "open"; trail.push(`filter ${f}`); if ((await pending()).length) { held.filters.add(ui.filter); for (const t of await texts("issue")) { const m = t.match(/^#(\d+)/); if (m) held.rows.add(Number(m[1])); } } await click(`filter-${f}`); ui.filter = f; break; }
       case "focus": trail.push("focus"); await page.evaluate(() => { Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true }); for (const t of [document, window]) t.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("blur")); Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true }); for (const t of [document, window]) t.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("focus")); }); break;
       case "leave": trail.push("tab help"); await click("tab-help"); ui.page = "help"; gen++; break;
-      case "back": trail.push("tab issues"); await click("tab-issues"); ui.page = "issues"; ui.filter = "open"; ui.selected = null; gen++; stale = []; held = { filters: new Set(), selections: new Set(), rows: new Set() }; break;
+      case "back": trail.push("tab issues"); await click("tab-issues"); ui.page = "issues"; ui.filter = "open"; ui.selected = null; gen++; stale = []; maxShown.clear(); held = { filters: new Set(), selections: new Set(), rows: new Set() }; break;
     }
     await settle();
   }
@@ -297,7 +411,8 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     for (let s = 0; s < steps; s++) {
       await track();
       const keys = await pending();
-      if (keys.length && r() < (r9 ? 0.4 : 0.5)) await answerOne(keys); else await move().catch(e => { trail.push(`(move failed: ${e.message.split("\n")[0].slice(0, 80)})`); });
+      if (others && r() < 0.15) { otherMove(); await settle(); }
+      else if (keys.length && r() < (r9 ? 0.4 : 0.5)) await answerOne(keys); else await move().catch(e => { trail.push(`(move failed: ${e.message.split("\n")[0].slice(0, 80)})`); });
       await track();
       await everyFrame();
       if (found.length) break;
@@ -312,10 +427,11 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     if (errors.length && !found.length) note("page error", errors[0].slice(0, 120));
   } finally { await page.close(); }
   if (log) console.log(`seed ${seed}: ${trail.join(" ; ")}`);
-  return found.slice(0, 1);
+  // a class reported apart ("(stale)") never hides a counted hole found in the same check
+  return [...found.filter(f => !f.kind.includes("(stale)")), ...found.filter(f => f.kind.includes("(stale)"))].slice(0, 1);
 }
 
-export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false, r9 = false } = {}) {
+export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false, r9 = false, others = false } = {}) {
   const b = await build(dir);
   if (!b.ok) return { dir, build: false, seeds, violations: [] };
   const server = await serve(b.dist); let browser = await launch();
@@ -323,7 +439,7 @@ export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false,
   try {
     for (let s = from; s < from + seeds; s++) {
       // a page that crashes or hangs the browser is a hole of its own; the next seed gets a fresh browser
-      try { let t; violations.push(...await Promise.race([session(browser, server.url, s, steps, log, r9), new Promise((_, rej) => { t = setTimeout(() => rej(new Error("session timed out (120 s): the page hangs")), 120000); })]).finally(() => clearTimeout(t))); }
+      try { let t; violations.push(...await Promise.race([session(browser, server.url, s, steps, log, r9 || others, others), new Promise((_, rej) => { t = setTimeout(() => rej(new Error("session timed out (120 s): the page hangs")), 120000); })]).finally(() => clearTimeout(t))); }
       catch (e) { violations.push({ seed: s, step: -1, kind: "page crash", detail: e.message.split("\n")[0].slice(0, 120), trail: [] }); await browser.close().catch(() => {}); browser = await launch(); }
     }
   }
@@ -333,7 +449,7 @@ export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false,
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const a = process.argv.slice(2); const opt = (k, d) => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : d; };
-  const res = await fuzz(path.resolve(a[0]), { seeds: Number(opt("--seeds", 40)), steps: Number(opt("--steps", 30)), from: Number(opt("--from", 1)), log: a.includes("--log"), r9: a.includes("--r9") });
+  const res = await fuzz(path.resolve(a[0]), { seeds: Number(opt("--seeds", 40)), steps: Number(opt("--steps", 30)), from: Number(opt("--from", 1)), log: a.includes("--log"), r9: a.includes("--r9"), others: a.includes("--others") });
   console.log(`${path.basename(res.dir)}: ${res.build ? `${res.violations.length}/${res.seeds} seeds found a hole` : "build failed"}`);
   for (const v of res.violations) console.log(`  seed ${v.seed} step ${v.step}: ${v.kind}: ${v.detail}\n    ${v.trail.join(" ; ")}`);
   if (opt("--json")) writeFileSync(opt("--json"), JSON.stringify(res, null, 2) + "\n");
