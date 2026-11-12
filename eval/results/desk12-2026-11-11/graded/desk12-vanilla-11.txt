@@ -1,0 +1,23 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: a list that loads while a close is out keeps the row out
+✗ base: two closes at once: a declined one does not undo the other
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ open issues that load while a close is out keep it off the count
+✗ rows: a detail assign and a newer row assign on one issue: the newer shows while the older answers
+✗ rows: open issues that load while a row close is out keep the row out
+27/38 passed
+== fuzz
+desk12-vanilla-11: 3/20 seeds found a hole
+  seed 3 step 38: count: tab Issues (4), 3 open rows shown
+    assign ; (move failed: locator.click: Timeout 2000ms exceeded.) ; assign ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; assign ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchIssues:open ; select #4 ; add-label p1 ; land fetchLabels:4 ; row-assign 2 ; select #4 ; land fetchLabels:4 ; add-label bug
+  seed 4 step 33: row title: #1 shows "Login fails", server "Bravo"
+    rename Alpha ; (move failed: locator.fill: Timeout 2000ms exceeded.) ; land fetchIssues:open ; select #4 ; row-close 2 ; land fetchLabels:4 ; add-label ui ; add-label p1 ; row-assign 0 ; rename Delta ; close ; select #1 ; add-label bug ; close ; fail renameIssue:4,Delta ; rename Bravo ; land renameIssue:1,Bravo ; close ; land fetchComments:1 ; land fetchLabels:1 ; land addLabel:4,p1 ; row-assi
+  seed 8 step 16: row title: #4 shows "Typo in footer", server "Bravo"
+    land fetchIssues:open ; row-close 1 ; post me too ; (move failed: locator.fill: Timeout 2000ms exceeded.) ; select #4 ; land fetchComments:4 ; land fetchLabels:4 ; fail closeIssue:3 ; close ; remove-label 0 ; close ; rename Bravo ; land renameIssue:4,Bravo ; user bob ; add-label ui ; fail closeIssue:4

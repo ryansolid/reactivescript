@@ -1,0 +1,11 @@
+== hidden
+✗ the results for a related hit may land after the help page opens
+✗ a related item that fails can be retried on the help page
+75/77 passed
+== overlap
+✗ base: settings: an earlier save failing after a later one succeeded leaves the later one
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ base: settings: an earlier save landing while a later one is out keeps showing the later one
+35/38 passed
+== fuzz
+desk12-xstate-5: 0/20 seeds found a hole

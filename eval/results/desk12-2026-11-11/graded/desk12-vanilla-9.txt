@@ -1,0 +1,22 @@
+== hidden
+✗ the results for a related hit may land after the help page opens
+✗ a related item that fails can be retried on the help page
+75/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+30/38 passed
+== fuzz
+desk12-vanilla-9: 3/20 seeds found a hole
+  seed 8 step 37: detail title: "#3 Crash on savestack trace attachedretryassign to bobrename", server "Alpha"
+    land fetchIssues:open ; row-close 1 ; post me too ; (move failed: locator.fill: Timeout 2000ms exceeded.) ; select #4 ; land fetchComments:4 ; land fetchLabels:4 ; fail closeIssue:3 ; close ; remove-label 0 ; close ; rename Bravo ; land renameIssue:4,Bravo ; user bob ; add-label ui ; fail closeIssue:4 ; land addLabel:4,ui ; select #3 ; focus ; fail fetchLabels:3 ; row-assign 0 ; assign ; land 
+  seed 11 step 46: detail title: "#3 Crash on savestack trace attachedretryassign to guestrena", server "Bravo"
+    close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchIssues:open ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; (move failed: locator.click: Timeout 2000ms exceeded.) ; post fixed? ; (move failed: locator.fill: Timeo
+  seed 17 step 19: dropped guess: #3 title: showed "Alpha" while it was in flight, now "Crash on save"
+    assign ; (move failed: locator.click: Timeout 2000ms exceeded.) ; assign ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchIssues:open ; row-assign 0 ; add-label bug ; (move failed: locator.fill: Timeout 2000ms exceeded.) ; land assign:1,guest ; row-close 0 ; row-close 1 ; row-assign 0 ; select #3 ; rename Bravo ; row-assign 0 ; land fetchLabels:3 ; rename Alpha ; assign ; f

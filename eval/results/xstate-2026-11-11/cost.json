@@ -1,0 +1,118 @@
+{
+  "weights": {
+    "input": 1,
+    "cacheWrite": 1.25,
+    "cacheRead": 0.1,
+    "output": 5
+  },
+  "runs": [
+    {
+      "run": "desk12-xstate-1",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 1,
+      "input": 50,
+      "cacheWrite": 114420,
+      "cacheRead": 2077920,
+      "output": 44908,
+      "calls": 25,
+      "billed": 575407
+    },
+    {
+      "run": "desk12-xstate-2",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 2,
+      "input": 48,
+      "cacheWrite": 116767,
+      "cacheRead": 1962689,
+      "output": 45752,
+      "calls": 24,
+      "billed": 571035.65
+    },
+    {
+      "run": "desk12-xstate-3",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 3,
+      "input": 46,
+      "cacheWrite": 116897,
+      "cacheRead": 1943544,
+      "output": 48264,
+      "calls": 23,
+      "billed": 581841.65
+    },
+    {
+      "run": "desk12-xstate-4",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 4,
+      "input": 32,
+      "cacheWrite": 204894,
+      "cacheRead": 1709493,
+      "output": 139689,
+      "calls": 16,
+      "billed": 1125543.8
+    },
+    {
+      "run": "desk12-xstate-5",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 5,
+      "input": 54,
+      "cacheWrite": 248625,
+      "cacheRead": 4765754,
+      "output": 172493,
+      "calls": 27,
+      "billed": 1649875.65
+    },
+    {
+      "run": "desk12-xstate-6",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 6,
+      "input": 74,
+      "cacheWrite": 235710,
+      "cacheRead": 6095807,
+      "output": 158761,
+      "calls": 37,
+      "billed": 1698097.2000000002
+    },
+    {
+      "run": "desk12-xstate-7",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 7,
+      "input": 58,
+      "cacheWrite": 222507,
+      "cacheRead": 4140931,
+      "output": 148063,
+      "calls": 29,
+      "billed": 1432599.85
+    },
+    {
+      "run": "desk12-xstate-8",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 8,
+      "input": 50,
+      "cacheWrite": 227533,
+      "cacheRead": 3793204,
+      "output": 145328,
+      "calls": 25,
+      "billed": 1390426.65
+    },
+    {
+      "run": "desk12-xstate-9",
+      "task": "desk12",
+      "arm": "xstate",
+      "n": 9,
+      "input": 42,
+      "cacheWrite": 215867,
+      "cacheRead": 2761986,
+      "output": 140794,
+      "calls": 21,
+      "billed": 1250044.35
+    }
+  ]
+}

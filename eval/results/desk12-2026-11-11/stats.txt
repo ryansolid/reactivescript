@@ -1,0 +1,16 @@
+  rx      frontier  mean  3.17  median  2.0  per desk [1, 10, 4, 0, 2, 2]  h/o/z 0.2/1.5/1.5  correct 1  $/run 2.382  $/correct $14.289
+  rx      small     mean  6.00  median  4.0  per desk [3, 5, 9, 2, 15, 2]  h/o/z 1.3/2.5/2.2  correct 0  $/run 0.095  $/correct undefined
+  react   frontier  mean  1.83  median  2.0  per desk [3, 0, 1, 3, 2, 2]  h/o/z 0.0/1.3/0.5  correct 1  $/run 1.308  $/correct $7.845
+  react   small     mean 11.33  median 11.5  per desk [16, 12, 6, 8, 11, 15]  h/o/z 0.2/8.3/2.8  correct 0  $/run 0.064  $/correct undefined
+  vanilla frontier  mean  2.67  median  2.5  per desk [3, 2, 4, 3, 2, 2]  h/o/z 0.2/1.8/0.7  correct 0  $/run 1.188  $/correct undefined
+  vanilla small     mean 12.33  median 12.5  per desk [7, 18, 13, 12, 14, 10]  h/o/z 1.0/8.5/2.8  correct 0  $/run 0.073  $/correct undefined
+  foldkit frontier  mean  2.83  median  3.0  per desk [3, 2, 4, 3, 2, 3]  h/o/z 0.2/2.0/0.7  correct 0  $/run 3.288  $/correct undefined
+  foldkit small     mean 13.17  median 12.5  per desk [15, 12, 13, 12, 16, 11]  h/o/z 0.0/10.8/2.3  correct 0  $/run 0.169  $/correct undefined
+  xstate  frontier  mean  2.00  median  2.0  per desk [3, 2, 1, 1, 2, 3]  h/o/z 0.0/1.5/0.5  correct 0  $/run 2.486  $/correct undefined
+  xstate  small     mean 13.00  median 17.5  per desk [18, 19, 18, 1, 5, 17]  h/o/z 1.3/8.5/3.2  correct 0  $/run 0.137  $/correct undefined
+  H12b rx<foldkit: p=0.01087 Holm 0.04348
+  H12b rx<plain: p=0.02261 Holm 0.06783
+  H12a rx<react: p=0.04558 Holm 0.09116
+  H12b rx<xstate: p=0.05622 Holm 0.09116
+  H12c frontier rx - frontier react: 1.33, 90% CI [-0.83, 3.83] -> holds if upper < 1: False
+  H12d small xstate<foldkit: p=0.49928

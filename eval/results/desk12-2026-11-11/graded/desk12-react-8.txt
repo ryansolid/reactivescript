@@ -1,0 +1,21 @@
+== hidden
+✗ rows: row errors and detail errors leave each other alone
+76/77 passed
+== overlap
+✗ base: a list that loads while an assignment is out keeps the new assignee
+✗ base: a list that loads while a rename is out keeps the new title
+✗ base: a detail that loads while a rename is out keeps the new title
+✗ base: an earlier rename declined after a later one was accepted keeps the later title
+✗ base: comments that load while a post is out keep the post
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+✗ labels that load while an add is out keep the add
+✗ rows: a row assign and a newer detail assign on one issue: a declined older one leaves the newer
+30/38 passed
+== fuzz
+desk12-react-8: 3/20 seeds found a hole
+  seed 3 step 40: at rest: labels: #4 shows [docs,p1], server [docs]
+    user bob ; land fetchIssues:open ; row-close 0 ; fail closeIssue:1 ; select #4 ; add-label p1 ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchIssue:4 ; row-assign 2 ; select #4 ; land assign:4,bob ; row-close 0 ; fail search:Typo in footer ; land fetchLabels:4 ; row-close 1 ; row-close 0 ; land closeIssue:4 ; close ; add-label p1 ; remove-label 0 ; remove-label 0 ; filter 
+  seed 12 step 44: row assignee: #1 shows guest, server null
+    land fetchIssues:open ; focus ; select #1 ; row-close 1 ; select #4 ; land closeIssue:3 ; row-assign 1 ; rename Alpha ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; rename Alpha ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchComments:1 ; land fetchComments:4 ; row-close 0 ; rename Alpha ; (move failed: locator.click: Timeout 2000ms exceeded.) ; fail cl
+  seed 16 step 36: at rest: comments: #2 shows [guest: ping | guest: ping], server [guest: ping]
+    user guest ; fail fetchIssues:open ; focus ; tab help ; tab issues ; filter closed ; land fetchIssues:open ; focus ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; close ; post me too ; fail addComment:2,guest,me too ; row-assign 0 ; row-assign 0 ; close ; post ping ; assign ; land addComment:2,guest,ping ; land fetchIssue:2 ; fail assign:2,guest ; select #2 ; rename Bravo ; assign

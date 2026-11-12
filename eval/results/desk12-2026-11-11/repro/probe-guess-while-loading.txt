@@ -1,0 +1,60 @@
+desk12-foldkit-1 rename:ok post:ok
+desk12-foldkit-2 rename:ok post:ok
+desk12-foldkit-3 rename:ok post:ok
+desk12-foldkit-4 rename:ok post:ok
+desk12-foldkit-5 rename:ok post:ok
+desk12-foldkit-6 rename:ok post:ok
+desk12-foldkit-7 rename:LOST[#3 Crash on savestack trace at] post:LOST
+desk12-foldkit-8 rename:LOST[#3 Crash on savestack trace at] post:LOST
+desk12-foldkit-9 rename:no-write post:no-write
+desk12-foldkit-10 rename:LOST[#3 Crash on savestack trace at] post:no-write
+desk12-foldkit-11 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-foldkit-12 rename:LOST[retry#3 Crash on savestack tra] post:ok
+desk12-react-1 rename:ok post:ok
+desk12-react-2 rename:ok post:ok
+desk12-react-3 rename:ok post:ok
+desk12-react-4 rename:ok post:ok
+desk12-react-5 rename:ok post:ok
+desk12-react-6 rename:ok post:ok
+desk12-react-7 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-react-8 rename:unavailable post:ok
+desk12-react-9 rename:ok post:ok
+desk12-react-10 rename:ok post:ok
+desk12-react-11 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-react-12 rename:ok post:ok
+desk12-rx-1 rename:LOST[detail error: issue #0 not fou] post:ok
+desk12-rx-2 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-rx-3 rename:ok post:ok
+desk12-rx-4 rename:ok post:ok
+desk12-rx-5 rename:ok post:ok
+desk12-rx-6 rename:ok post:ok
+desk12-rx-7 rename:LOST[retry#3 Crash on savestack tra] post:TRUTH-DROPPED
+desk12-rx-8 rename:ok post:ok
+desk12-rx-9 rename:LOST[retry#3 Crash on savestack tra] post:TRUTH-DROPPED
+desk12-rx-10 rename:LOST[retry#3 Crash on savestack tra] post:TRUTH-DROPPED
+desk12-rx-11 rename:ok post:ok
+desk12-rx-12 rename:unavailable post:unavailable
+desk12-vanilla-1 rename:ok post:ok
+desk12-vanilla-2 rename:ok post:ok
+desk12-vanilla-3 rename:ok post:ok
+desk12-vanilla-4 rename:ok post:ok
+desk12-vanilla-5 rename:ok post:ok
+desk12-vanilla-6 rename:ok post:ok
+desk12-vanilla-7 rename:ok post:ok
+desk12-vanilla-8 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-vanilla-9 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-vanilla-10 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-vanilla-11 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-vanilla-12 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-xstate-1 rename:ok post:ok
+desk12-xstate-2 rename:ok post:ok
+desk12-xstate-3 rename:ok post:ok
+desk12-xstate-4 rename:ok post:ok
+desk12-xstate-5 rename:ok post:ok
+desk12-xstate-6 rename:ok post:ok
+desk12-xstate-7 rename:LOST[#3 Crash on savestack trace at] post:ok
+desk12-xstate-8 rename:LOST[#3 Crash on savestack trace at] post:LOST
+desk12-xstate-9 rename:LOST[retry#3 Crash on savestack tra] post:ok
+desk12-xstate-10 rename:no-write post:ok
+desk12-xstate-11 rename:ok post:ok
+desk12-xstate-12 rename:ok post:ok

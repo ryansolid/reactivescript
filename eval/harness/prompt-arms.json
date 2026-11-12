@@ -5,6 +5,18 @@
     "API_TYPES": "`src/api.d.ts`",
     "CHECKER": "the TypeScript compiler (strict) and ESLint with eslint-plugin-react-hooks' recommended rules (including the React Compiler's)"
   },
+  "xstate": {
+    "DOCS_RULE": "",
+    "LANG_RULE": "React 19 with TypeScript and XState v5: `src/App.tsx` must default-export the root component (it is mounted with `createRoot` under `StrictMode`). You may add files under `src/`. Installed packages you may use: react, react-dom, xstate 5.32 and @xstate/react 6.1 (XState v5, which differs from v4). Model the app's state and its server requests as XState machines and actors (`setup`, `createMachine`, `fromPromise`, `useMachine`/`useActor`/`useSelector`), as an XState codebase would.",
+    "API_TYPES": "`src/api.d.ts`",
+    "CHECKER": "the TypeScript compiler (strict) and ESLint with eslint-plugin-react-hooks' recommended rules (including the React Compiler's)"
+  },
+  "xstate-inline": {
+    "DOCS_RULE": ", except that you may read XState's documentation in {{DIR}}/docs/xstate (Stately's v5 docs pages)",
+    "LANG_RULE": "React 19 with TypeScript and XState v5: `src/App.tsx` must default-export the root component (it is mounted with `createRoot` under `StrictMode`). You may add files under `src/`. Installed packages you may use: react, react-dom, xstate 5.32 and @xstate/react 6.1 (XState v5, which differs from v4). Model the app's state and its server requests as XState machines and actors (`setup`, `createMachine`, `fromPromise`, `useMachine`/`useActor`/`useSelector`), as an XState codebase would. The two pages at the end of this message are XState v5's own cheatsheet and @xstate/react's README; the rest of Stately's v5 docs are in `docs/xstate` (for example `xstate-react.mdx`, `promise-actors.mdx`, `invoke.mdx`, `actors.mdx`).",
+    "API_TYPES": "`src/api.d.ts`",
+    "CHECKER": "the TypeScript compiler (strict) and ESLint with eslint-plugin-react-hooks' recommended rules (including the React Compiler's)"
+  },
   "rx": {
     "DOCS_RULE": ", except that you may read the language documentation in {{DIR}}/docs",
     "LANG_RULE": "ReactiveScript (`.rx`), a new language that compiles to Solid 2.0. Nothing about it is online. Read `docs/guide/async.md` first: one page on reading from and writing to a server. Its specification is in `docs/spec/` (the concrete syntax is `docs/spec/07-surface.md`; modules and imports are `docs/spec/09-modules.md`). `src/main.rx` must be the program's entry, `export default component App() { … }`; you may add `.rx` modules under `src/`. Import the backend from \"./api\": loaders with `import pure { … } from \"./api\"`, functions that write with `import { … } from \"./api\"`. The prelude gives `import pure { len, str, map, filter, sum, every, indexOf } from \"./prelude\"`. Give an element a test id with `data-testid=\"…\"`.",

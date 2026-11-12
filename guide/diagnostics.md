@@ -815,6 +815,61 @@ export default component App() {
 }
 ```
 
+### GUESS_WHILE_LOADING
+
+A click can start a guess on a value while that value is loading a new question: its question reads what the click
+reads (a selection, a row), and the element is neither inside the `loading` region that shows the value nor disabled
+while it loads (AC-3a). The guess composes on the previous answer, and the new answer replaces it (D-34), so the
+user's change disappears while its action is out. Put the element inside the value's `loading` region, give it
+`disabled={pending? x}`, or keep the pending change in a source of its own until it lands. Solid warns
+`OPTIMISTIC_WRITE_WHILE_LOADING` at run time for the same case.
+
+```rx before
+export default component App() {
+  source sel := 1
+  source detail = await fetch("issue:" + sel)
+  action rename(t: string) {
+    try {
+      guess detail := d => d == null ? d : { ...d, title: t }
+      await fetch("rename:" + sel + "," + t)
+      refresh detail
+    } catch (e) {
+      log(e)
+    }
+  }
+  errored fallback(e) { <p>failed</p> } {
+    loading on(sel) fallback { <p>loading…</p> } {
+      <h2>{detail.title}</h2>
+    }
+  }
+  <button onClick={() => { sel := sel + 1 }}>next</button>
+  <button onClick={() => { rename("Bravo") }}>rename</button>
+}
+```
+
+```rx after
+export default component App() {
+  source sel := 1
+  source detail = await fetch("issue:" + sel)
+  action rename(t: string) {
+    try {
+      guess detail := d => d == null ? d : { ...d, title: t }
+      await fetch("rename:" + sel + "," + t)
+      refresh detail
+    } catch (e) {
+      log(e)
+    }
+  }
+  errored fallback(e) { <p>failed</p> } {
+    loading on(sel) fallback { <p>loading…</p> } {
+      <h2>{detail.title}</h2>
+    }
+  }
+  <button onClick={() => { sel := sel + 1 }}>next</button>
+  <button disabled={pending? detail} onClick={() => { rename("Bravo") }}>rename</button>
+}
+```
+
 ### ASYNC_OUTSIDE_LOADING_BOUNDARY
 
 In a client-only build (`--spa`), a value with no answer yet and no `loading` region above it shows nothing until it

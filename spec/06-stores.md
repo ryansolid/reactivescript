@@ -252,6 +252,33 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
   that is also guessed by path is not lowered yet. A guess is verdict-inert: an
   action that wants `pending? x` true while its guess stands declares
   `affects x` (AC-5; the idiom is in 07 §5).
+- **AC-3a (A guess while its value loads a new question).** [taken by default
+  2026-11-12; follows Solid's ruling on solidjs/solid#4795] While an equation
+  or source `x` that awaits is loading a new question (its inputs changed), a
+  guess on it composes on the previous answer, and the new answer replaces it
+  (D-34; a guess the screen never showed is void, and one it showed stays only
+  until its hold commits). Before a first answer the guess is judged by that
+  answer the same way (S-56). Either way the user's change is not on screen
+  while its action is out. A handler (a plain arrow or an inferred action, or
+  a named action it calls) that guesses `x`, where `x`'s question reads a name
+  the handler or that action reads (what the click is about: a selection, a
+  row), must be **covered** as in R-8: the element sits inside a `loading`
+  region whose content reads `x`, or its `disabled` reads `x` (for a
+  `<form>`'s `onSubmit`, every submit button's `disabled` does, since a form
+  with its submit buttons disabled does not submit). Otherwise it is
+  `GUESS_WHILE_LOADING` (static). The repairs are Solid's: the control inside
+  `x`'s `loading`, or `disabled={pending? x}`, or the pending change kept in a
+  source of its own until it lands. Solid's dev build warns the same case at
+  the guess (`OPTIMISTIC_WRITE_WHILE_LOADING`); the check finds it before the
+  race runs. Principle: a write must not read stale state (the guess's
+  function reads the previous question's answer). Found by the AI eval: over
+  round 12's .rx apps it flags 8 handlers in 5 apps, and driving each in a
+  browser (select, then rename or post while the selection loads) loses the
+  rename or the issue's existing comment in every one, and in no unflagged app
+  (eval/results/desk12-2026-11-11/repro/probe-guess-while-loading.*). It also
+  fired on the eval's own references (the rename and post buttons sat beside
+  the detail's `loading` region) and on `examples/ai/feed.rx` (send while a
+  new room loads); those now disable the control while it loads.
 - **AC-4 (refresh).** `refresh x`, in imperative scope anywhere, re-asks
   `x`'s question (ST-5) or re-runs an `await` equation for the same inputs:
   quiet — `pending? x` stays `false`, `x` keeps showing its last answer
@@ -315,6 +342,7 @@ selected = draft(pre selected -> {}) { d[id] := true; d[prevId] := false }
 | `STALE_WRITE_BACK` (new)        | S   | AC-1e: a pre-`await` read written back after it  |
 | `GUESS_NO_QUESTION` (new)  | S   | AC-3 / ST-5c                                     |
 | `GUESS_ON_DEFERRED` (new)  | S   | AC-3 / ST-5c: a deferred equation lags its truth |
+| `GUESS_WHILE_LOADING` (new) | S | AC-3a: a guess a click can make while its value loads a new question (D-34) |
 
 ## Scenarios
 

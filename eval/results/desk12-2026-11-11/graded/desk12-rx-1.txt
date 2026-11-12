@@ -1,0 +1,8 @@
+== hidden
+77/77 passed
+== overlap
+38/38 passed
+== fuzz
+desk12-rx-1: 1/20 seeds found a hole
+  seed 15 step 31: closed row shown: #1 is closed on the server
+    land fetchIssue:0 ; user bob ; filter closed ; land fetchComments:0 ; land fetchIssues:open ; fail fetchLabels:0 ; focus ; filter open ; fail fetchIssues:closed ; user guest ; land fetchIssues:open ; row-close 1 ; land closeIssue:3 ; fail fetchIssues:open ; focus ; tab help ; tab issues ; focus ; land fetchLabels:0 ; land fetchComments:0 ; land fetchIssue:0 ; land fetchIssues:open ; tab help ;

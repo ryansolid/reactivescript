@@ -1,0 +1,14 @@
+== hidden
+77/77 passed
+== overlap
+38/38 passed
+== fuzz
+desk12-rx-3: 4/20 seeds found a hole
+  seed 5 step 22: closed row shown: #3 is closed on the server
+    focus ; fail fetchIssues:open ; tab help ; tab issues ; focus ; land fetchIssues:open ; row-close 0 ; row-assign 1 ; land assign:4,guest ; land closeIssue:1 ; land fetchIssues:open ; row-close 1 ; land closeIssue:4 ; land fetchIssues:open ; row-assign 0 ; land assign:3,guest ; row-close 0 ; select #3 ; rename Delta ; select #3 ; land fetchIssue:3 ; land closeIssue:3
+  seed 7 step 11: count: tab Issues (0), 1 open rows shown
+    land fetchIssues:open ; row-close 1 ; row-assign 0 ; row-close 0 ; land closeIssue:1 ; fail assign:1,guest ; row-assign 0 ; fail assign:4,guest ; fail closeIssue:3 ; user ann ; row-close 0
+  seed 15 step 38: detail title: "#2 Bravolong gonesaving filescrash reportsretry assign to gu", server "Delta"
+    land fetchIssues:open ; row-assign 0 ; focus ; land assign:1,guest ; fail fetchIssues:open ; tab help ; tab issues ; land fetchIssues:open ; focus ; filter closed ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; rename Bravo ; select #2 ; assign ; land fetchIssue:2 ; row-assign 0 ; select #2 ; land fetchComments:2 ; assign ; remove-label 0 ; land search:Old bug ; land renameIssue:2
+  seed 18 step 19: count: tab Issues (1), 2 open rows shown
+    land fetchIssues:open ; select #4 ; row-close 0 ; land fetchLabels:4 ; assign ; row-close 0 ; row-close 0 ; assign ; rename Delta ; fail closeIssue:3 ; fail closeIssue:4 ; land fetchComments:4 ; land renameIssue:4,Delta ; user bob ; row-assign 0 ; add-label ui ; rename Delta ; assign ; row-close 0

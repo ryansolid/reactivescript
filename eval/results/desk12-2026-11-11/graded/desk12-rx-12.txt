@@ -1,0 +1,9 @@
+== hidden
+77/77 passed
+== overlap
+✗ a label added on one issue does not show on another
+37/38 passed
+== fuzz
+desk12-rx-12: 1/20 seeds found a hole
+  seed 1 step 11: count: tab Issues (2), 1 open rows shown
+    user bob ; focus ; land fetchIssues:open ; row-assign 2 ; row-close 0 ; row-assign 0 ; select #3 ; row-assign 0 ; land assign:3,bob ; row-assign 0 ; row-close 1

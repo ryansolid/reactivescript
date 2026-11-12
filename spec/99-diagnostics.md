@@ -27,6 +27,7 @@ Bins:
 | `UNTRACKED_READ_AFTER_AWAIT`      | U   | R-pending: inputs are static; no tracking window                   |
 | `PENDING_ASYNC_UNTRACKED_READ`    | S   | 04 R-8: `UNGUARDED_SNAPSHOT` (new): a handler's snapshot of a value with no committed value or a failure row, neither handled (`-> v`, `try`/`catch`) nor covered (`disabled` reading it, or inside its `loading` and `errored` regions) |
 | `PENDING_ASYNC_FORBIDDEN_SCOPE`   | S   | same                                                               |
+| `OPTIMISTIC_WRITE_WHILE_LOADING`, `OPTIMISTIC_WRITE_BEFORE_LOAD` | S | 06 AC-3a: `GUESS_WHILE_LOADING` (new; `guess` for `optimistic`, as in 07 decision 18), a guess a click can make while its value loads a new question or its first one, from an element not covered |
 | `PRIMITIVE_IN_FORBIDDEN_SCOPE`    | U   | SC-2: declarations do not occur in imperative scope                |
 | `PRIMITIVE_IN_EFFECT_CALLBACK`    | U   | same                                                               |
 | `CLEANUP_IN_FORBIDDEN_SCOPE`      | U   | EF-5: cleanup is the apply block's return                          |
@@ -105,6 +106,7 @@ named.
 | `STALE_WRITE_BACK`                | S   | AC-1e | S-infer-6 |
 | `GUESS_NO_QUESTION`          | S   | AC-3 / ST-5c | S-check-1, S-solid-32 |
 | `GUESS_ON_DEFERRED`          | S   | AC-3 / ST-5c (a deferred equation lags its truth, V-16) | S-guess-equation |
+| `GUESS_WHILE_LOADING`        | S   | AC-3a (Solid's `OPTIMISTIC_WRITE_WHILE_LOADING`, at compile time) | check.rs unit test |
 | `INVALID_REFRESH_TARGET`, `INVALID_AFFECTS_TARGET` | S | AC-4, AC-5 | S-check-1 |
 | `REGION_ESCAPE`                   | S   | O-3, O-3a, O-3b | S-check-1 (seven shapes), S-module-1 |
 | `UNSTABLE_LIST_IDENTITY`          | S   | ST-4b (narrow form: `map` into fresh records, unkeyed) | S-store-3 |

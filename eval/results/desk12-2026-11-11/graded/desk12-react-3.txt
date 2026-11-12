@@ -1,0 +1,8 @@
+== hidden
+77/77 passed
+== overlap
+38/38 passed
+== fuzz
+desk12-react-3: 1/20 seeds found a hole
+  seed 16 step 36: at rest: comments: #2 shows [guest: ping | guest: ping], server [guest: ping]
+    user guest ; fail fetchIssues:open ; focus ; tab help ; tab issues ; filter closed ; land fetchIssues:open ; focus ; land fetchIssues:closed ; select #2 ; land fetchLabels:2 ; close ; post me too ; fail addComment:2,guest,me too ; row-assign 0 ; row-assign 0 ; close ; post ping ; assign ; land addComment:2,guest,ping ; land fetchIssue:2 ; fail assign:2,guest ; select #2 ; rename Bravo ; assign

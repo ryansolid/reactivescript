@@ -91,6 +91,9 @@ by what the screen should do:
 | Record the server's answer | `x := answer` after the `await` |
 | Handle a failure | `try { … } catch (e) { … }`: the catch's writes and the revert are one frame (AC-7) |
 
+To guess a value a component gets as a prop, guess its own equation of it: `shown = props.title`, then
+`guess shown := t` in the action. A prop itself is read-only (O-4), and the guess shows wherever the child reads `shown`.
+
 ### Writing one row of a list
 
 When several actions can each change a different row of one list, guess the row, not the list:
@@ -195,6 +198,13 @@ export action add(id: string, title: string) {
   lives in the client's layer, and a successful retry removes it.
 - **Generate ids on the client** in the handler, before calling the action, so a declined add can be shown again
   with its retry.
+- **Guess only on a value that is shown.** A guess on a value that is loading a new question composes on the previous
+  answer, and the new answer replaces it (D-34); a guess on an item that isn't in the list on screen (`findIndex`
+  gave -1) guesses nothing. Either way the screen doesn't show the change until the action's `refresh` lands, and it
+  looks lost. A write against a value that isn't shown yet needs a place to show: keep the control out until the
+  value is shown (under its `loading` boundary, or disabled while it is pending), or keep the write in a
+  client-owned layer of its own ("three layers" above) and guess there. The compiler flags a control that can guess
+  while its value loads (`GUESS_WHILE_LOADING`).
 
 ## 4. Things that look like bugs and aren't
 
@@ -210,12 +220,8 @@ export action add(id: string, title: string) {
   `loading on(k)` above the `errored`.
 - **The server accepted, and the screen went back to the old value.** The action guessed on one question and
   refreshed another, or none. A guess ends with its action; only a new answer for the question it guessed on shows
-  what the server took. Refresh every question you guessed on (`guess detail.title := t` needs `refresh detail`,
-  not only `refresh issues`).
-- **A write landed and nothing showed it until the reload answered.** A guess needs a value to guess on. A rename sent
-  while the detail is still loading, or for a row the list does not show yet (`findIndex` gave -1), guesses nothing,
-  so the accepted value appears only when the action's `refresh` lands. If that window matters, keep the accepted
-  write in the client-owned layer ("three layers" above) until the server's answer confirms it.
+  what the server took. Refresh every question you guessed on: a guess on one item's own question needs that
+  question re-asked, not only the list's.
 
 ## 5. Plain handlers
 

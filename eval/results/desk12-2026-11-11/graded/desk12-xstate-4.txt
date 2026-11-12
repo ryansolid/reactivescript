@@ -1,0 +1,8 @@
+== hidden
+77/77 passed
+== overlap
+38/38 passed
+== fuzz
+desk12-xstate-4: 1/20 seeds found a hole
+  seed 9 step 40: two views: row "#4 Bravo", detail "#4 Deltafooter says 2019retryassign to g"
+    land fetchIssues:open ; filter closed ; tab help ; land fetchIssues:closed ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; filter closed ; focus ; filter open ; user guest ; land fetchIssues:open ; land fetchIssues:closed ; select #4 ; assign ; land fetchComments:4 ; rename Bravo ; row-assign 0 ; rename Bravo ; row-assign 1 ; row-close 1 ; land closeIssue:3 ; row-assign 1 ; filt
