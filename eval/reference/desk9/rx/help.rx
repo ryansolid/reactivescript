@@ -1,0 +1,53 @@
+// The help page: search the help catalogue and open one result.
+
+import pure { search, fetchItem } from "./api"
+
+export error TooShort(q: string) => `too short: ${q}`
+export error ItemNotFound(id: number) => `item ${id} not found`
+
+fn foundItem(it, id: number) => it == null ? throw ItemNotFound(id) : it
+
+// Opens on `query` with `selected` chosen (both empty from the tab; a related hit opens it on its issue's title).
+export component HelpPage(props: { query: string; selected: number | null }) {
+  source query: string := peek(props.query)
+  source selected: number | null := peek(props.selected)
+  results = query == "" ? [] : query.length < 2 ? throw TooShort(query) : await search(query)
+  item = selected == null ? null : foundItem(await fetchItem(selected), selected)
+
+  <section>
+    <input data-testid="query" value={latest query} onInput={e => { query := e.target.value }} />
+    {if query != "" {
+      <div data-testid="results">
+        {errored fallback(e) { <p>search failed: {e.message}</p> } {
+          errored fallback(e: TooShort) { <p>{e.message}</p> } {
+            loading fallback { <p>searching…</p> } {
+              <p>{pending? results ? "searching…" : ""}</p>
+              <h2>{results.length} results for {latest query}</h2>
+              <ul>
+                {for r in results {
+                  <li data-testid="hit" onClick={() => { selected := r.id }}>{r.id == selected ? "> " : ""}{r.name}</li>
+                }}
+              </ul>
+            }
+          }
+        }}
+      </div>
+    }}
+    {if selected == null {
+      <p data-testid="item">pick a result</p>
+    } else {
+      <div data-testid="item">
+        {loading on(selected) fallback { <p>loading…</p> } {
+          {for id in [selected] {
+            {errored fallback(e) { <p>failed: {e.message}</p><button data-testid="retry-item" onClick={() => { refresh item }}>retry</button> } {
+              {errored fallback(e: ItemNotFound) { <p>{e.message}</p> } {
+                <h3>{item.name}</h3>
+                <p>{item.blurb}</p>
+              }}
+            }}
+          }}
+        }}
+      </div>
+    }}
+  </section>
+}

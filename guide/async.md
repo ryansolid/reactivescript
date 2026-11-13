@@ -96,7 +96,8 @@ To guess a value a component gets as a prop, guess its own equation of it: `show
 
 ### Writing one row of a list
 
-When several actions can each change a different row of one list, guess the row, not the list:
+When several actions can each change a different row of one list, guess the row, not the list. (When the write also
+shows somewhere else, or its row may not be on screen when it is made, use "Every view of a write" below instead.)
 
 ```rx
 export source todos: Todo[] key id = await loadTodos()
@@ -156,6 +157,60 @@ export action addTag(p: number, tag: string) {
 
 Changing `photo` while a tag is saving shows the new photo's tags at once, and the pending tag only under its own
 photo.
+
+### Every view of a write: lay it over the answer
+
+A row guess (`guess todos[i].done := true`) changes one slot of one answer. It misses a write whose item is not on
+screen when the click happens (a filtered-out row, a list still loading): `findIndex` gives -1 and nothing shows, even
+when the item arrives from a reload while the write is out. And it shows in only one place: a title shown in a list
+row and in a heading needs a guess on each, and missing one makes the two disagree.
+
+When a write can show in more than one place, or on an item that may not be on screen yet, keep the writes in flight
+in a list of their own and lay them over every answer in an equation. Every view reads that equation:
+
+```rx
+server key id = await loadProjects(group)               // the server's answer, whatever it is now
+source renaming: { id: string; name: string }[] = []   // writes in flight: a guess list, constant question
+
+fn nameOf(rs, id: string, name: string) => rs.reduce((n, r) => r.id == id ? r.name : n, name)
+projects key id = server.map(p => ({ ...p, name: nameOf(renaming, p.id, p.name) }))   // the list reads this
+heading = open == null ? "" : nameOf(renaming, open.id, open.name)                    // so does the header
+
+export action rename(id: string, name: string) {
+  try {
+    guess renaming := rs => [...rs, { id: id, name: name }]
+    await renameProject(id, name)
+    refresh server                     // accepted: the guess stays until the new answer lands (D-34)
+    refresh openProject
+  } catch (e) {
+    renameError := e.message           // declined: the guess reverts with the message, in one frame
+  }
+}
+```
+
+- The write shows on any answer that holds the item: one that arrives from another write's re-ask, a reload, a filter
+  switched back. It shows the same in every view, because every view reads it through one equation.
+- `renaming` has a constant question, so guessing it never holds a selection or a filter switch (H-11).
+- Two writes of one kind are one change on `renaming`; a declined one shows until the other ends (H-11). That's the
+  rule, not a bug.
+- Re-ask only when the write was accepted. A declined write has nothing new on the server, and a re-ask would keep
+  its guess up until the answer lands.
+- A removal is the same: `source removing: string[] = []`, and the list equation filters those ids out.
+
+### Data belongs with its lifetime
+
+In .rx, state is not tied to components: a `source` can be declared in a module, a component or a region, and a
+component only reads and calls what it is given. So declare data where it lives as long as it is needed. A page's list usually belongs to the page: it loads when the page
+opens and goes when it closes. A write in flight lives until the server answers, which can be after its page closed;
+the data it refreshes must live at least as long. If it lives in the page, the write's `refresh` re-asks the closed
+page's question, and the page opened again keeps the answer it asked for before the write landed, beside views asked
+after it that show the write.
+
+So for the data such a write changes (the list and the item it refreshes), declare it, its writes in flight and its
+actions in a module (top-level `source`s and `action`s), and let the page read it and call the actions. The page's own
+inputs (a draft, a text field) live as long as the page and stay in it. To make the page start fresh when it opens,
+have opening it call an action that resets the module's inputs and moves a counter the question reads
+(`source visit := 0`, `items = visit >= 0 ? await loadItems(filter) : []`).
 
 ### Data the server owns: three layers
 

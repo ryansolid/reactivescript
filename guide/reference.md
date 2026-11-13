@@ -68,7 +68,7 @@ Expr      ::= TypeScript's, without assignment, `this`, `function`, `new` on rea
 - Reading in a handler gives the committed value (what the screen shows). A handler that reads an equation that may
   have no value yet (first load) or may have failed must handle that: a `try`, a first value on the equation
   (`await e -> v`), the element inside that value's `loading` and `errored` regions, or `disabled={…}` reading it
-  (R-8).
+  (R-8). For a failure, the region or the `disabled` must read the value itself: `pending? x` takes no failure.
 
 ## Holds (what the screen shows while work is out)
 

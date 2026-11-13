@@ -1,0 +1,120 @@
+// The issues the desk shows, and every write on them. This is app state, not the issues page's: a write the user
+// made outlives the page it was made on, so its refresh reaches the list and detail on screen when it lands, even
+// after the page was left and opened again.
+//
+// Three layers (guide/async.md): `issues` and `detail` are the server's answers; `renames`, `assigns` and `closing`
+// hold the writes still out, as guesses; `rows` and `heading` lay those writes over whatever the answers are. A row
+// that arrives from a reload while a write on it is out shows the write too, and the list row and the detail heading
+// read one rename, so they cannot disagree.
+
+import pure { fetchIssues, fetchIssue } from "./api"
+import { assign, renameIssue, closeIssue } from "./api"
+
+export error NotFound(id: number) => `issue #${id} not found`
+
+fn found(it, id: number) => it == null ? throw NotFound(id) : it
+
+type Rename = { id: number; title: string }
+type Assign = { id: number; who: string }
+
+fn titleOf(rs: Rename[], id: number, title: string): string => rs.reduce((t, r) => r.id == id ? r.title : t, title)
+fn assigneeOf(xs: Assign[], id: number, who: string | null): string | null => xs.reduce((w, x) => x.id == id ? x.who : w, who)
+
+// opening the issues page starts it as the app starts: a new visit asks for the list again
+export source visit: number := 0
+export source filter: string := "open"
+export source selected: number | null := null
+
+issues key id = visit >= 0 ? await fetchIssues(filter) : []
+export detail = selected == null ? null : found(await fetchIssue(selected), selected)
+
+// the writes still out: each is a guess its action makes. An accepted write ends with the list's re-ask, and its
+// guess stays until that answer lands (D-34); a declined one reverts with its message, in one frame (AC-7)
+source renames: Rename[] = []
+source assigns: Assign[] = []
+source closing: number[] = []
+
+shown = issues.filter(r => !(filter == "open" && closing.includes(r.id)))
+export rows key id = shown.map(r => ({ id: r.id, title: titleOf(renames, r.id, r.title), assignee: assigneeOf(assigns, r.id, r.assignee) }))
+export heading = detail == null ? "" : titleOf(renames, detail.id, detail.title)
+
+export source assignError: string := ""
+export source renameError: string := ""
+export source closeError: string := ""
+// the newest row action's failure; row actions and the detail's leave each other's errors alone
+export source rowError: string := ""
+
+export action openPage() {
+  visit := visit + 1
+  filter := "open"
+  selected := null
+  onFlush(() => {
+    assignError := ""
+    renameError := ""
+    closeError := ""
+    rowError := ""
+  })
+}
+
+export action showFilter(f: string) {
+  filter := f
+}
+
+export action select(id: number) {
+  selected := id
+  onFlush(() => {
+    assignError := ""
+    renameError := ""
+    closeError := ""
+  })
+}
+
+export action assignTo(id: number, who: string, fromRow: boolean) {
+  if (fromRow) {
+    onFlush(() => { rowError := "" })
+  } else {
+    onFlush(() => { assignError := "" })
+  }
+  try {
+    guess assigns := xs => [...xs, { id: id, who: who }]
+    await assign(id, who)
+    refresh issues
+  } catch (e) {
+    if (fromRow) {
+      rowError := e.message
+    } else {
+      assignError := e.message
+    }
+  }
+}
+
+export action renameTo(id: number, title: string) {
+  onFlush(() => { renameError := "" })
+  try {
+    guess renames := rs => [...rs, { id: id, title: title }]
+    await renameIssue(id, title)
+    refresh issues
+    refresh detail
+  } catch (e) {
+    renameError := e.message
+  }
+}
+
+export action closeOne(id: number, fromRow: boolean) {
+  if (fromRow) {
+    onFlush(() => { rowError := "" })
+  } else {
+    onFlush(() => { closeError := "" })
+  }
+  try {
+    guess closing := cs => [...cs, id]
+    await closeIssue(id)
+    refresh issues
+  } catch (e) {
+    if (fromRow) {
+      rowError := e.message
+    } else {
+      closeError := e.message
+    }
+  }
+}

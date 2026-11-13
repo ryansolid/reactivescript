@@ -114,7 +114,13 @@ and where they may not go.
     element is not there, or not enabled, while `x` has no value, a new
     question out, or an error, so the handler never runs then: the element's
     attributes are the handler's compute half, with the same separated
-    inputs an effect has (EF-1).
+    inputs an effect has (EF-1). For the failure half, "reads `x`" means
+    its value (ruled 2026-11-13): `pending? x` of a failed `x` is `false`
+    and takes no failure, so an `errored` region whose content reads `x`
+    only under `pending?` never shows its fallback, and a
+    `disabled={pending? x}` leaves the element enabled; either way the
+    click throws. (Found by the desk9 reference's fuzz seed 11, eval/results/desk9-reference-2026-11-13:
+    `add-label` sat in a region of its own reading only `pending? shown`.)
 
   Neither is `UNGUARDED_SNAPSHOT` (static). The check adds nothing at run
   time and Solid has no equivalent: `untrack` of a pending node throws there
