@@ -1,0 +1,12 @@
+../ref/compile/emit.ts: error TS2339: Property 'e' does not exist on type '{ k: "import"; names: { name: string; alias: string; }[]; from: string; pure: boolean; side?: "server" | "client" | undefined; line: number; fails?: string[] | undefined; resolved?: string | undefined; declared?: string | undefined; declaredErrors?: string[] | undefined; declaredPure?: string[] | undefined; declared...'.
+../ref/compile/emit.ts: error TS2339: Property 'name' does not exist on type '{ k: "let"; name: string; e: Expr; type?: string | undefined; } | { k: "expr"; e: Expr; }'.
+../ref/compile/emit.ts: error TS2366: Function lacks ending return statement and return type does not include 'undefined'.
+../ref/src/runtime.ts: error TS2339: Property 'first' does not exist on type 'never'.
+../ref/src/runtime.ts: error TS2339: Property 'state' does not exist on type 'never'.
+../ref/src/runtime.ts: error TS2339: Property 'state' does not exist on type 'never'.
+../ref/src/runtime.ts: error TS2339: Property 'value' does not exist on type 'never'.
+../ref/src/runtime.ts: error TS2345: Argument of type 'Expr | undefined' is not assignable to parameter of type 'Expr'.
+../ref/src/runtime.ts: error TS2345: Argument of type 'Node | CtxBinding' is not assignable to parameter of type 'Node'.
+../ref/src/runtime.ts: error TS2352: Conversion of type 'null | undefined' to type 'number' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+../ref/src/runtime.ts: error TS2352: Conversion of type 'null | undefined' to type 'unknown[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+../ref/src/runtime.ts: error TS2358: The left-hand side of an 'instanceof' expression must be of type 'any', an object type or a type parameter.

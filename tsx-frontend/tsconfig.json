@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noEmit": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "target": "esnext",
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
+  },
+  "files": [
+    "tsx/lower.ts",
+    "tsx/modules.ts",
+    "tsx/build.ts",
+    "tsx/rx/ast.ts",
+    "tsx/rx/compiler.ts",
+    "tsx/rx/runtime.ts",
+    "tsx/rx/infer.ts",
+    "tsx/rx/facts.ts",
+    "tsx/rx/string-renderer.ts",
+    "tsx/fuzz/gen.ts",
+    "tsx/fuzz/run.ts",
+    "yield/lower.ts",
+    "tsx/subset.ts",
+    "scripts/report.ts",
+    "scripts/fuzz.ts"
+  ]
+}

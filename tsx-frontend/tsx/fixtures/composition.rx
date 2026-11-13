@@ -1,0 +1,15 @@
+export component Counter() {
+  source count := 0;
+  doubled = count * 2;
+  <CounterButton direct={count} value={doubled} onIncrement={() => { count := count + 1 }} />
+}
+
+component CounterButton(incoming: { direct: number; value: number; onIncrement: action catches(nothing) }) {
+  source count := 10;
+  doubled = incoming.value * 2;
+  <Button direct={incoming.direct} value={doubled} local={count} onIncrement={incoming.onIncrement} />
+}
+
+component Button(props: { direct: number; value: number; local: number; onIncrement: action catches(nothing) }) {
+  <button onClick={() => { props.onIncrement(); }}>{"" + props.direct}/{"" + props.value}/{"" + props.local}</button>
+}
