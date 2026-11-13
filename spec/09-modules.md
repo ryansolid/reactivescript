@@ -272,9 +272,13 @@ export component Search(props: { start: boolean, q: string }) {
     API that takes an accessor of a store declares `ref`.
   - Only the return and its tuple or object parts are declared; an accessor
     nested deeper is a value.
-- **MO-10c (Where a package's declaration is).** For a package import, the
-  declaration is the file its `exports` names under the condition `"rx"`
-  (`"./media": { "rx": "./dist/media.d.rx", "import": "./dist/media.js" }`).
+- **MO-10c (Where a package's declaration is).** Beside the file the import
+  resolves to, as MO-8a's is beside a relative module and a `.d.ts` beside its
+  `.js`: `@solid-primitives/media` resolves through the package's `exports`
+  with the build's conditions to `dist/index.jsx`, and its declaration is
+  `dist/index.d.rx`. No export condition is needed. A package whose
+  conditions resolve to more than one file ships the declaration beside
+  each; the rows of one export are the same in every build.
   A package that ships none is declared through a local module: `./media.js`
   re-exports it and `./media.d.rx` beside it declares it (MO-8a, MO-8c).
   Without either, the import is what R-io-4 says, and `import pure` of a
@@ -355,8 +359,10 @@ export component Search(props: { start: boolean, q: string }) {
    since a returned equation is its value). `instantiates` is inferred from
    `ref` and written only where neither side has one. Ryan, 2026-11-13: any
    accessor can hold (MO-10d), and the notation is `.rx`'s, with no
-   `Accessor` type. A package ships its declaration under the `"rx"` export
-   condition, else a local re-export declares it; a project-level folder of
+   `Accessor` type. A package ships its declaration beside the file its import
+   resolves to, as a `.d.ts` beside its `.js` (an `"rx"` export condition was
+   drafted and dropped, Ryan 2026-11-13: nothing needs it), else a local
+   re-export declares it; a project-level folder of
    declarations keyed by package was the alternative, not taken.
    Not yet built: array destructuring (07 decision 20) is ruled but not
    parsed, and the crate and `ref/` do not yet read MO-10.
