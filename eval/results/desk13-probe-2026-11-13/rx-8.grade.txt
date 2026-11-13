@@ -1,0 +1,8 @@
+== hidden
+77/77 passed
+== overlap
+38/38 passed
+== fuzz
+desk13-rx-8: 1/20 seeds found a hole
+  seed 16 step 34: count: tab Issues (3), 0 open rows shown
+    user guest ; fail fetchIssues:open ; focus ; tab help ; tab issues ; filter closed ; land fetchIssues:open ; focus ; land fetchIssues:closed ; select #2 ; land fetchComments:2 ; close ; user ann ; fail closeIssue:2 ; row-assign 0 ; close ; user bob ; user guest ; assign ; land assign:2,guest ; land fetchLabels:2 ; fail closeIssue:2 ; assign ; land assign:2,ann ; focus ; land fetchIssue:2 ; lan

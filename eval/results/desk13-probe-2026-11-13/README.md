@@ -43,3 +43,19 @@ rx-4..6 tested normally.
 
 `guide/async.md` "Data belongs with its lifetime" now gives one rule (each value has one lifetime: the visit, the write
 or the screen; split a value that would need two) and derives the module list, the save, the guess and the count from it.
+
+## Rerun on the lifetime rule (rx-7..9)
+
+| app | hidden | overlap | fuzz holes | defects |
+| --- | ---: | ---: | ---: | ---: |
+| rx-7 | 75 | 38 | 0 | 2 |
+| rx-8 | 77 | 38 | 1 | 1 |
+| rx-9 | 77 | 38 | 0 | **0** |
+
+Mean 1.0 (rx-4..6: 2.33). No settings or count-placement failures: all three kept settings in the page and put the
+count inside the list's region.
+
+- rx-7: the help item's `errored` sits outside its `loading on(selected)`, so a new selection keeps the old failure
+  or not-found message instead of showing loading (agent; not a lifetime case).
+- rx-8 s16: the rows render as empty text (`["","",""]`) after the open list lands, while the tab counts 3. Same
+  shape as rx-1/rx-3's blank heading: a text node left empty while its value is there. Likely Solid; no minimal repro.
