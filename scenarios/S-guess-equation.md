@@ -99,3 +99,25 @@ export default component App() {
 
 A deferred equation's value is a lagging copy (V-16); a guess has nothing
 to confirm it there.
+
+```rx
+-- reject: GUESS_WHILE_LOADING
+export default component App() {
+  source id := 1
+  likes = await fetch("likes:" + id) catch (e) => 0
+  action send() {
+    try {
+      guess likes := likes + 1
+      await fetch("like:" + id)
+      refresh likes
+    } catch (e) {}
+  }
+  <button onClick={() => { id := id + 1 }}>next</button>
+  <button onClick={() => { send() }}>{likes}</button>
+}
+```
+
+A click can guess `likes` while it loads a new question about `id`, which
+the click reads too (AC-3a): the guess sits on the old answer and the new
+one replaces it. Put the button inside the `loading` region that shows
+`likes`, or disable it on `pending? likes`.
