@@ -1,7 +1,7 @@
 {
   "name": "@reactivescript/runtime",
   "description": "ReactiveScript's runtime (spec/11 CP-4a): createApp and the __rt helpers compiled .rx calls, over Solid, for the browser and the server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "repository": {
     "type": "git",
