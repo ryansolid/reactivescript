@@ -23,7 +23,13 @@ export async function serve(dist) {
 }
 
 /** CHROMIUM=/path/to/chromium drives a system browser (NixOS and the like, where Playwright's download does not run). */
-export async function launch() { return chromium.launch(process.env.CHROMIUM ? { executablePath: process.env.CHROMIUM } : {}); }
+// Without CHROMIUM, a Playwright whose own browser is missing falls back to a preinstalled one (/opt/pw-browsers/chromium,
+// as in cloud containers), so an agent's ./test runs there too.
+export async function launch() {
+  if (process.env.CHROMIUM) return chromium.launch({ executablePath: process.env.CHROMIUM });
+  try { return await chromium.launch(); }
+  catch (e) { const alt = "/opt/pw-browsers/chromium"; if (existsSync(alt)) return chromium.launch({ executablePath: alt }); throw e; }
+}
 
 /** One test: a fresh page on the app, `run(app)` with the helpers below. Returns { ok, error }. */
 export async function runTest(browser, url, test) {

@@ -210,7 +210,20 @@ So for the data such a write changes (the list and the item it refreshes), decla
 actions in a module (top-level `source`s and `action`s), and let the page read it and call the actions. The page's own
 inputs (a draft, a text field) live as long as the page and stay in it. To make the page start fresh when it opens,
 have opening it call an action that resets the module's inputs and moves a counter the question reads
-(`source visit := 0`, `items = visit >= 0 ? await loadItems(filter) : []`).
+(`source visit := -1`, `items = visit >= 0 ? await loadItems(filter) : []`). A module's question is asked when the
+app starts, whether or not its page is open, so start the counter below the guard (`-1`): the first open asks, and a
+page that never opens never loads. Start it at `0` only for the page the app opens on.
+
+Three limits keep this from costing more than it fixes:
+
+- **Only data a write refreshes.** A write whose answer is the new value (a save that returns the saved settings) has
+  nothing to re-ask, so its data stays in the page: an answer that lands after the page closed lands on nothing, and
+  the page opened again loads afresh.
+- **Guess it only through lists of its own** (the next section). A `guess` on the module's question itself ties that
+  question to the write, so the next open's load, and the page switch that asks it, waits for the write to land.
+- **Copy what the page shows where the page shows it.** A tab's count of the open rows is an `effect` in a component
+  inside the list's region (`<OpenCount n={rows.length} … />` under the list's `loading`), not beside the module: an
+  effect outside the region waits for every re-ask of the list, so it misses the guesses the rows already show.
 
 ### Data the server owns: three layers
 
