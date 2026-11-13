@@ -20,7 +20,7 @@ arm: neither difference means anything statistically.
 - **Settings save, contract-1 and contract-2** (overlap "a later save failing while an earlier one is out shows its
   error and then the earlier result"). Every issue write is a `parallel` mutation, but both apps left
   `mutation saved` on Exact's default mode, under which a later save replaces the earlier one, so the earlier
-  result never shows. contract-3 declares no such mutation for its save.
+  result never shows. contract-3 made its save `parallel` too (`mutation saved … parallel refreshes settings`) and passes.
 - **contract-2, "rows: row errors and detail errors leave each other alone"**: row actions and the detail share an
   error path (agent).
 
