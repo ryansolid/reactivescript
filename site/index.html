@@ -103,15 +103,15 @@
 <pre class="err"><code>counter.rx:5:3 - error WRITE_TO_NON_SOURCE: double is an equation: only sources are written (W-1)</code></pre>
 
   <h2>Destructure props, keep them live</h2>
-  <p>In Solid, destructuring props reads them once and the component stops updating. In .rx, destructure them right in the parameter list: every name follows its prop, defaults and rest included.</p>
-<pre><span class="fname">inbox.rx</span><code><span class="k">component</span> Badge({ label, tone = <span class="s">"info"</span>, ...rest }: { label: string; tone?: string; count: number }) {
-  &lt;span class={tone}&gt;{label}: {rest.count}&lt;/span&gt;
+  <p>In Solid, destructuring props reads them once and the component stops updating. In .rx, destructure them right in the parameter list: every name follows its prop, defaults and rest included, and the rest spreads onto an element as in JSX.</p>
+<pre><span class="fname">inbox.rx</span><code><span class="k">component</span> Badge({ label, tone = <span class="s">"info"</span>, ...rest }: { label: string; tone?: string; title?: string }) {
+  &lt;span class={tone} {...rest}&gt;{label}&lt;/span&gt;
 }
 
 <span class="k">export default component</span> Inbox() {
   <span class="w">source</span> user := { name: <span class="s">"Ada"</span>, unread: <span class="t">3</span> }
 
-  &lt;Badge label={user.name} count={user.unread} /&gt;   <span class="c">// Badge updates when user changes</span>
+  &lt;Badge label={`${user.unread} unread`} title={user.name} /&gt;   <span class="c">// Badge updates when user changes</span>
   &lt;button onClick={() =&gt; { user := { ...user, unread: <span class="t">0</span> } }}&gt;Mark read&lt;/button&gt;
 }</code></pre>
 

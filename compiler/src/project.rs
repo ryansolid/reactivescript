@@ -900,6 +900,11 @@ impl Proj<'_> {
                 let tag_at = (!sp.is_none() && sp.text(self.src)[1..].starts_with(tag.as_str())).then_some(sp.start as usize + 1);
                 let mut a = Code::new();
                 for at in attrs {
+                    // 07 §4: a spread, as JSX's
+                    if at.name == "..." {
+                        a = a.t(" {...").c(self.expr(&at.e, false, None)).t("}");
+                        continue;
+                    }
                     let name_at = (!at.span.is_none() && at.span.text(self.src) == at.name).then_some(at.span.start as usize);
                     a = a.t(" ").at(&at.name, name_at);
                     if !matches!(at.e.k, ExprKind::Lit(Lit::Bool(true))) {

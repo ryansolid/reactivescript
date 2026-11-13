@@ -346,6 +346,16 @@ fn snapshot_reads<'a>(n: Node<'a>, caught: bool, locals: &mut HashSet<String>, o
     }
 }
 /// AC-3a: the submit buttons of a form's markup (a `<button>` without `type`, or `type="submit"`), not through components.
+/// 07 §4: a spread attribute (`{...e}`) passes every field: "*"
+fn field_of(name: &str) -> String {
+    if name == "..." { "*".into() } else { name.to_string() }
+}
+
+/// an argument as a message shows it: `x={…}`, or `{...…}` for a spread
+fn arg_show(field: &str) -> String {
+    if field == "*" { "{...…}".into() } else { format!("{field}={{…}}") }
+}
+
 fn submit_buttons<'a>(ms: &'a [Markup], out: &mut Vec<&'a [Attr]>) {
     for m in ms {
         match &m.kind {
@@ -2713,14 +2723,15 @@ impl<'a> Checker<'a> {
     fn retained(&mut self) {
         let targets = |this: &Self, c: RId, field: &str| -> Vec<String> {
             if let Some(sig) = &this.regions[c].sig {
-                let mut v: Vec<String> = sig.stored.get(field).cloned().unwrap_or_default();
+                // a spread ("*") goes wherever any field goes
+                let mut v: Vec<String> = if field == "*" { sig.stored.values().flatten().cloned().collect() } else { sig.stored.get(field).cloned().unwrap_or_default() };
                 if field != "*" {
                     v.extend(sig.stored.get("*").cloned().unwrap_or_default());
                 }
                 return v.into_iter().map(|t| if t == "module" { "d:0".to_string() } else { format!("p:{}", t) }).collect();
             }
             let Some(m) = this.retains.get(&c) else { return vec![] };
-            let mut v: Vec<String> = m.get(field).map(|x| x.iter().cloned().collect()).unwrap_or_default();
+            let mut v: Vec<String> = if field == "*" { m.values().flatten().cloned().collect() } else { m.get(field).map(|x| x.iter().cloned().collect()).unwrap_or_default() };
             if field != "*" {
                 v.extend(m.get("*").map(|x| x.iter().cloned().collect::<Vec<_>>()).unwrap_or_default());
             }
@@ -2750,8 +2761,8 @@ impl<'a> Checker<'a> {
                                 "REGION_ESCAPE",
                                 "O-3",
                                 format!(
-                                    "<{} {}={{…}}>: the closure passed captures {} (declared in a region that ends sooner), and {} stores {} (itself, or through a component it passes it to) where it outlives it",
-                                    atag, field, ln, atag, field
+                                    "<{} {}>: the closure passed captures {} (declared in a region that ends sooner), and {} stores {} (itself, or through a component it passes it to) where it outlives it",
+                                    atag, arg_show(&field), ln, atag, if field == "*" { "a field of it" } else { field.as_str() }
                                 ),
                             );
                         }
@@ -2829,7 +2840,7 @@ impl<'a> Checker<'a> {
                         }
                         if is_comp {
                             let cr = self.syms[s.unwrap()].comp_region.unwrap();
-                            self.apps.push(AppRec { comp: cr, site: region, line: self.line, tag: tag.clone(), args: attrs.iter().filter(|a| !is_handler(&a.name)).map(|a| (a.name.clone(), &a.e, env)).collect(), passed: attrs.iter().map(|a| (a.name.clone(), &a.e, env)).collect() });
+                            self.apps.push(AppRec { comp: cr, site: region, line: self.line, tag: tag.clone(), args: attrs.iter().filter(|a| !is_handler(&a.name)).map(|a| (field_of(&a.name), &a.e, env)).collect(), passed: attrs.iter().map(|a| (field_of(&a.name), &a.e, env)).collect() });
                             let kids = self.region(Some(region), "children", false, Some(tag.clone()));
                             self.regions[kids].kids = Some((cr, region));
                             let kenv = self.env(Some(env), kids);
@@ -4113,10 +4124,14 @@ impl<'a> Checker<'a> {
     /// Where a component's prop field goes once read — up to its root, or out of an action.
     fn pf(&mut self, g: RId, field: &str) -> Vec<PFEntry> {
         if let Some(sig) = &self.regions[g].sig {
-            let Some(s) = sig.props.get(field).or_else(|| sig.props.get("*")) else { return vec![] };
-            let mut out = vec![PFEntry { chain: vec![Step { f: Some(s.f.clone()), p: Some(s.p.clone()) }], term: None }];
-            if let Some((af, an)) = &s.action {
-                out.push(PFEntry { chain: vec![Step { f: Some(af.clone()), p: None }], term: Some((-1, an.clone())) });
+            // a spread ("*") goes wherever any field goes
+            let ss: Vec<_> = if field == "*" { sig.props.values().collect() } else { sig.props.get(field).or_else(|| sig.props.get("*")).into_iter().collect() };
+            let mut out = vec![];
+            for s in ss {
+                out.push(PFEntry { chain: vec![Step { f: Some(s.f.clone()), p: Some(s.p.clone()) }], term: None });
+                if let Some((af, an)) = &s.action {
+                    out.push(PFEntry { chain: vec![Step { f: Some(af.clone()), p: None }], term: Some((-1, an.clone())) });
+                }
             }
             return out;
         }
@@ -4131,7 +4146,7 @@ impl<'a> Checker<'a> {
         let mut out = vec![];
         let occ = self.occ.clone();
         for o in &occ {
-            if o.comp == g && (o.field == field || o.field == "*") {
+            if o.comp == g && (o.field == field || o.field == "*" || field == "*") {
                 for v in self.via(&o.via) {
                     let mut c = o.pre.clone();
                     c.extend(v.chain);
@@ -4208,7 +4223,7 @@ impl<'a> Checker<'a> {
                         esc_p(&ch, HOLD)
                     })
                 {
-                    push_r(&mut res, &mut seen, Req { name: HOLD.into(), line: aline, what: format!("<{} {}={{…}}>, read in {},", atag, field, atag) });
+                    push_r(&mut res, &mut seen, Req { name: HOLD.into(), line: aline, what: format!("<{} {}>, read in {},", atag, arg_show(&field), atag) });
                     break;
                 }
             }
@@ -4255,7 +4270,7 @@ impl<'a> Checker<'a> {
                         ch.extend(q.iter().cloned());
                         esc_f(&ch, cl)
                     }) {
-                        push_f(&mut res, &mut seen, Item { cls: cl.clone(), line: aline, what: format!("<{} {}={{…}}>", atag, field) });
+                        push_f(&mut res, &mut seen, Item { cls: cl.clone(), line: aline, what: format!("<{} {}>", atag, arg_show(&field)) });
                         break;
                     }
                 }

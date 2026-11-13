@@ -530,7 +530,7 @@ impl<'p> Gen<'p> {
                         let kind = if tag.as_bytes()[0].is_ascii_lowercase() { ElementKind::Native(tag.clone()) } else { ElementKind::Component };
                         let attributes = attrs
                             .iter()
-                            .filter(|a| !is_handler(&a.name))
+                            .filter(|a| !is_handler(&a.name) && a.name != "...")
                             .map(|a| Attribute {
                                 name: a.name.clone(),
                                 value: match &a.e.k {
@@ -541,7 +541,7 @@ impl<'p> Gen<'p> {
                             })
                             .collect();
                         let kids = flatten(tree(g, children));
-                        out.push(Item::El(Element { id: g.style_ids, kind, attributes, has_spread: false, children: kids }));
+                        out.push(Item::El(Element { id: g.style_ids, kind, attributes, has_spread: attrs.iter().any(|a| a.name == "..."), children: kids }));
                     }
                     MarkupKind::Mif { t, f, .. } => {
                         out.push(Item::Container(tree(g, t)));
