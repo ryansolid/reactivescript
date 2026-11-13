@@ -397,6 +397,10 @@ impl<'a> Build<'a> {
         let Jsx::El { name, attrs, children, self_closing, .. } = j else { unreachable!() };
         let attrs = self.vec(attrs.iter().map(|(n, v)| {
             let start = self.open();
+            // 07 §4: `{...e}`, Solid's spread
+            if let ("...", AttrValue::Expr(e)) = (n.as_str(), v) {
+                return JSXAttributeItem::new_spread_attribute(self.close(start), self.expr(e), b);
+            }
             let name = match n.split_once(':') {
                 Some((ns, local)) => JSXAttributeName::new_namespaced_name(SPAN, JSXIdentifier::new(SPAN, self.s(ns), b), JSXIdentifier::new(SPAN, self.s(local), b), b),
                 None => JSXAttributeName::new_identifier(SPAN, self.s(n), b),

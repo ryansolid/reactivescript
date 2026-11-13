@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+**New**
+
+- Spread attributes in markup, `<button {...rest}>` and `<Inner {...rest} />`, lowered to Solid's spread and `merge`:
+  later attributes override, and each field keeps updating (07 §4, S-surface-5).
+
 ## 0.3.0
 
 `@reactivescript/compiler`, `@reactivescript/runtime`, `@reactivescript/language-server` and the editor extension,

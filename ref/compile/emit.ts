@@ -205,7 +205,7 @@ class Gen {
         case "read": return "{0}";
         case "el": {
           if (m.tag === "") return `<>${tree(m.children)}</>`;
-          const attrs = m.attrs.filter(a => !isHandler(a.name)).map(a => a.e.k === "lit" && typeof a.e.v === "string" ? ` ${a.name}="${esc(a.e.v)}"` : a.e.k === "lit" && a.e.v === true ? ` ${a.name}` : ` ${a.name}={0}`).join("");
+          const attrs = m.attrs.filter(a => !isHandler(a.name) && a.name !== "...").map(a => a.e.k === "lit" && typeof a.e.v === "string" ? ` ${a.name}="${esc(a.e.v)}"` : a.e.k === "lit" && a.e.v === true ? ` ${a.name}` : ` ${a.name}={0}`).join("") + (m.attrs.some(a => a.name === "...") ? " {...0}" : "");
           return VOID_TAGS.has(m.tag) ? `<${m.tag}${attrs} />` : `<${m.tag}${attrs}>${tree(m.children)}</${m.tag}>`;
         }
         case "mif": return `{(<>${tree(m.t)}</>)}{(<>${tree(m.f)}</>)}`;
@@ -555,7 +555,7 @@ class Gen {
     return `(${param}) => {\n${pre}${this.block(decls, view, inner, ind + 1)}\n${pad}}`;
   }
   private region(decls: Decl[], view: Markup[], env: Env, ind: number): string { return `{(${this.regionFn(decls, view, env, ind)})()}`; }
-  private attr(name: string, e: Expr, env: Env): string { return `${name}={${this.expr(e, env, { imp: isHandler(name) })}}`; }
+  private attr(name: string, e: Expr, env: Env): string { return name === "..." ? `{...${this.expr(e, env, { imp: false })}}` : `${name}={${this.expr(e, env, { imp: isHandler(name) })}}`; }   // 07 §4: a spread is Solid's
   private child(m: Markup, env: Env, ind: number): string {
     const re: Ctx = { imp: false };
     const pad = " ".repeat((ind + 1) * 2);

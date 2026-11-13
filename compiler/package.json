@@ -1,7 +1,7 @@
 {
   "name": "@reactivescript/compiler",
   "description": "ReactiveScript's compiler, in process through Node-API, and its front end for @solidjs/vite-plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -724,6 +724,10 @@ function parseElement(c: Cursor): Markup {
     c.ws();
     if (c.eat("/>")) return { k: "el", tag, attrs, children: [] };
     if (c.eat(">")) break;
+    if (c.startsWith("{")) {                                            // 07 §4: a spread attribute, `{...e}`: every field of e, in order with the named ones
+      c.eat("{"); c.ws(); if (!c.eat("...")) c.fail("attr: an attribute in braces is a spread, `{...props}`"); c.ws();
+      attrs.push({ name: "...", e: parseExpr(c) }); c.ws(); c.expect("}"); continue;
+    }
     const name = c.tagName() ?? c.fail("attr"); c.ws(false);
     if (!c.eat("=")) { attrs.push({ name, e: { k: "lit", v: true } }); continue; }   // boolean attribute
     c.ws();

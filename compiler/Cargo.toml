@@ -1,6 +1,6 @@
 [package]
 name = "reactivescript"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 description = "ReactiveScript's compiler (spec/11): parse, check, resolve, and lower through Solid's solidjs-compiler"
 license = "MIT"
