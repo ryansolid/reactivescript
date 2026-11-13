@@ -4,12 +4,14 @@
 //   solid: tsc --noEmit -p . and eslint (eslint-plugin-solid's v2 config)
 //   vanilla: tsc --noEmit -p . (strict)
 //   foldkit: tsc --noEmit -p . with Foldkit's template tsconfig (its lint, oxlint + effect-tsgo, is not on npm)
+//   contract: `exact.mjs contract build app.contract`, which also type-checks app.ts
 // Usage: node harness/check.mjs <dir>
 import { execFileSync } from "node:child_process";
 import { existsSync, symlinkSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { RXC, armOf } from "./build.mjs";
+import { checkContract } from "./contract.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const evalDir = path.resolve(here, "..");
@@ -21,6 +23,7 @@ const run = (cmd, args, cwd) => {
 
 export function check(dir) {
   dir = path.resolve(dir);
+  if (armOf(dir) === "contract") return checkContract(dir);
   if (!existsSync(path.join(dir, "node_modules"))) symlinkSync(path.join(evalDir, "node_modules"), path.join(dir, "node_modules"));
   if (armOf(dir) === "rx") return run(RXC, ["check", "src/main.rx"], dir);
   const bin = n => path.join(evalDir, "node_modules/.bin", n);

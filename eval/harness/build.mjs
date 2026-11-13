@@ -6,12 +6,14 @@
 //   vanilla arm: `src/main.ts` default-exports `mount(root: HTMLElement)`, called once with the `#app` container
 //   foldkit arm: `src/main.ts` exports Model, init, update and view; booted with Runtime.makeApplication and
 //              Runtime.run, as Foldkit's own `src/entry.ts` does
+//   contract arm: an Exact app, built by its own `exact.mjs web-build` (harness/contract.mjs)
 // The app's API is `src/api.js` over `src/flights.js`: every call is a flight the test lands or fails.
 // Usage: node harness/build.mjs <dir> [rx|react]   (the arm defaults to what `<dir>/arm` says)
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { buildContract } from "./contract.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const evalDir = path.resolve(here, "..");
@@ -35,6 +37,7 @@ async function solidPlugin() {
 
 export async function build(dir, arm = armOf(dir)) {
   dir = realpathSync(path.resolve(dir));
+  if (arm === "contract") return buildContract(dir);
   const work = path.join(dir, ".build");
   rmSync(work, { recursive: true, force: true }); mkdirSync(work, { recursive: true });
   // the app's bare imports resolve from the harness's packages

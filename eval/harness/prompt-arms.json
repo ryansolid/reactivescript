@@ -58,5 +58,17 @@
     "LANG_RULE": "plain TypeScript and the browser DOM, with no UI framework or library: `src/main.ts` must default-export `function mount(root: HTMLElement): void`, which the harness calls once with the page's `#app` element. You may add files under `src/`. No packages are installed for you to use.",
     "API_TYPES": "`src/api.d.ts`",
     "CHECKER": "the TypeScript compiler (strict)"
+  },
+  "contract": {
+    "DOCS_RULE": ", except that you may read Exact's documentation in {{EXACT2}}/docs and look names up with `bun exact.mjs contract vocab <name>` and `bun exact.mjs docs <heading words>`",
+    "LANG_RULE": "Exact, with Contract for the interface and TypeScript for its data module. This directory is an Exact app that `exact new` made from the Exact checkout at {{EXACT2}}; the tests run its web build in a browser. Exact's guide is `{{EXACT2}}/docs/start-here.md`, the only required reading; the rest of `{{EXACT2}}/docs` is lookup. `app.contract` is the interface and `app.ts` its data module, whose sources call the backend: import it with `import * as api from './src/api.js'`. Give an element a test id with `testId=\"…\"`. The only commands that build, test, drive or serve the app are `./check` and `./test` below: do not run the `bun exact.mjs` verbs that do (`web`, `web-build`, `serve`, `test`, `verify`, `agent`, or a platform's).",
+    "API_TYPES": "`src/api.d.ts`",
+    "CHECKER": "the Contract compiler (`bun exact.mjs contract build app.contract`), which also type-checks `app.ts`"
+  },
+  "contract-inline": {
+    "DOCS_RULE": ", except that you may read Exact's documentation in {{EXACT2}}/docs and look names up with `bun exact.mjs contract vocab <name>` and `bun exact.mjs docs <heading words>`",
+    "LANG_RULE": "Exact, with Contract for the interface and TypeScript for its data module. This directory is an Exact app that `exact new` made from the Exact checkout at {{EXACT2}}; the tests run its web build in a browser. Exact's guide, `docs/start-here.md`, is at the end of this message: it is the only required reading, and the rest of `{{EXACT2}}/docs` is lookup. `app.contract` is the interface and `app.ts` its data module, whose sources call the backend: import it with `import * as api from './src/api.js'`. Give an element a test id with `testId=\"…\"`. The only commands that build, test, drive or serve the app are `./check` and `./test` below: do not run the `bun exact.mjs` verbs that do (`web`, `web-build`, `serve`, `test`, `verify`, `agent`, or a platform's).",
+    "API_TYPES": "`src/api.d.ts`",
+    "CHECKER": "the Contract compiler (`bun exact.mjs contract build app.contract`), which also type-checks `app.ts`"
   }
 }
