@@ -1,0 +1,8 @@
+== hidden
+✗ rows: row errors and detail errors leave each other alone
+76/77 passed
+== overlap
+✗ base: settings: a later save failing while an earlier one is out shows its error and then the earlier result
+37/38 passed
+== fuzz
+desk14-contract-2: 0/20 seeds found a hole

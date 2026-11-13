@@ -1,0 +1,8 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: comments that load while a post is out keep the post
+✗ labels that load while an add is out keep the add
+36/38 passed
+== fuzz
+desk14-react-5: 0/20 seeds found a hole

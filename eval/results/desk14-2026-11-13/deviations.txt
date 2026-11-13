@@ -1,0 +1,11 @@
+rx-1: added 9 own tests to tests/visible.mjs, then restored it (agent says exactly)
+rx-2: added 14 own tests to tests/visible.mjs, then restored it
+contract-1: added 17 own tests to tests/visible.mjs, then restored it
+contract-2: added 12 own tests to tests/visible.mjs, then restored it
+contract-4: added 11 own tests to tests/visible.mjs, then removed
+react-3: added 12 own tests to tests/visible.mjs, then restored
+contract-3: added 13 own tests, then removed
+rx-6: last edit (removed unused import) checked but not re-tested
+react-6: added 9 own tests, then restored. contract-6: extra tests kept in .exact/extra.mjs (not graded)
+contract-5: 15 extra tests, then restored
+rx-5: 19 extra tests, then restored
