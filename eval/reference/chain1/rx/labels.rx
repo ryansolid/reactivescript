@@ -55,13 +55,16 @@ export component Labels(props: { id: number }) {
     <input data-testid="label-input" value={labelInput} onInput={e => { labelInput := e.target.value }} />
     {loading on(props.id) fallback { <button data-testid="add-label" disabled>add label</button> } {
       {errored fallback(e) { <button data-testid="add-label" disabled>add label</button> } {
-        <button data-testid="add-label" disabled={pending? shown} onClick={() => {
-          if (labelInput != "" && !shown.includes(labelInput)) {
-            let label = labelInput
-            onFlush(() => { labelInput := "" })
-            add(props.id, label)
-          }
-        }}>add label</button>
+        // the button reads what it guards: `shown` failing puts this region on its fallback, never under a live click
+        {for have in [shown] {
+          <button data-testid="add-label" disabled={pending? shown} onClick={() => {
+            if (labelInput != "" && !have.includes(labelInput)) {
+              let label = labelInput
+              onFlush(() => { labelInput := "" })
+              add(props.id, label)
+            }
+          }}>add label</button>
+        }}
       }}
     }}
     {if labelError != "" {

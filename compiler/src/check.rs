@@ -3058,11 +3058,11 @@ impl<'a> Checker<'a> {
                     continue;
                 }
                 seen.insert(s);
-                if attrs.iter().any(|a| a.name == "disabled" && self.depends(&a.e, env, s, &mut HashSet::new())) {
-                    continue;
-                }
-                let need_hold = absent && !self.region_reads(region, s, |r| r.provides.contains(HOLD));
-                let need_catch = failing && !self.region_reads(region, s, |r| r.catches.is_some());
+                // a `disabled` that reads `s` covers the handler; for a failure it must read the value, since
+                // `pending? s` of a failed `s` is false and leaves the element enabled
+                let disabled_by = |probes: bool| attrs.iter().any(|a| a.name == "disabled" && self.depends_in(&a.e, env, s, &mut HashSet::new(), probes));
+                let need_hold = absent && !disabled_by(true) && !self.region_reads(region, s, |r| r.provides.contains(HOLD));
+                let need_catch = failing && !disabled_by(false) && !self.region_reads_in(region, s, |r| r.catches.is_some(), false);
                 if !need_hold && !need_catch {
                     continue;
                 }
@@ -3408,18 +3408,24 @@ impl<'a> Checker<'a> {
     }
     /// R-8: `e` reads `s`, directly or through the equations it reads.
     fn depends(&self, e: &Expr, env: EId, s: SId, busy: &mut HashSet<SId>) -> bool {
+        self.depends_in(e, env, s, busy, true)
+    }
+    /// `probes: false`: only reads of `s`'s value count, not of its verdict (`pending? s`), which takes no failure
+    /// (R-8, ruled 2026-11-13).
+    fn depends_in(&self, e: &Expr, env: EId, s: SId, busy: &mut HashSet<SId>, probes: bool) -> bool {
         let mut stack = vec![Node::E(e)];
         while let Some(n) = stack.pop() {
             if let Node::E(x) = n {
                 match &x.k {
                     ExprKind::Fn { .. } | ExprKind::ServerFn { .. } => continue,
+                    ExprKind::Pending(_) if !probes => continue,
                     ExprKind::Id(name) => {
                         if let Some(t) = self.lookup(env, name) {
                             if t == s {
                                 return true;
                             }
                             if let Some((te, tenv)) = self.syms[t].expr {
-                                if busy.insert(t) && self.depends(te, tenv, s, busy) {
+                                if busy.insert(t) && self.depends_in(te, tenv, s, busy, probes) {
                                     return true;
                                 }
                             }
@@ -3435,11 +3441,16 @@ impl<'a> Checker<'a> {
     }
     /// R-8: some region around `r` that is `kind` has a reader of `s` in it.
     fn region_reads(&self, r: RId, s: SId, kind: impl Fn(&Region) -> bool) -> bool {
+        self.region_reads_in(r, s, kind, true)
+    }
+    /// `probes`: whether a read under `pending?` counts. For the failure half it does not: the region catches only
+    /// what its content reads (ruled 2026-11-13, found by the desk9 reference's fuzz seed 11).
+    fn region_reads_in(&self, r: RId, s: SId, kind: impl Fn(&Region) -> bool, probes: bool) -> bool {
         let mut cur = Some(r);
         while let Some(c) = cur {
             if kind(&self.regions[c]) {
                 for rd in &self.readers {
-                    if self.inside(rd.region, c) && self.depends(rd.e, rd.env, s, &mut HashSet::new()) {
+                    if self.inside(rd.region, c) && self.depends_in(rd.e, rd.env, s, &mut HashSet::new(), probes) {
                         return true;
                     }
                 }
@@ -4269,6 +4280,35 @@ mod tests {
         let read = |p: &str| if p == "/app.rx" { Some(src.to_string()) } else { None };
         let set = load_modules("/app.rx", &read).unwrap();
         check_modules(&set, spa).diags.iter().map(|d| (d.line, d.code.clone())).collect()
+    }
+
+    /// 04 R-8 (ruled 2026-11-13): an `errored` region covers a handler's read of a failing value only when its content
+    /// reads the value; `pending? x` takes no failure (the desk9 reference's fuzz seed 11).
+    #[test]
+    fn errored_region_covers_only_a_value_read() {
+        let src = r#"export default component App() {
+  source id := 1
+  labels = await fetch("labels:" + id)
+  errored fallback(e) { <p>failed</p> } {
+    loading fallback { <p>loading</p> } {
+      <button disabled={pending? labels} onClick={() => { log(labels.length) }}>probe</button>
+    }
+  }
+  errored fallback(e) { <p>failed</p> } {
+    loading fallback { <p>loading</p> } {
+      <p>{labels.length}</p>
+      <button disabled={pending? labels} onClick={() => { log(labels.length) }}>read</button>
+    }
+  }
+  loading fallback { <p>loading</p> } {
+    <button disabled={labels.length > 9} onClick={() => { log(labels.length) }}>disabled</button>
+  }
+}
+"#;
+        let got: Vec<i64> = codes(src, false).iter().filter(|(_, c)| c == "UNGUARDED_SNAPSHOT").map(|(l, _)| *l).collect();
+        // `probe`: its region reads only `pending? labels`, so a failure leaves it live; `read` sits beside a value
+        // read; `disabled` reads the value, so a failure disables it
+        assert_eq!(got, vec![6], "{:?}", codes(src, false));
     }
 
     /// 06 AC-3a: a guess a click can make while its value loads a new question, unless the element is covered.

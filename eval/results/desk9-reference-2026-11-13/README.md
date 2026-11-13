@@ -27,7 +27,10 @@ and linked over `eval/node_modules`. `rxc` from this branch. Graded with `harnes
 - **Seed 11, page error (a gap in R-8).** The `add-label` button sat inside an `errored` region whose markup read
   only `pending? shown`. When the labels failed, nothing in that region read the failure, so the button stayed live,
   and its handler's `shown.includes(…)` threw as an uncaught error. The checker accepts a handler read under an
-  `errored` region (R-8), but the region catches only failures its content reads.
+  `errored` region (R-8), but the region catches only failures its content reads. **Ruled by Ryan (2026-11-13):
+  tighten R-8.** An `errored` region, or a `disabled`, covers the failure half only when it reads the value, not only
+  `pending?` of it. `rxc` now refuses seed 11's shape (`UNGUARDED_SNAPSHOT`); the five references with that
+  `labels.rx` (chain1-4, labels) are fixed the same way as desk9's.
 
 ## What the reference does differently
 

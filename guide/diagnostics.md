@@ -801,7 +801,9 @@ export default component App() {
 
 A handler reads a value as a snapshot when it can have no value yet (a first load) or can fail, so the click sees no
 value or throws (R-8). Put the element inside the `loading` / `errored` regions whose content reads the value, with
-`disabled={pending? x}` while a new question is out; or catch the failure in the handler.
+`disabled={pending? x}` while a new question is out; or catch the failure in the handler. The region must read the
+value itself, not only `pending? x`: a probe takes no failure, so a region that reads `x` only through `pending?` stays
+on its content when `x` fails, and the click throws.
 
 ```rx
 export default component App() {
