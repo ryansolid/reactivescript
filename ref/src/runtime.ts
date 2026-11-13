@@ -10,6 +10,7 @@ import { checkModules, unwrapServer } from "./check.ts";
 export { RuleError, CheckError };
 import { makeErrorClass, isA, PANIC, wireCopy, wireFailure } from "./failure.ts";
 import { singleModule, type ModuleSet } from "./modules.ts";
+import { primRx, isPrims } from "./prims.ts";
 /** 12 SF-1d: Solid's server-function wrappers (\`GET\`, \`live\`, …) where there is no network: the function as it is (SF-7b). */
 const LOCAL_WRAPPERS: Record<string, unknown> = { GET: (f: unknown) => f, live: (f: unknown) => f, broadcast: (f: unknown) => f, withMeta: (f: unknown) => f };
 export class ErrVal { err: unknown; constructor(err: unknown) { this.err = err; } }
@@ -184,6 +185,7 @@ export class Runtime {
   declare(decls: Decl[], region: Region) {
     for (const d of decls) {
       if (d.k === "import" && d.resolved) { const m = this.modules.get(d.resolved); if (!m) throw new RuleError("MO-9", `${d.from} is known by its signature only (${d.from.replace(/\.rx$/, ".d.rx")}): there is no body to run`); for (const { name, alias } of d.names) { const b = m.scope.get(name); if (b) region.scope.set(alias, b); } continue; }   // MO-1: the module's own bindings (a type binds nothing)
+      if (d.k === "import" && isPrims(d.from)) { for (const { name, alias } of d.names) { const f = primRx(name); if (!f) throw new RuleError("IMPORT", `${name} from "${d.from}" is not in the scenario prelude`); region.scope.set(alias, { fn: f, home: this.root }); } continue; }   // MO-10: the prelude's primitives, as the .rx they mean
       if (d.k === "import") for (const { name, alias } of d.names) {                    // R-io-4: a JS import is io unless `pure`; the scenario prelude supplies the values
         const v = d.from === "@solidjs/web/server-functions" ? LOCAL_WRAPPERS[name] : name === "log" ? (...a: unknown[]) => { this.log.push(`log(${a.map(fmt).join(", ")})`); } : d.declaredErrors?.includes(name) ? makeErrorClass(name, ["message"], a => String(a[0] ?? name)) : BUILTINS[name] ?? (d.from.endsWith("/api") ? (...a: unknown[]) => this.flight(`${name}:${a.map(fmt).join(",")}`) : undefined);   // "./api": every function is a flight keyed by its arguments
         if (v === undefined) throw new RuleError("IMPORT", `${name} from "${d.from}" is not in the scenario prelude`);

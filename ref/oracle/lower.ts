@@ -18,6 +18,8 @@ import { makeErrorClass, isA, PANIC, wireCopy, wireFailure } from "../src/failur
 import { singleModule, type ModuleSet } from "../src/modules.ts";
 import { nonTailAwaits, viewReaders } from "../src/awaits.ts";
 import { unwrapServer } from "../src/check.ts";
+import { primsSolid, isPrims } from "../src/prims.ts";
+import type { Shape } from "../src/parse.ts";
 /** 12 SF-1d: Solid's server-function wrappers (\`GET\`, \`live\`, …) where there is no network: the function as it is (SF-7b). */
 const LOCAL_WRAPPERS: Record<string, unknown> = { GET: (f: unknown) => f, live: (f: unknown) => f, broadcast: (f: unknown) => f, withMeta: (f: unknown) => f };
 
@@ -97,6 +99,7 @@ type Binding =
   | { k: "store"; get: () => any; set: (v: unknown) => void; setPath: (f: (d: any) => any) => void; question: boolean; setGuess?: (f: (d: any) => any) => void }
   | { k: "memo"; get: () => unknown }
   | { k: "const"; value: unknown }
+  | { k: "jfn"; f: (...a: unknown[]) => unknown; refs: boolean[]; shape: Shape }   // MO-10: a declared JS primitive
   | { k: "fn"; decl: Extract<Decl, { k: "fn" }>; home: Scope }        // home: the declaring scope — bodies are lexical (RG-7a, MO-6)
   | { k: "comp"; decl: Extract<Decl, { k: "component" }>; home: Scope }
   | { k: "action"; run: (...a: unknown[]) => unknown }
@@ -154,8 +157,11 @@ export class Oracle {
 
   /** 09 MO-1: each imported module's scope, declared once, dependencies first. */
   moduleScopes = new Map<string, Scope>();
+  declarations?: ModuleSet["declarations"];
+  private instances = new WeakMap<Binding, { r: any; shape: Shape }>();   // MO-10: a primitive's raw result, under the binding of its instance
   constructor(input: Program | ModuleSet, handlers?: Stmt[][]) {
     const set = "programs" in input ? input : singleModule(input);
+    this.declarations = set.declarations;
     const program = set.programs.get(set.entry)!;
     this.program = program; this.scanHandlers = handlers;
     // usage over every module, deep (the compiler's usage(), ref/compile/emit.ts): guessed targets, path-written or path-probed sources
@@ -228,6 +234,7 @@ export class Oracle {
     for (const d of decls) {
       if (d.k === "import" && d.resolved) { const ms = this.moduleScopes.get(d.resolved); if (!ms) throw new Error(`MO-9: ${d.from} is known by its signature only: there is no body to run`); for (const { name, alias } of d.names) { const b = ms.vars.get(name); if (b) scope.vars.set(alias, b); } continue; }   // MO-1: the module's own bindings
       if (d.k === "eq") { const sf = unwrapServer(d.e); if (sf) this.serverNames.set(sf, d.name); }   // SF-1d
+      if (d.k === "import" && isPrims(d.from)) { const prims = primsSolid({ createSignal: createSignal as any, createMemo: createMemo as any }); for (const { name, alias } of d.names) { const x = this.declarations?.get(d.declared ?? "")?.find(y => y.name === name); if (!x || x.kind !== "fn" || !x.instantiates || !prims[name]) throw new Error(`${name} from "${d.from}" is not a declared primitive of the prelude`); scope.vars.set(alias, { k: "jfn", f: prims[name], refs: x.refs ?? [], shape: x.shape ?? "value" }); } continue; }   // MO-10: Solid primitives, as a library writes them
       if (d.k === "import") for (const { name, alias } of d.names) { const v = d.from === "@solidjs/web/server-functions" ? LOCAL_WRAPPERS[name] : name === "log" ? (...a: unknown[]) => { this.log.push(`log(${a.map(fmt).join(", ")})`); } : d.declaredErrors?.includes(name) ? makeErrorClass(name, ["message"], a => String(a[0] ?? name)) : BUILTINS[name] ?? (d.from.endsWith("/api") ? (...a: unknown[]) => { const fl = this.flight(`${name}:${a.map(fmt).join(",")}`); return process.env.ORACLE_PROMISES ? fl.first : fl; } : undefined); if (v === undefined) throw new Error(`${name} from "${d.from}" is not in the scenario prelude`); scope.vars.set(alias, { k: "const", value: v }); }
       if (d.k === "server") scope.vars.set(d.name, { k: "const", value: this.serverFn(d, scope) });
       if (d.k === "error") { const msg = d.msg; scope.vars.set(d.name, { k: "const", value: makeErrorClass(d.name, d.params, args => msg ? String(untrack(() => this.ev(msg, scope, new Map(d.params.map((p, i) => [p, args[i]] as const))))) : d.name) }); }   // R-f-1
@@ -273,6 +280,7 @@ export class Oracle {
           break;
         }
         case "eq": {
+          if (this.foreign(d, scope)) break;
           if (d.e.k !== "draft") this.hoistAwaits(d.name, d.e, scope);
           if (d.e.k === "draft") {                                      // ST-3: createProjection((draft) => …, seed)
             const seedE = d.e.seed; if (seedE.k !== "pre" || seedE.name !== d.name || !seedE.init) throw new Unsupported("draft seed must be `pre self -> seed`");
@@ -364,6 +372,30 @@ export class Oracle {
     const walk = (x: Expr): void => { if (init) return; if (x.k === "await" && x.init) { init = x.init; return; } for (const v of Object.values(x as object)) { if (Array.isArray(v)) v.forEach(y => y && typeof y === "object" && "k" in y && walk(y as Expr)); else if (v && typeof v === "object" && "k" in (v as object)) walk(v as Expr); } };
     walk(e);
     return init ? { loadingValue: untrack(() => this.ev(init!, scope)) } : undefined;
+  }
+  /** MO-10: `x = f(…)` over a declared primitive — called once, a ref argument as an accessor, a value one untracked; and
+   *  `y = x[i]` / `x.k` over its result. A `ref` part is the accessor itself; any other part is the value it is. */
+  private foreign(d: Extract<Decl, { k: "eq" }>, scope: Scope): boolean {
+    const e = d.e;
+    const bindPart = (r: any, part: Shape): Binding => part === "ref" ? { k: "memo", get: r } : { k: "const", value: r };
+    if (e.k === "call" && e.f.k === "id") {
+      const b = scope.lookup(e.f.name); if (!b || b.k !== "jfn") return false;
+      const args = e.args.map((a, i) => {
+        if (!b.refs[i]) return untrack(() => this.ev(a, scope));
+        const ab = a.k === "id" ? scope.lookup(a.name) : undefined;
+        return ab && (ab.k === "sig" || ab.k === "memo" || ab.k === "store") ? ab.get : createMemo(() => this.ev(a, scope));
+      });
+      const r = b.f(...args) as any; const shape = b.shape;
+      const bind = typeof shape === "string" ? bindPart(r, shape) : { k: "memo" as const, get: createMemo(() => "items" in shape ? shape.items.map((p, i) => p === "ref" ? r[i]() : r[i]) : Object.fromEntries(shape.fields.map(([k, p]) => [k, p === "ref" ? r[k]() : r[k]]))) };
+      this.instances.set(bind, { r, shape }); scope.vars.set(d.name, bind); return true;
+    }
+    if ((e.k === "index" && e.i.k === "lit") || e.k === "member") {
+      const ob = e.o.k === "id" ? scope.lookup(e.o.name) : undefined; const inst = ob && this.instances.get(ob); if (!inst || typeof inst.shape !== "object") return false;
+      const key = e.k === "index" ? (e.i as { v: any }).v : e.p;
+      const part = "items" in inst.shape ? inst.shape.items[key] : inst.shape.fields.find(f => f[0] === key)?.[1]; if (!part) return false;
+      scope.vars.set(d.name, bindPart(inst.r[key], part)); return true;
+    }
+    return false;
   }
   private fnOf(e: Expr, scope: Scope) { if (e.k !== "call" || e.f.k !== "id") return null; const b = scope.lookup(e.f.name); return b && b.k === "fn" ? b.decl : null; }
   private fnHome(e: Expr, scope: Scope): Scope { const b = e.k === "call" && e.f.k === "id" ? scope.lookup(e.f.name) : undefined; return b && b.k === "fn" ? b.home : scope; }

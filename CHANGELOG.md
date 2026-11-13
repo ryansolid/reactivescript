@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+**New**
+
+- Solid libraries (MO-10): declare a primitive once in a `.d.rx` (`export pure fn createToggle(v: boolean): [ref
+  boolean, (v: boolean) => void]`) and use it like .rx: it is called once, `ref` arguments go in as accessors, readers
+  are read without a call, and setters are io. A package's `.d.rx` sits beside the file its import resolves to.
+  `guide/libraries.md`.
+
 ## 0.2.0
 
 `@reactivescript/compiler`, `@reactivescript/runtime`, `@reactivescript/language-server` and the editor extension,

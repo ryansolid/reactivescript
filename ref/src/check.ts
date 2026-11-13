@@ -5,7 +5,7 @@
 import type { Decl, Expr, Markup, Program, Stmt } from "./ast.ts";
 import type { Diagnostic } from "./errors.ts";
 import type { ModuleSet } from "./modules.ts";
-import type { JsDecl } from "./parse.ts";
+import type { JsDecl, Shape } from "./parse.ts";
 import { misnested, misnestedInside, P_CLOSERS, P_SCOPE, EMPTY_SHAPE, type Shape } from "./content.ts";
 import { ModelBuilder, type Model, type RegionKind, type CompKind } from "./model.ts";
 import { inferredAction, runFindings, triggerText } from "./infer.ts";
@@ -94,6 +94,8 @@ type Sym = {
   side?: "server" | "client";          // 12 SF-5: JS that runs on one side only
   ioVia?: string;                      // 12 SF-1: a server fn that is io — the call in its body that makes it so
   serverRejects?: () => Set<string>;   // SF-6b: what a call's promise rejects with — its body's failures, and Error (transit)
+  foreign?: Shape;                     // MO-10: a declared JS primitive (a fn) or an instance of one (an equation): what its result is
+  reader?: boolean;                    // MO-10d: bound from a foreign accessor — it may hold, as a question's reader does
   fnDecl?: Extract<Decl, { k: "fn" }>; declEnv?: Env;   // a fn's declaration and the scope it names from (SF-3: what it reaches)   // a context (RG-7): its identity, whether it carries a source, and its declared rows (null: inferred from its provisions)
 };
 const reactiveKinds = new Set<SymKind>(["source", "eq", "props"]);
@@ -402,13 +404,14 @@ class Checker {
     const absentMemo = new Map<Sym, boolean>();
     const absent = (t: Sym, busy: Set<Sym>): boolean => {
       if (absentMemo.has(t)) return absentMemo.get(t)!;
+      if (t.reader) return true; if (t.foreign === "fn" || t.foreign === "value") return false;   // MO-10: a reader may hold; a primitive's other parts are bound as they are
       if (!t.expr || !t.env || busy.has(t)) return false;
       busy.add(t);
       const env = t.env;
       const go = (x: Expr): boolean => {
         if (x.k === "fn" || x.k === "peek") return false;
         if (x.k === "await") return !x.init;
-        if (x.k === "id") { const u = env.lookup(x.name); return !!u && u !== t && (u.kind === "eq" || u.kind === "source") && absent(u, busy); }
+        if (x.k === "id") { const u = env.lookup(x.name); return !!u && u !== t && (u.kind === "eq" || u.kind === "source") && (!!u.reader || absent(u, busy)); }   // MO-10d: a foreign reader may hold
         return subExprs(x).some(go);
       };
       const out = go(t.expr);
@@ -486,7 +489,7 @@ class Checker {
       if (d.k === "fn") { sym.params = d.params; sym.instantiating = d.params.some(p => p.ref) || d.decls.length > 0; sym.fnDecl = d; sym.declEnv = env; }
       if (d.k === "component") { sym.comp = d; sym.compRegion = this.region(env.region, "component", { component: true, name: d.name }); this.compSyms.set(sym.compRegion, sym); }
       if (d.k === "eq") sym.eqDecl = d;
-      if (d.k === "eq") { sym.mapsRecords = !d.key && mapsIntoRecords(d.e); if (d.e.k === "id") { const t = env.lookup(d.e.name); if (t?.io) sym.io = true; } }
+      if (d.k === "eq") { sym.mapsRecords = !d.key && mapsIntoRecords(d.e); if (d.e.k === "id") { const t = env.lookup(d.e.name); if (t?.io) sym.io = true; } this.foreignPart(sym, d.e, env); }
       if (d.k === "eq") { const sf = unwrapServer(d.e); if (sf) { sym.kind = "server"; sym.params = sf.params.map(name => ({ name, ref: false })); this.serverExprs.set(sf, sym); } }   // SF-1d: a wrapped server fn is one, its rows the function's
       this.bind(env, d.name, sym);
     }
@@ -573,8 +576,23 @@ class Checker {
       if (x.kind === "error") { this.bind(env, alias, { kind: "errclass", name: alias, region: env.region, line: d.line }); continue; }
       if (d.pure && !x.pure) this.err("IMPORT_ROW_MISMATCH", "MO-8", `${name} is declared io in ${file} (\`export fn\`, not \`export pure fn\`); \`pure\` on the import cannot lower it`);
       if (d.side && x.side !== d.side) this.err("IMPORT_ROW_MISMATCH", "SF-5", `${name} is declared ${x.side ? `\`${x.side}\`` : "for both sides"} in ${file}; \`${d.side}\` on the import cannot restate it`);
+      if (x.instantiates) { this.bind(env, alias, { kind: "fn", name: alias, region: env.region, line: d.line, params: x.params.map((n, i) => ({ name: n, ref: !!x.refs?.[i] })), instantiating: true, foreign: x.shape, rows: () => new Set(), failsT: () => ({ cls: new Set(), props: [] }), rejects: new Set() }); continue; }   // MO-10a: a primitive is an instantiation (RG-6)
       this.bind(env, alias, { kind: "import", name: alias, region: env.region, line: d.line, io: !x.pure, rejects: new Set(x.rejects ?? ["Error"]), side: x.side });
     }
+  }
+  /** MO-10b: an equation bound from a primitive's result, or from a part of it (`[a, b] = f(…)`, `x.k`): a `ref` part is a
+   *  reader (it may hold, MO-10d), a function part is io (R-io-3), anything else is a value. */
+  private foreignPart(sym: Sym, e: Expr, env: Env) {
+    let shape: Shape | undefined;
+    if (e.k === "call" && e.f.k === "id") { const f = env.lookup(e.f.name); if (f?.kind === "fn" && f.foreign) shape = f.foreign; }
+    else if ((e.k === "index" && e.i.k === "lit" && typeof e.i.v === "number") || e.k === "member") {
+      const t = e.o.k === "id" ? env.lookup(e.o.name) : undefined; const s = t?.foreign;
+      if (s && typeof s === "object") shape = e.k === "index" ? ("items" in s ? s.items[(e.i as { v: number }).v] : undefined) : ("fields" in s ? s.fields.find(f => f[0] === e.p)?.[1] : undefined);
+    }
+    if (!shape) return;
+    sym.foreign = shape;
+    if (shape === "fn") sym.io = true;
+    if (shape === "ref") sym.reader = true;
   }
   /** MO-3: this module's signature — every export as an importer sees it. */
   signature(p: Program): ModSig {

@@ -399,10 +399,89 @@ fn skip_line(c: &mut Cursor) {
     }
 }
 
+/// MO-10b: what a primitive's result is — a reader (`ref T`, an accessor), an io function, a value; or a tuple or record
+/// of those (only the result and its parts are declared).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Part {
+    Ref,
+    Fn,
+    Value,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Shape {
+    Part(Part),
+    Items(Vec<Part>),
+    Fields(Vec<(String, Part)>),
+}
+impl Shape {
+    pub fn has_ref(&self) -> bool {
+        match self {
+            Shape::Part(p) => *p == Part::Ref,
+            Shape::Items(xs) => xs.contains(&Part::Ref),
+            Shape::Fields(fs) => fs.iter().any(|f| f.1 == Part::Ref),
+        }
+    }
+}
+fn split_top(s: &str, seps: &str) -> Vec<String> {
+    let cs: Vec<char> = s.chars().collect();
+    let mut out = vec![];
+    let mut depth: i64 = 0;
+    let mut from = 0;
+    for i in 0..cs.len() {
+        let ch = cs[i];
+        if "([{<".contains(ch) {
+            depth += 1;
+        } else if ")]}>".contains(ch) && !(ch == '>' && i > 0 && cs[i - 1] == '=') {
+            depth -= 1;
+        } else if depth == 0 && seps.contains(ch) {
+            out.push(cs[from..i].iter().collect::<String>());
+            from = i + 1;
+        }
+    }
+    out.push(cs[from..].iter().collect::<String>());
+    out.into_iter().map(|x| js_trim(&x).to_string()).filter(|x| !x.is_empty()).collect()
+}
+re!(REF_PART, r"^ref\s");
+re!(FN_PART, r"\)\s*=>");
+re!(REF_WORD, r"\bref\s+");
+re!(INSTANTIATES, r"(^|[^A-Za-z0-9_$])instantiates([^A-Za-z0-9_$]|$)");
+fn part_of(t: &str) -> Part {
+    if REF_PART.is_match(t) {
+        Part::Ref
+    } else if t.starts_with('(') && FN_PART.is_match(t) {
+        Part::Fn
+    } else {
+        Part::Value
+    }
+}
+fn shape_of(t: &str) -> Shape {
+    if t.starts_with('[') && t.ends_with(']') && t.len() >= 2 {
+        return Shape::Items(split_top(&t[1..t.len() - 1], ",").iter().map(|x| part_of(x)).collect());
+    }
+    if t.starts_with('{') && t.ends_with('}') && t.len() >= 2 {
+        return Shape::Fields(
+            split_top(&t[1..t.len() - 1], ",;")
+                .iter()
+                .map(|f| {
+                    let (k, v) = match f.find(':') {
+                        Some(i) => (&f[..i], &f[i + 1..]),
+                        None => (&f[..f.len().saturating_sub(1)], &f[..]),
+                    };
+                    let k = js_trim(k);
+                    (k.strip_suffix('?').unwrap_or(k).to_string(), part_of(js_trim(v)))
+                })
+                .collect(),
+        );
+    }
+    Shape::Part(part_of(t))
+}
+
 /// MO-8: a declaration file (`api.d.rx`) for a JS module.
 #[derive(Debug, Clone)]
 pub enum JsDecl {
-    Fn { name: String, pure: bool, params: Vec<String>, rejects: Option<Vec<String>>, line: usize, side: Option<Side>, ptypes: Vec<Option<String>>, ret: Option<String> },
+    /// ret: the type text with `ref` taken out (for TY); MO-10: refs (ref parameters), shape (what the result is),
+    /// instantiates (written, or inferred from a ref on either side)
+    Fn { name: String, pure: bool, params: Vec<String>, rejects: Option<Vec<String>>, line: usize, side: Option<Side>, ptypes: Vec<Option<String>>, ret: Option<String>, refs: Vec<bool>, shape: Shape, instantiates: bool },
     Error { name: String, line: usize },
     Type { name: String, line: usize, text: String },
 }
@@ -479,9 +558,22 @@ pub fn parse_declarations(src: &str) -> R<Vec<JsDecl>> {
         c.ws(true);
         let mut params = vec![];
         let mut ptypes = vec![];
+        let mut refs = vec![];
         while !c.starts_with(")") {
+            let r = c.keyword("ref"); // MO-10a: a ref parameter takes an accessor
+            if r {
+                c.ws(true);
+            }
+            refs.push(r);
             params.push(c.ident_or("param")?);
-            ptypes.push(opt_type(&mut c, false)?);
+            c.ws(false);
+            ptypes.push(if c.peek() == ':' {
+                c.bump();
+                c.ws(true);
+                Some(parse_type(&mut c, false, true)?)
+            } else {
+                None
+            });
             c.ws(true);
             if !c.eat(",") {
                 break;
@@ -492,18 +584,28 @@ pub fn parse_declarations(src: &str) -> R<Vec<JsDecl>> {
         let save = c.i;
         c.ws(false);
         let mut ret = None;
+        let mut shape = None;
         if c.peek() == ':' {
             c.bump();
             c.ws(true);
             let t = c.rest().split('\n').next().unwrap_or("").to_string();
-            let r = REJECTS.find(&t).map(|m| m.end() - "rejects(".len());
+            let r1 = REJECTS.find(&t).map(|m| m.end() - "rejects(".len());
+            let r2 = INSTANTIATES.find(&t).map(|m| m.start() + if t[m.start()..].starts_with("instantiates") { 0 } else { 1 });
+            let r = match (r1, r2) {
+                (Some(a), Some(b)) => Some(a.min(b)),
+                (a, b) => a.or(b),
+            };
             let head = match r {
                 Some(at) => &t[..at],
                 None => &t[..],
             };
             let head = LINE_COMMENT.replace(head, "");
             let head = js_trim(&head).to_string();
-            ret = if head.is_empty() { None } else { Some(head) };
+            if !head.is_empty() {
+                shape = Some(shape_of(&head)); // MO-10b: `ref T` is an accessor, read as T
+            }
+            let stripped = REF_WORD.replace_all(&head, "").to_string();
+            ret = if stripped.is_empty() { None } else { Some(stripped) };
             c.i += r.unwrap_or(t.len());
         } else {
             c.i = save;
@@ -517,7 +619,11 @@ pub fn parse_declarations(src: &str) -> R<Vec<JsDecl>> {
             c.ws(true);
             c.expect(")")?;
         }
-        out.push(JsDecl::Fn { name, pure, params, rejects, line, side, ptypes, ret });
+        c.ws(false);
+        let written = c.keyword("instantiates");
+        let instantiates = written || refs.iter().any(|x| *x) || shape.as_ref().is_some_and(|s| s.has_ref()); // MO-10a
+        let shape = shape.unwrap_or(Shape::Part(Part::Value));
+        out.push(JsDecl::Fn { name, pure, params, rejects, line, side, ptypes, ret, refs, shape, instantiates });
     }
 }
 

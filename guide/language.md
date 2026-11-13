@@ -14,6 +14,8 @@ import { Avatar } from "./Avatar.rx"       // another .rx module
 export default component App() { … }       // the entry module's default component is mounted
 ```
 
+A Solid library (solid-primitives and the like) is declared once in a `.d.rx` and then used like .rx: `libraries.md`.
+
 A file's top level is imports, exports and declarations. A `source` at the top level is app state; inside a
 component it is that instance's state. Only the block that declares a source writes it: importers, props, function
 parameters and contexts are read-only, at every path into a store. To let other code write it, hand it an action that

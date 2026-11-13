@@ -9,6 +9,7 @@ use crate::awaits::{is_handler, non_tail_awaits, view_readers};
 use crate::check::{children, unwrap_server, Node};
 use crate::js::*;
 use crate::modules::ModuleSet;
+use crate::parse::{JsDecl, Part, Shape as FShape};
 use crate::signature::ExportSig;
 use indexmap::{IndexMap, IndexSet};
 use serde_json::Value;
@@ -41,6 +42,8 @@ enum Kind {
     Val,
     Fn,
     Ifn,
+    /// MO-10: a declared JS primitive
+    Jfn,
     Act,
     Comp,
 }
@@ -58,9 +61,12 @@ struct Bind {
     prev: Option<String>,
     /// `client` JS (12 SF-5b)
     client: bool,
+    /// MO-10: a primitive's result (Jfn), or an instance's (with `inst`, the name of its raw result)
+    shape: Option<FShape>,
+    inst: Option<String>,
 }
 fn bind(kind: Kind, js: impl Into<String>) -> Bind {
-    Bind { kind, js: js.into(), w: None, f: None, prev: None, client: false }
+    Bind { kind, js: js.into(), w: None, f: None, prev: None, client: false, shape: None, inst: None }
 }
 fn val(js: impl Into<String>) -> Bind {
     bind(Kind::Val, js)
@@ -252,6 +258,11 @@ struct Gen<'p> {
     hoist_seq: usize,
     frames: Vec<Frame>,
     style_ids: u32,
+}
+
+/// MO-10: the scenario prelude's `./prims`, a JS module of Solid primitives (`ref/compile/prims-solid.ts`).
+fn is_prims(from: &str) -> bool {
+    from == "prims" || from == "prims.js" || from.ends_with("/prims") || from.ends_with("/prims.js")
 }
 
 impl<'p> Gen<'p> {
@@ -608,8 +619,17 @@ impl<'p> Gen<'p> {
         for d in decls {
             match d {
                 Decl::Import { resolved: Some(_), .. } => {}
-                Decl::Import { names, side, declared_side, .. } => {
+                Decl::Import { names, side, declared_side, declared, .. } => {
                     for n in names {
+                        // MO-10a: a declared primitive
+                        let x = declared.as_ref().and_then(|dp| self.set.declarations.get(dp)).and_then(|ds| ds.iter().find(|y| y.name() == n.name));
+                        if let Some(JsDecl::Fn { params, refs, shape, instantiates: true, .. }) = x {
+                            let mut b = bind(Kind::Jfn, mg(&n.alias));
+                            b.f = Some(FnRef { params: params.iter().enumerate().map(|(i, p)| (p.clone(), refs.get(i).copied().unwrap_or(false))).collect(), decl: None });
+                            b.shape = Some(shape.clone());
+                            self.set(env, &n.alias, b);
+                            continue;
+                        }
                         let mut b = val(mg(&n.alias));
                         b.client = *side == Some(crate::ast::Side::Client)
                             || declared_side.as_ref().is_some_and(|ds| ds.iter().any(|(k, s)| *k == n.name && *s == crate::ast::Side::Client));
@@ -634,6 +654,14 @@ impl<'p> Gen<'p> {
                 Decl::Eq { name, e, .. } if unwrap_server(e).is_some() => self.set(env, name, val(mg(name))),
                 Decl::Eq { name, e, deferred, .. } => {
                     let mut b = bind(Kind::Acc, mg(name));
+                    if let ExprKind::Call { f, .. } = &e.k {
+                        if let ExprKind::Id(fname) = &f.k {
+                            if let Some(jf) = self.lookup(env, fname).filter(|x| x.kind == Kind::Jfn) {
+                                b.inst = Some(format!("r${name}"));
+                                b.shape = jf.shape.clone();
+                            }
+                        }
+                    }
                     if self.guessed_eq(name, e, *deferred) {
                         b.w = Some(format!("w${name}"));
                     }
@@ -658,6 +686,9 @@ impl<'p> Gen<'p> {
                     dot(id("__B"), name)
                 } else if from.ends_with("/api") {
                     rtc("api", vec![str(name.clone())])
+                } else if is_prims(from) {
+                    // MO-10: the scenario prelude's Solid primitives
+                    rtc("prim", vec![str(name.clone())])
                 } else {
                     return fail(format!("{name} from \"{from}\" is not in the scenario prelude"));
                 };
@@ -1001,6 +1032,9 @@ impl<'p> Gen<'p> {
                         }
                     }
                 }
+                if let Some(fx) = self.foreign(e, env, &b)? {
+                    return fin(fx, self);
+                }
                 if let Some(k) = key {
                     let x = self.expr(e, env, &Ctx { tail: true, ..Ctx::default() })?;
                     return fin(vec![konst(b.js.clone(), rtc("keyed", vec![str(name.clone()), str(k.clone()), thunk(x)]))], self);
@@ -1132,6 +1166,74 @@ impl<'p> Gen<'p> {
         };
         body.push(S::Return(Some(t)));
         Ok(S::Func(Func { name: Some(mg(name)), params: ps, directives: vec![], body, is_async: false, generator: false }))
+    }
+    /// MO-10: `x = f(…)` over a declared primitive — called once (RG-6), a ref argument as an accessor, a value one
+    /// untracked; and `y = x[i]` / `x.k` over its result. A `ref` part is bound to the accessor itself, any other part to
+    /// its value.
+    fn foreign(&mut self, e: &Expr, env: Env, b: &Bind) -> R<Option<Vec<S>>> {
+        fn part(r: E, p: Part) -> E {
+            if p == Part::Ref {
+                r
+            } else {
+                thunk(r)
+            }
+        }
+        let ix = |r: &str, k: E| E::Index(Box::new(id(r)), Box::new(k), false);
+        match &e.k {
+            ExprKind::Call { f, args } => {
+                let ExprKind::Id(fname) = &f.k else { return Ok(None) };
+                let Some(fb) = self.lookup(env, fname).filter(|x| x.kind == Kind::Jfn) else { return Ok(None) };
+                let refs: Vec<bool> = fb.f.as_ref().unwrap().params.iter().map(|p| p.1).collect();
+                let mut out = vec![];
+                for (i, a) in args.iter().enumerate() {
+                    if !refs.get(i).copied().unwrap_or(false) {
+                        out.push(rtc("untrack", vec![thunk(self.expr(a, env, &reactive())?)]));
+                        continue;
+                    }
+                    if let ExprKind::Id(n) = &a.k {
+                        if let Some(ab) = self.lookup(env, n).filter(|ab| matches!(ab.kind, Kind::Acc | Kind::Src)) {
+                            out.push(id(ab.js));
+                            continue;
+                        }
+                    }
+                    out.push(rtc("memo", vec![E::Null, thunk(self.expr(a, env, &reactive())?)]));
+                }
+                let r = b.inst.clone().unwrap();
+                let whole = match fb.shape.as_ref().unwrap() {
+                    FShape::Part(p) => part(id(r.clone()), *p),
+                    FShape::Items(items) => rtc(
+                        "memo",
+                        vec![E::Null, thunk(E::Arr(items.iter().enumerate().map(|(i, p)| { let x = ix(&r, E::Num(i as f64)); if *p == Part::Ref { call(x, vec![]) } else { x } }).collect()))],
+                    ),
+                    FShape::Fields(fields) => rtc(
+                        "memo",
+                        vec![E::Null, thunk(E::Obj(fields.iter().map(|(k, p)| { let x = ix(&r, str(k.clone())); Prop::Kv(Key::Str(k.clone()), if *p == Part::Ref { call(x, vec![]) } else { x }) }).collect()))],
+                    ),
+                };
+                Ok(Some(vec![konst(r.clone(), call(id(fb.js.clone()), out)), konst(b.js.clone(), whole)]))
+            }
+            ExprKind::Index { o, .. } | ExprKind::Member { o, .. } => {
+                let ExprKind::Id(on) = &o.k else { return Ok(None) };
+                let Some(ob) = self.lookup(env, on) else { return Ok(None) };
+                let (Some(inst), Some(sh)) = (ob.inst.clone(), ob.shape.clone()) else { return Ok(None) };
+                let (key, p) = match (&e.k, &sh) {
+                    (ExprKind::Index { i, .. }, FShape::Items(items)) => match &i.k {
+                        ExprKind::Lit(Lit::Num(v)) if *v >= 0.0 && v.fract() == 0.0 => match items.get(*v as usize) {
+                            Some(p) => (E::Num(*v), *p),
+                            None => return Ok(None),
+                        },
+                        _ => return Ok(None),
+                    },
+                    (ExprKind::Member { p: k, .. }, FShape::Fields(fields)) => match fields.iter().find(|f| &f.0 == k) {
+                        Some(f) => (str(k.clone()), f.1),
+                        None => return Ok(None),
+                    },
+                    _ => return Ok(None),
+                };
+                Ok(Some(vec![konst(b.js.clone(), part(ix(&inst, key), p))]))
+            }
+            _ => Ok(None),
+        }
     }
     fn instantiate(&mut self, e: &Expr, env: Env) -> R<E> {
         let ExprKind::Call { f, args } = &e.k else { unreachable!() };

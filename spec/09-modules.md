@@ -214,6 +214,88 @@ export component Save(props: { v: unrendered action go catches(nothing) })
   only a `.d.rx` checks and compiles; it runs once that JavaScript exists
   (`ref/`'s runners have none, so S-module-3 is checked only).
 
+## MO-10 — Solid libraries
+
+A Solid primitive is a JS function called once in an owner that hands back
+accessors, setters and stores. Its declaration (MO-8) says so in the words a
+printed `.rx` signature already has (MO-9b). Nothing is added at run time: the
+call is the same JS call, placed where an instantiation goes (RG-6a).
+
+```rx
+// media.d.rx, beside ./media.js, or shipped by the package (MO-10c)
+export pure fn createToggle(initial: boolean): [ref boolean, (v: boolean) => void]
+export pure fn createDebounced(ref source: string, ms: number): ref string
+export pure fn createMediaQuery(query: string): ref boolean
+export pure fn createEventListener(target: EventTarget, type: string, handler: (e: Event) => void) instantiates
+```
+
+```rx
+import { createToggle, createDebounced, createMediaQuery } from "./media.js"
+
+export component Search(props: { start: boolean, q: string }) {
+  [isOn, setOn] = createToggle(peek props.start)   // once; without peek, SNAPSHOT_ARGUMENT (E-10)
+  query = createDebounced(props.q, 300)            // ref: passed as () => props.q
+  wide = createMediaQuery("(min-width: 768px)")
+  action flip() { setOn(!isOn) }                   // `x = setOn(true)` is IO_IN_REACTIVE
+  <button onClick={flip}>{isOn && wide ? query : "off"}</button>
+}
+```
+
+- **MO-10a (Instantiating JS functions).** A JS declaration's `fn` may end
+  with `instantiates`. As E-9 infers it for an `.rx` fn, it is inferred when a
+  parameter is `ref` or the return has a `ref` part (a reader handed back means
+  the call made nodes), so it is written only for a primitive with neither —
+  one that registers a listener, or returns a store. A call is an
+  instantiation (RG-6): once, in the caller's region, never re-evaluated; the
+  primitive's owner is that region, so its cleanups run with it. Value
+  arguments are snapshots (E-10); a `ref` argument is passed as an accessor,
+  `() => e` (RG-6b), which is Solid's `Accessor<T>` argument. It must be bound
+  (`INSTANTIATION_NOT_BOUND`). A primitive is declared `pure fn`, as a
+  printed `.rx` one is (`export pure fn toggle(ref start: boolean)
+  instantiates`): making it writes no reactive state but its own, so it is
+  called where its value is bound; what it hands back is MO-10b's. `.rx` has no accessor type: `ref` is the one
+  word for an accessor at the boundary, in either direction.
+- **MO-10b (What the result is).** The return says what `.rx` sees:
+  - `ref T` is a *reader*. Bound by destructuring or projection, it is an
+    equation of `T`, read without a call (`isOn`, not `isOn()`): the name is
+    bound to the accessor and each read compiles to its call, with no node of
+    its own. Passed to a `ref` parameter, the accessor is passed as it is, not
+    wrapped again. In imperative scope a read is its value, as any
+    equation's.
+  - A function type is `io` (R-io-3): callable only in imperative scope.
+    A primitive's functions write, so `pure` on a part is not offered.
+  - Anything else, a store or a plain value, is a value. A store's fields
+    track at run time as Solid's do. A store passed *in* is likewise passed as
+    itself; an `.rx` structured source is a store behind a signal slot (11), so
+    a whole write (`todos := next`) swaps it, and a value parameter misses
+    that: `SNAPSHOT_ARGUMENT` stands (`peek todos` says it is meant), and an
+    API that takes an accessor of a store declares `ref`.
+  - Only the return and its tuple or object parts are declared; an accessor
+    nested deeper is a value.
+- **MO-10c (Where a package's declaration is).** Beside the file the import
+  resolves to, as MO-8a's is beside a relative module and a `.d.ts` beside its
+  `.js`: `@solid-primitives/media` resolves through the package's `exports`
+  with the build's conditions to `dist/index.jsx`, and its declaration is
+  `dist/index.d.rx`. No export condition is needed. A package whose
+  conditions resolve to more than one file ships the declaration beside
+  each; the rows of one export are the same in every build.
+  A package that ships none is declared through a local module: `./media.js`
+  re-exports it and `./media.d.rx` beside it declares it (MO-8a, MO-8c).
+  Without either, the import is what R-io-4 says, and `import pure` of a
+  primitive is unchecked (CN-5): the call is then lifted (E-9) and re-runs,
+  rebuilding the primitive, whenever an argument changes.
+- **MO-10d (Holds; Ryan 2026-11-13).** Solid promises nothing about an
+  accessor: any read can hold. A reader bound from a `ref` result is checked
+  as a reader of a question (ST-5): `pending?`, `latest` and `loading` apply,
+  with whatever hold checks a reader of `await` gets. Its hold is visible
+  where it is bound, at the instantiation, as a question's is at its `await`.
+  No declaration can say an accessor never holds.
+- **MO-10e (What stays the library's).** A call to a foreign setter is not a
+  write of a source: O-4 and AC-1 see only `.rx` sources. So a read of `isOn`
+  after `setOn(v)` in the same action reads the value before the write, under
+  Solid's batching, and AC-1d cannot say so; the guide teaches it. A plain
+  closure passed as a callback option is unchecked, as O-4a's is.
+
 ---
 
 ## Diagnostics this document adds
@@ -228,6 +310,15 @@ export component Save(props: { v: unrendered action go catches(nothing) })
 
 ## Implementation
 
+- MO-10: `parseDeclarations` reads `ref`, `ref T` and `instantiates` into a
+  declaration's `refs` and `shape`; the checker binds a primitive as an
+  instantiating fn (so E-9, E-10 and RG-6's checks are an `.rx` fn's) and
+  marks each equation bound from its result a reader, an io function or a
+  value. The lowering calls it once and binds a `ref` part to the accessor
+  itself. A package's declaration is found by `packageDeclaration`
+  (`modules.ts`, `package_declaration` in the crate). The scenarios' Solid
+  library is `./prims` (`ref/src/prims.ts`: the `.rx` the interpreter runs,
+  and `compile/prims-solid.ts`, the Solid primitives the other runners call).
 - `ref/src/modules.ts` loads an entry and every `.rx` module it imports,
   sets each import's resolved key, orders them dependencies first, and
   reports cycles and missing modules. Scenarios declare modules in a
@@ -270,3 +361,16 @@ export component Save(props: { v: unrendered action go catches(nothing) })
    static check this could add). The added words are MO-9b's; `uses(…)`
    names keys by relative path (`./ui.rx#who`) where it named a bare file
    name, so that a key is exact across directories.
+7. **Solid libraries are declared, not wrapped** (MO-10; taken by default
+   2026-11-13, veto here). A JS `.d.rx` takes `instantiates` and `ref`, the
+   words of a printed signature, and `ref T` in a return (new: `ref` in a
+   type position, in JS declarations only — an `.rx` import never needs it,
+   since a returned equation is its value). `instantiates` is inferred from
+   `ref` and written only where neither side has one. Ryan, 2026-11-13: any
+   accessor can hold (MO-10d), and the notation is `.rx`'s, with no
+   `Accessor` type. A package ships its declaration beside the file its import
+   resolves to, as a `.d.ts` beside its `.js` (an `"rx"` export condition was
+   drafted and dropped, Ryan 2026-11-13: nothing needs it), else a local
+   re-export declares it; a project-level folder of
+   declarations keyed by package was the alternative, not taken.
+   Built in `ref/` and the crate (S-module-4).
