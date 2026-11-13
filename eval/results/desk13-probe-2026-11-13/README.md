@@ -41,5 +41,5 @@ rx-4..6 tested normally.
 
 ## Guide change after this probe
 
-`guide/async.md` "Data belongs with its lifetime" now states three limits: only data a write *refreshes* moves to a
-module; guess it only through lists of its own; copy what the page shows (the count) where the page shows it.
+`guide/async.md` "Data belongs with its lifetime" now gives one rule (each value has one lifetime: the visit, the write
+or the screen; split a value that would need two) and derives the module list, the save, the guess and the count from it.
