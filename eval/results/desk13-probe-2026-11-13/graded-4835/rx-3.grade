@@ -1,0 +1,12 @@
+== hidden
+✗ base: tabs: the settings page loads again when reopened, with a fresh draft
+76/77 passed
+== overlap
+✗ base: tabs: a save that answers after the page was left shows the reloaded settings
+37/38 passed
+== fuzz
+desk13-rx-3: 2/20 seeds found a hole
+  seed 11 step -1: page crash: session timed out (120 s): the page hangs
+    
+  seed 19 step -1: page crash: session timed out (120 s): the page hangs
+    
