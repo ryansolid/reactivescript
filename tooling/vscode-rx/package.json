@@ -2,7 +2,7 @@
   "name": "reactivescript",
   "displayName": "ReactiveScript",
   "description": "ReactiveScript (.rx, .d.rx): highlighting, and TypeScript's types, hover, go to definition, completion and errors through the .rx language server, with the compiler's own diagnostics; ```rx blocks highlighted in Markdown.",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "publisher": "solidjs",
   "license": "MIT",
   "icon": "icon.png",

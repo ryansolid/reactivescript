@@ -169,6 +169,14 @@ attributes are equations, children are readers, components are applied as
   element and bare at block level. `portal to(e) { … }` renders into `e`
   (RG-8). Each block is a region: declarations, then markup
   (RG-1, RG-2, RG-5). `if x { … }` narrows `x` inside (RG-1c).
+- `{...e}` among the attributes is a spread, as JSX's: every field of `e`.
+  Parts merge in order and the last one that has a field wins (Solid's
+  `merge`), so an attribute after the spread overrides it and one before
+  it is a default. A spread is an equation like any attribute: its fields
+  keep updating. On a component it is passed, not read: its fields are
+  read where the component reads its props, and its failures and holds go
+  where any of those reads go (R-2, R-f-5). On an HTML element it is read
+  where the element is (S-surface-5).
 - `for x in e` keys rows by identity, or by the collection's `key` (ST-4b).
 - Text follows JSX: whitespace that contains a line break is not text, a
   line's leading and trailing whitespace is not text, and text that runs

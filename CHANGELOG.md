@@ -1,13 +1,35 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
+
+**New**
+
+- Spread attributes in markup, `<button {...rest}>` and `<Inner {...rest} />`, lowered to Solid's spread and `merge`:
+  later attributes override, and each field keeps updating (07 §4, S-surface-5).
+
+## 0.3.0
+
+`@reactivescript/compiler`, `@reactivescript/runtime`, `@reactivescript/language-server` and the editor extension,
+together.
+
+**Breaking**
+
+- `UNGUARDED_SNAPSHOT` (R-8) is stricter: an `errored` region or `disabled` covers a failure only when it reads the
+  value. A region whose content reads `x` only under `pending? x` never shows its fallback, so it no longer counts
+  (#58).
 
 **New**
 
 - Solid libraries (MO-10): declare a primitive once in a `.d.rx` (`export pure fn createToggle(v: boolean): [ref
   boolean, (v: boolean) => void]`) and use it like .rx: it is called once, `ref` arguments go in as accessors, readers
   are read without a call, and setters are io. A package's `.d.rx` sits beside the file its import resolves to.
-  `guide/libraries.md`.
+  `guide/libraries.md` (#57).
+- The guide (shipped in `@reactivescript/compiler`) places data by its lifetime: what a visit, a write or the screen
+  needs, with a module only for data whose writes outlive their page (#58, #59).
+
+**Fixed**
+
+- `refresh` of a keyed equation re-asks it. It used to re-ask nothing in compiled code (#58).
 
 ## 0.2.0
 

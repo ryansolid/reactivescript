@@ -2189,6 +2189,22 @@ fn parse_element(c: &mut Cursor) -> R<Markup> {
             break;
         }
         let a0 = c.i;
+        // 07 §4: a spread attribute, `{...e}`: every field of e, in order with the named ones
+        if c.starts_with("{") {
+            c.eat("{");
+            c.ws(true);
+            let d0 = c.i;
+            if !c.eat("...") {
+                return c.fail("attr: an attribute in braces is a spread, `{...props}`");
+            }
+            let span = Span::new(d0, c.i);
+            c.ws(true);
+            let e = parse_expr(c)?;
+            attrs.push(Attr { name: "...".into(), e, span });
+            c.ws(true);
+            c.expect("}")?;
+            continue;
+        }
         let Some(name) = c.tag_name() else { return c.fail("attr") };
         let span = Span::new(a0, c.i);
         c.ws(false);

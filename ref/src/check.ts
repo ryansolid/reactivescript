@@ -1064,8 +1064,8 @@ class Checker {
    *  stored. A provision's place is found from the site; a prop passed on (`x={props.y}`) is stored by this component too. */
   private retained() {
     const targets = (C: Region, field: string): string[] => {
-      if (C.sig) return [...(C.sig.stored?.[field] ?? []), ...(field !== "*" ? C.sig.stored?.["*"] ?? [] : [])].map(t => t === "module" ? "d:0" : `p:${t}`);
-      const m = this.retains.get(C); return m ? [...(m.get(field) ?? []), ...(field !== "*" ? m.get("*") ?? [] : [])] : [];
+      if (C.sig) return (field === "*" ? Object.values(C.sig.stored ?? {}).flat() : [...(C.sig.stored?.[field] ?? []), ...(C.sig.stored?.["*"] ?? [])]).map(t => t === "module" ? "d:0" : `p:${t}`);   // a spread ("*") goes wherever any field goes
+      const m = this.retains.get(C); return m ? (field === "*" ? [...m.values()].flat() : [...(m.get(field) ?? []), ...(m.get("*") ?? [])]) : [];
     };
     for (let changed = true; changed;) {
       changed = false;
@@ -1075,7 +1075,7 @@ class Checker {
         for (const t of ts) {
           const limit = t.startsWith("d:") ? +t.slice(2) : this.provAnchor(a.site, t.slice(2));
           const leak = cap.find(c => !c.propOf && c.region.depth > limit);
-          if (leak) { this.line = a.line; this.err("REGION_ESCAPE", "O-3", `<${a.tag} ${x.field}={…}>: the closure passed captures ${leak.name} (declared in a region that ends sooner), and ${a.tag} stores ${x.field} (itself, or through a component it passes it to) where it outlives it`); }
+          if (leak) { this.line = a.line; this.err("REGION_ESCAPE", "O-3", `<${a.tag} ${x.field === "*" ? "{...…}" : `${x.field}={…}`}>: the closure passed captures ${leak.name} (declared in a region that ends sooner), and ${a.tag} stores ${x.field === "*" ? "a field of it" : x.field} (itself, or through a component it passes it to) where it outlives it`); }
           for (const c of cap) if (c.propOf && limit < c.propOf.comp.depth && this.retain(c.propOf.comp, c.propOf.field, t)) changed = true;
         }
       }
@@ -1112,7 +1112,7 @@ class Checker {
             for (const a of m.attrs) this.comp(isHandler(a.name) ? "handler" : "prop", env, { at: `${m.tag} ${a.name}` }, () => this.expr(a.e, env, { scope: isHandler(a.name) ? "imperative" : "reactive" }));   // R-2: an argument is read where the component reads it
             if (s?.kind === "comp") {
               s.compRegion!.appSites.push(env.region);
-              this.apps.push({ comp: s.compRegion!, site: env.region, line: this.line, tag: m.tag, args: m.attrs.filter(a => !isHandler(a.name)).map(a => ({ field: a.name, e: a.e, env })), passed: m.attrs.map(a => ({ field: a.name, e: a.e, env })) });   // R-2: passing is not reading — checked where the component reads it
+              this.apps.push({ comp: s.compRegion!, site: env.region, line: this.line, tag: m.tag, args: m.attrs.filter(a => !isHandler(a.name)).map(a => ({ field: a.name === "..." ? "*" : a.name, e: a.e, env })), passed: m.attrs.map(a => ({ field: a.name === "..." ? "*" : a.name, e: a.e, env })) });   // a spread is every field: "*"   // R-2: passing is not reading — checked where the component reads it
               const kids = this.region(env.region, "children", { provParent: s.compRegion!, name: m.tag });              // RG-4c: children are named by the caller, owned where the component reads them
               kids.kids = { comp: s.compRegion!, site: env.region };
               this.markup(m.children, new Env(env, kids));
@@ -1388,14 +1388,14 @@ class Checker {
     const pfMemo = new Map<string, PFEntry[]>(); const pfBusy = new Set<string>();
     const PF = (G: Region, field: string): PFEntry[] => {
       if (G.sig) {                                                                           // MO-3: an imported component's summary
-        const s = G.sig.props[field] ?? G.sig.props["*"]; if (!s) return [];
-        const out: PFEntry[] = [{ chain: [{ f: s.f, p: s.p }], term: null }];
-        if (s.action) out.push({ chain: [{ f: s.action.f }], term: { line: -1, name: s.action.name } });
+        const ss = field === "*" ? Object.values(G.sig.props) : [G.sig.props[field] ?? G.sig.props["*"]];   // a spread ("*") goes wherever any field goes
+        const out: PFEntry[] = [];
+        for (const s of ss) { if (!s) continue; out.push({ chain: [{ f: s.f, p: s.p }], term: null }); if (s.action) out.push({ chain: [{ f: s.action.f }], term: { line: -1, name: s.action.name } }); }
         return out;
       }
       const k = `${G.id}:${field}`; if (pfMemo.has(k)) return pfMemo.get(k)!; if (pfBusy.has(k)) return []; pfBusy.add(k);
       const out: PFEntry[] = [];
-      for (const o of occ) if (o.comp === G && (o.field === field || o.field === "*")) for (const v of o.via()) out.push({ chain: [...o.pre, ...v.chain], term: v.term });
+      for (const o of occ) if (o.comp === G && (o.field === field || o.field === "*" || field === "*")) for (const v of o.via()) out.push({ chain: [...o.pre, ...v.chain], term: v.term });
       const res = dedupe(out); pfBusy.delete(k); pfMemo.set(k, res); return res;
     };
     // what escapes each component's root (and the program's): failures and provisions
@@ -1409,7 +1409,7 @@ class Checker {
       const pushR = (it: Req) => { const k = `R${it.name}@${it.line}:${it.what}`; if (!seen.has(k)) { seen.add(k); reqs.push(it); } };
       for (const r of readerF) if (compOf(r.region) === C) for (const cls of r.f.cls) if (routes(r.region).some(q => escF(q, cls))) pushF({ cls, line: r.line, what: show(r.e) });
       for (const u of this.uses) if (compOf(u.region) === C) if (routes(u.region).some(q => escP(q, u.name))) pushR({ name: u.name, line: u.line, what: u.name === HOLD ? `a reader of ${u.display}` : `use ${u.display}` });
-      for (const a of argR) if (compOf(a.app.site) === C) for (const p of PF(a.app.comp, a.field)) if (!p.term && routes(a.app.site).some(q => escP([...p.chain, ...q], HOLD))) { pushR({ name: HOLD, line: a.app.line, what: `<${a.app.tag} ${a.field}={…}>, read in ${a.app.tag},` }); break; }   // SV-7b through a prop
+      for (const a of argR) if (compOf(a.app.site) === C) for (const p of PF(a.app.comp, a.field)) if (!p.term && routes(a.app.site).some(q => escP([...p.chain, ...q], HOLD))) { pushR({ name: HOLD, line: a.app.line, what: `<${a.app.tag} ${a.field === "*" ? "{...…}" : `${a.field}={…}`}>, read in ${a.app.tag},` }); break; }   // SV-7b through a prop
       for (const a of this.apps) if (compOf(a.site) === C) {
         const e = esc(a.comp);
         for (const it of e.fails) if (routes(a.site).some(q => escF(q, it.cls))) pushF({ ...it, line: it.line < 0 ? a.line : it.line, what: `${it.what} (in <${a.tag}>)` });
@@ -1417,7 +1417,7 @@ class Checker {
       }
       for (const a of argF) if (compOf(a.app.site) === C) for (const cls of a.f.cls) for (const p of PF(a.app.comp, a.field)) {
         if (p.term) { if (escF(p.chain, cls)) { this.line = a.app.line; this.err("UNCAUGHT_ACTION_FAILURE", "R-f-6", `action ${p.term.name} in <${a.app.tag}> reads props.${a.field}, which can fail with ${cls} here (line ${a.app.line}), and does not catch it`); } continue; }
-        if (routes(a.app.site).some(q => escF([...p.chain, ...q], cls))) { pushF({ cls, line: a.app.line, what: `<${a.app.tag} ${a.field}={…}>` }); break; }
+        if (routes(a.app.site).some(q => escF([...p.chain, ...q], cls))) { pushF({ cls, line: a.app.line, what: `<${a.app.tag} ${a.field === "*" ? "{...…}" : `${a.field}={…}`}>` }); break; }
       }
       const res = { fails, reqs }; escBusy.delete(C); escMemo.set(C, res); return res;
     };

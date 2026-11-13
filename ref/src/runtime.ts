@@ -1192,8 +1192,21 @@ export class Runtime {
           const b = region.lookup(m.tag);
           if (!b || !("comp" in b)) throw new RuleError("SCOPE", `unknown component ${m.tag}`);
           const comp = b.comp; const r = new Region(region, this, region.boundary, b.home);   // owned at the application, names from the declaration (RG-7a, MO-6)
-          const props: Record<string, unknown> = {};
-          for (const a of m.attrs) { const node = this.mkNode("eq", `${m.tag}.${a.name}`, region, rt => rt.evalExpr(a.e, region)); Object.defineProperty(props, a.name, { enumerable: true, get: () => this.readNode(node) }); }   // a prop read is a read of the argument's node: taint, lanes, serving (found by S-fail-2)
+          const parts = m.attrs.map(a => ({ name: a.name, node: this.mkNode("eq", `${m.tag}.${a.name}`, region, rt => rt.evalExpr(a.e, region)) }));
+          let props: Record<string, unknown> = {};
+          if (!parts.some(p => p.name === "...")) for (const p of parts) Object.defineProperty(props, p.name, { enumerable: true, get: () => this.readNode(p.node) });   // a prop read is a read of the argument's node: taint, lanes, serving (found by S-fail-2)
+          else {                                                                                  // 07 §4: a spread gives every field of its value; the last part that has a field wins, as Solid's merge
+            const obj = (v: unknown) => v != null && typeof v === "object" ? v as Record<string, unknown> : {};
+            const find = (k: string) => { for (let i = parts.length - 1; i >= 0; i--) { const p = parts[i]; if (p.name === k) return { p, spread: false }; if (p.name === "..." && k in obj(this.readNode(p.node))) return { p, spread: true }; } return null; };
+            const read = (k: string) => { const f = find(k); return !f ? undefined : f.spread ? obj(this.readNode(f.p.node))[k] : this.readNode(f.p.node); };
+            const keys = () => [...new Set(parts.flatMap(p => p.name === "..." ? Object.keys(obj(this.readNode(p.node))) : [p.name]))].filter(k => k !== "children");
+            props = new Proxy(props, {
+              get: (t, k) => typeof k !== "string" || k === "children" ? Reflect.get(t, k) : read(k),
+              has: (t, k) => typeof k !== "string" || k === "children" ? Reflect.has(t, k) : !!find(k),
+              ownKeys: t => [...keys(), ...Reflect.ownKeys(t)],
+              getOwnPropertyDescriptor: (t, k) => typeof k === "string" && k !== "children" ? (find(k) ? { enumerable: true, configurable: true, value: read(k) } : undefined) : Reflect.getOwnPropertyDescriptor(t, k),
+            });
+          }
           let children: ViewValue | null = null;                   // RG-4c: instantiated where first read — owned by the reader's region, named by the caller's
           Object.defineProperty(props, "children", { enumerable: true, get: () => { if (!children) { const owner = this.tracking?.region ?? region; const cr = new Region(owner, this, owner.boundary, region); children = new ViewValue(cr, m.children.map(c => this.inst1(c, cr))); } return children; } });
           r.scope.set(comp.props, { constant: props });

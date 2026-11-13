@@ -122,7 +122,8 @@ component Card(props: { title: string; children: View }) {
 ```
 
 `props.x` stays live: don't copy it into a source unless you mean a one-time seed (`source draft := peek(props.x)`).
-Destructured props stay live too: `component Card({ title, open = false })` or `{ title } = props` (RG-4b).
+Destructured props stay live too: `component Card({ title, open = false })` or `{ title } = props` (RG-4b). Pass
+the rest on with a spread, `<button {...rest}>` or `<Inner {...rest} />`: later attributes override it, as in JSX.
 
 A prop that takes a handler is named `on…` and typed as a function: `props: { onPick: (id: number) => void }`, passed
 as `<Row onPick={id => { selected := id }} />` and called from the component's own handlers (`props.onPick(id)`).
