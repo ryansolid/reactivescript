@@ -197,18 +197,19 @@ export action rename(id: string, name: string) {
   its guess up until the answer lands.
 - A removal is the same: `source removing: string[] = []`, and the list equation filters those ids out.
 
-### A write that outlives its page
+### Data belongs with its lifetime
 
-Server data usually belongs to the page that shows it: it loads when the page opens and goes when it closes. The one
-case that needs more is a write still out when its page closes. Its `refresh` re-asks the question it can see, the
-closed page's, and the page opened again keeps the answer it asked for before the write landed, beside views asked
+Declare data where it lives as long as it is needed. A page's list usually belongs to the page: it loads when the page
+opens and goes when it closes. A write in flight lives until the server answers, which can be after its page closed;
+the data it refreshes must live at least as long. If it lives in the page, the write's `refresh` re-asks the closed
+page's question, and the page opened again keeps the answer it asked for before the write landed, beside views asked
 after it that show the write.
 
-For the data such a write changes (the list and the item it refreshes), declare it, its writes in flight and its
-actions in a module (top-level `source`s and `action`s), and let the page read it and call the actions. Everything else
-the page shows stays in the page. To make the page start fresh when it opens, have opening it call an action that
-resets the module's inputs and moves a counter the question reads (`source visit := 0`,
-`items = visit >= 0 ? await loadItems(filter) : []`). The page's own inputs (a draft, a text field) stay in the page.
+So for the data such a write changes (the list and the item it refreshes), declare it, its writes in flight and its
+actions in a module (top-level `source`s and `action`s), and let the page read it and call the actions. The page's own
+inputs (a draft, a text field) live as long as the page and stay in it. To make the page start fresh when it opens,
+have opening it call an action that resets the module's inputs and moves a counter the question reads
+(`source visit := 0`, `items = visit >= 0 ? await loadItems(filter) : []`).
 
 ### Data the server owns: three layers
 

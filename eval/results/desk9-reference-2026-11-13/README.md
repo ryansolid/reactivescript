@@ -34,7 +34,7 @@ and linked over `eval/node_modules`. `rxc` from this branch. Graded with `harnes
 
 ## What the reference does differently
 
-- **Issue data is app state** (`desk.rx`), as in Exact's reference ("every resource is the root's"): the list, the
+- **Issue data lives as long as its writes** (`desk.rx`; Ryan: data belongs with its lifetime), as in Exact's reference ("every resource is the root's"): the list, the
   detail and the writes live in one module, so a write's re-ask reaches the list and detail on screen when it lands,
   whatever was left and reopened in between. Opening the issues tab bumps `visit`, which the list's question reads,
   so the page still starts loading again.
