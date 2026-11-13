@@ -85,3 +85,26 @@ and no error boundary. Setup:
 
 When the other action lands (its re-ask goes out), and then the detail lands, the `<h2>` renders empty while
 `detail.body` beside it shows. Without the other action the test passes.
+
+## On next f00ce6f52 + solidjs/solid#4835 (the #4834 fix, still an open PR)
+
+Built at c1949ba3a. Both repros (`repro/blank-rows.spec.tsx`, `repro/blank-heading.spec.tsx`) pass. Grades in `graded-4835/`.
+
+| app | hidden | overlap | fuzz holes | defects | before |
+| --- | --- | --- | --- | --- | --- |
+| rx-1 | 76 | 37 | 1 | 3 | 4 |
+| rx-2 | 76 | 37 | 0 | 2 | 2 |
+| rx-3 | 76 | 37 | 2 | 4 | 5 |
+| rx-4 | 77 | 37 | 0 | 1 | 2 |
+| rx-5 | 77 | 37 | 1 | 2 | 2 |
+| rx-6 | 77 | 36 | 0 | 2 | 3 |
+| rx-7 | 75 | 38 | 0 | 2 | 2 |
+| rx-8 | 77 | 38 | 0 | 0 | 0 |
+| rx-9 | 77 | 38 | 0 | 0 | 0 |
+| reference | 77 | 38 | 0 | 0 | 0 |
+
+"Before" is the last grade of each app: rx-1, rx-3 and rx-8 on f00ce6f52, the others on the Solid of their first grade.
+The blank heading (seed 15 in rx-1 and rx-3) is gone. rx-4 s13 and rx-6 s16 (count outside the list's region) no
+longer fire; rx-5 s17 still does. Everything left is agent or guide-caused, except two untraced holes: rx-1 s11
+(the #3 detail shows #4's guessed title "Bravo"; the trail replayed alone ends correctly, so it may depend on timing)
+and rx-3 s11/s19 (page hangs). Apps on the current guide (rx-7..9): 2, 0, 0.

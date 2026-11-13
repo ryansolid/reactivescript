@@ -1,5 +1,6 @@
 // What the agent runs in its directory: `./check` (the arm's compiler feedback) and `./test` (the visible tests).
-// Every run is appended to `.runlog` (one JSON line each), which the score reads for iterations and when green came.
+// Every run is appended to `.runlog` (one JSON line each: `at` when it ended, `ms` how long it took), which the score
+// reads for iterations, when green came, and how much of the agent's time went to these tools.
 // Usage: node harness/agent-cli.mjs <check|test> <dir>
 import { appendFileSync } from "node:fs";
 import path from "node:path";
@@ -8,7 +9,8 @@ import { runFile } from "./test.mjs";
 
 const [cmd, dirArg] = process.argv.slice(2);
 const dir = path.resolve(dirArg);
-const log = entry => appendFileSync(path.join(dir, ".runlog"), JSON.stringify({ at: new Date().toISOString(), cmd, ...entry }) + "\n");
+const started = Date.now();
+const log = entry => appendFileSync(path.join(dir, ".runlog"), JSON.stringify({ at: new Date().toISOString(), ms: Date.now() - started, cmd, ...entry }) + "\n");
 
 if (cmd === "check") {
   const r = check(dir);

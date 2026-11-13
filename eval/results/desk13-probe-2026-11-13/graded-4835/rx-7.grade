@@ -1,0 +1,8 @@
+== hidden
+✗ base: help: selecting after a failure shows loading…, not the old failure
+✗ base: help: selecting after not found shows loading…, not the old message
+75/77 passed
+== overlap
+38/38 passed
+== fuzz
+desk13-rx-7: 0/20 seeds found a hole
