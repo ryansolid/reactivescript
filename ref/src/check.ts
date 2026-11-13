@@ -228,6 +228,7 @@ class Checker {
   private effectIns: { region: Region; e: Expr; env: Env; line: number }[] = [];
   private apps: { comp: Region; site: Region; line: number; tag: string; args: { field: string; e: Expr; env: Env }[]; passed: { field: string; e: Expr; env: Env }[] }[] = [];   // passed: every attribute, handlers too (O-3)
   private actions: { name: string; body: Stmt[]; env: Env; line: number }[] = [];
+  private handlers: { attrs: { name: string; e: Expr }[]; kids: Markup[]; h: Expr; env: Env; region: Region; line: number; what: string }[] = [];   // AC-3a: element handlers, by where they are
   private provisions: { key: string; e: Expr; env: Env }[] = [];
   private importSyms = new Set<Sym>();                                                     // MO-1d: what imports bound; a nested block may not shadow it
   private later: (() => void)[] = [];
@@ -255,6 +256,112 @@ class Checker {
     this.retained();
     this.resolveTree();
     this.loadingOnOutside();
+    this.guessWhileLoading();
+  }
+
+  // ---- AC-3a: a guess a click can make while its value loads a new question ----
+  /** A guess composes on the value as it stands. If a click can run `guess x := …` while `x` is loading a new question that
+   *  the click itself started (its question reads what the click reads), the guess sits on the previous answer and the new
+   *  answer replaces it, so the change disappears while it is out (D-34; Solid's OPTIMISTIC_WRITE_WHILE_LOADING, at run time).
+   *  Covered when the element is inside a `loading` region whose content reads `x`, or is disabled on `x` (a form: all its
+   *  submit buttons are). Mirrors compiler/src/check.rs `guess_while_loading`. */
+  private guessWhileLoading() {
+    type N = Expr | Stmt;
+    const kidsOf = (n: N): N[] => {
+      const out: N[] = [];
+      for (const v of Object.values(n as object)) {
+        if (Array.isArray(v)) { for (const x of v) if (x && typeof x === "object") { if ("k" in x) out.push(x as N); else if ("v" in x) out.push((x as { v: Expr }).v); else if ("spread" in x) out.push((x as { spread: Expr }).spread); } }
+        else if (v && typeof v === "object" && "k" in (v as object)) out.push(v as N);
+      }
+      return out;
+    };
+    const depends = (e: Expr, env: Env, t: Sym, busy: Set<Sym>): boolean => {
+      const go = (x: Expr): boolean => {
+        if (x.k === "fn" || x.k === "serverfn") return false;
+        if (x.k === "id") { const u = env.lookup(x.name); if (!u) return false; if (u === t) return true; return !!(u.expr && u.env && !busy.has(u) && (busy.add(u), depends(u.expr, u.env, t, busy))); }
+        return subExprs(x).some(go);
+      };
+      return go(e);
+    };
+    const awaits = (t: Sym, busy: Set<Sym>): boolean => {
+      if (!t.expr || !t.env || busy.has(t)) return false;
+      busy.add(t);
+      const env = t.env;
+      const go = (x: Expr): boolean => {
+        if (x.k === "fn" || x.k === "serverfn" || x.k === "peek") return false;
+        if (x.k === "await") return true;
+        if (x.k === "id") { const u = env.lookup(x.name); return !!u && u !== t && (u.kind === "eq" || u.kind === "source") && awaits(u, busy); }
+        return subExprs(x).some(go);
+      };
+      return go(t.expr);
+    };
+    const asksAbout = (t: Sym, inputs: Sym[]) => !!t.expr && !!t.env && inputs.some(i => i !== t && !(i.expr && i.env && depends(i.expr, i.env, t, new Set())) && depends(t.expr!, t.env!, i, new Set()));
+    const inside = (r: Region | null, anc: Region) => { for (let c = r; c; c = c.parent) if (c === anc) return true; return false; };
+    const heldBy = (r: Region, t: Sym) => {
+      for (let c: Region | null = r; c; c = c.parent) {
+        if (c.provides.has(HOLD) && this.readers.some(rd => inside(rd.region, c!) && depends(rd.e, rd.env, t, new Set()))) return true;
+        if (c.isComponentRoot) break;
+      }
+      return false;
+    };
+    const disabledOn = (attrs: { name: string; e: Expr }[], env: Env, t: Sym) => attrs.some(a => a.name === "disabled" && depends(a.e, env, t, new Set()));
+    const submitButtons = (ms: Markup[], out: { name: string; e: Expr }[][]) => {
+      for (const m of ms) {
+        if (m.k === "el") { if (m.tag === "button" && !m.attrs.some(a => a.name === "type" && !(a.e.k === "lit" && a.e.v === "submit"))) out.push(m.attrs); submitButtons(m.children, out); }
+        else if (m.k === "mif") { submitButtons(m.t, out); submitButtons(m.f, out); }
+        else if (m.k === "mfor" || m.k === "loading" || m.k === "errored" || m.k === "portal") submitButtons(m.body, out);
+      }
+    };
+    const done = new Set<Expr>();
+    for (const hr of this.handlers) {
+      if (done.has(hr.h)) continue;
+      done.add(hr.h);
+      const submits: { name: string; e: Expr }[][] = [];
+      if (hr.what === "<form> onSubmit") submitButtons(hr.kids, submits);
+      // the bodies the click runs: the handler, and the actions it calls by name
+      const bodies: { root: N; env: Env; via?: string }[] = [{ root: hr.h, env: hr.env }];
+      const stack: N[] = [hr.h];
+      while (stack.length) {
+        const n = stack.pop()!;
+        if (n.k === "call" && (n as Extract<Expr, { k: "call" }>).f.k === "id") {
+          const name = ((n as Extract<Expr, { k: "call" }>).f as Extract<Expr, { k: "id" }>).name;
+          const a = hr.env.lookup(name);
+          if (a?.kind === "action") for (const act of this.actions) if (act.name === name && act.line === a.line) bodies.push(...act.body.map(st => ({ root: st as N, env: act.env, via: name })));
+        }
+        stack.push(...kidsOf(n));
+      }
+      // what the click is about: the names those bodies read, outside their own writes and guesses
+      const inputs: Sym[] = [];
+      for (const b of bodies) {
+        const st: N[] = [b.root];
+        while (st.length) {
+          const n = st.pop()!;
+          if (n.k === "optimistic" || n.k === "write") continue;
+          if (n.k === "id") { const v = b.env.lookup((n as Extract<Expr, { k: "id" }>).name); if (v && (v.kind === "source" || v.kind === "eq" || v.kind === "value" || v.kind === "props") && !inputs.includes(v)) inputs.push(v); }
+          st.push(...kidsOf(n));
+        }
+      }
+      const seen = new Set<Sym>();
+      for (const b of bodies) {
+        const st: N[] = [b.root];
+        while (st.length) {
+          const n = st.pop()!;
+          if (n.k === "optimistic") {
+            const tn = (n as Extract<Stmt, { k: "optimistic" }>).target.name;
+            const t = b.env.lookup(tn);
+            if (t && !seen.has(t) && (seen.add(t), true)
+              && awaits(t, new Set()) && asksAbout(t, inputs)
+              && !disabledOn(hr.attrs, hr.env, t)
+              && !(submits.length > 0 && submits.every(at => disabledOn(at, hr.env, t)))
+              && !heldBy(hr.region, t)) {
+              this.line = hr.line;
+              this.err("GUESS_WHILE_LOADING", "AC-3a", `${hr.what} ${b.via ? `starts \`${b.via}\`, which can run` : "can run"} \`guess ${tn}\` while ${tn} is loading a new question (its question reads what the click reads): the guess composes on the previous answer, and the new answer replaces it, so the change disappears while it is out (D-34) — put the element inside the \`loading\` region whose content reads ${tn}, or give it \`disabled={pending? ${tn}}\`, or keep the pending change in a source of its own until it lands`);
+            }
+          }
+          st.push(...kidsOf(n));
+        }
+      }
+    }
   }
 
   // ---- CN-3e: an outside read holds a `loading on(…)` region's change ----
@@ -835,14 +942,14 @@ class Checker {
           let target: Sym | undefined;
           if (s.target.ctx) {
             const c = this.ctxOf(s.target.name, env);
-            if (c) { this.model.write(c, s.k, s.target.path.length > 0); this.uses.push({ region: env.region, name: c.ctx!.key, line: this.line, display: s.target.name }); if (!c.ctx!.source) this.err("WRITE_TO_NON_SOURCE", "O-4", `context ${s.target.name} is read beneath its provision: call an action it provides that writes it (O-4)`); }
+            if (c) { this.model.write(c, s.k, s.target.path.length > 0); this.uses.push({ region: env.region, name: c.ctx!.key, line: this.line, display: s.target.name }); if (!c.ctx!.source) this.err("WRITE_TO_NON_SOURCE", "O-4", `context ${s.target.name} is read beneath its provision: call an action it provides that writes it`); }
           }
           else {
             target = this.resolve(s.target.name, env, ctx); this.model.write(target, s.k, s.target.path.length > 0);
             const guessable = s.k === "optimistic" && target?.kind === "eq" && !!target.eqDecl && !target.param && !target.imported;   // AC-3: a guess may sit over an equation (Solid's createOptimistic(fn)); it is not a write of the truth
             if (guessable && target!.eqDecl!.deferred) this.err("GUESS_ON_DEFERRED", "AC-3", `${s.target.name} is deferred: its value is a lagging copy (V-16), so nothing would confirm a guess on it — guess the equation it lags`);
             else if (guessable) {}
-            else if (target && target.kind !== "source") this.err("WRITE_TO_NON_SOURCE", "W-1", `${s.target.name} is ${target.kind === "eq" ? "an equation" : target.kind === "props" ? "props" : `a ${target.kind}`}: only sources are written (W-1)${target.kind === "props" || target.kind === "value" || target.param ? " — a source is written only in the region that declares it: have its owner pass an action that writes it (O-4)" : ""}`);
+            else if (target && target.kind !== "source") this.err("WRITE_TO_NON_SOURCE", "W-1", `${s.target.name} is ${target.kind === "eq" ? "an equation" : target.kind === "props" ? "props" : `a ${target.kind}`}: only sources are written${target.kind === "props" || target.kind === "value" || target.param ? " — a source is written only in the region that declares it: have its owner pass an action that writes it (O-4)" : ""}`);
             else if (target?.imported) this.err("WRITE_TO_NON_SOURCE", "MO-2", `${s.target.name} is a source of ${target.imported}: a module boundary is a value boundary — write it through an action ${target.imported} exports`);
           }
           if (s.k === "optimistic") {
@@ -994,7 +1101,7 @@ class Checker {
             } else this.markup(m.children, env);
             break;
           }
-          for (const a of m.attrs) { this.comp(isHandler(a.name) ? "handler" : "reader", env, { at: `${m.tag} ${a.name}` }, () => this.expr(a.e, env, { scope: isHandler(a.name) ? "imperative" : "reactive" })); if (!isHandler(a.name)) this.readers.push({ region: env.region, e: a.e, env, line: this.line }); }
+          for (const a of m.attrs) { this.comp(isHandler(a.name) ? "handler" : "reader", env, { at: `${m.tag} ${a.name}` }, () => this.expr(a.e, env, { scope: isHandler(a.name) ? "imperative" : "reactive" })); if (!isHandler(a.name)) this.readers.push({ region: env.region, e: a.e, env, line: this.line }); else this.handlers.push({ attrs: m.attrs, kids: m.children, h: a.e, env, region: env.region, line: this.line, what: `<${m.tag}> ${a.name}` }); }
           this.markup(m.children, env);
           break;
         }

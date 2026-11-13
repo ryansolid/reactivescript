@@ -100,7 +100,7 @@
   &lt;button onClick={() =&gt; { count := count + <span class="t">1</span> }}&gt;{count} × 2 = {double}&lt;/button&gt;
 }</code></pre>
   <p>Write to the equation instead, <code>double := 4</code>, and the checker refuses it, in your editor and in CI:</p>
-<pre class="err"><code>counter.rx:5:3 - error WRITE_TO_NON_SOURCE: double is an equation: only sources are written (W-1) (W-1)</code></pre>
+<pre class="err"><code>counter.rx:5:3 - error WRITE_TO_NON_SOURCE: double is an equation: only sources are written (W-1)</code></pre>
 
   <h2>Async is just <code>await</code></h2>
   <p>Put an <code>await</code> in an equation. The checker tracks that the value can be pending and can fail, and asks you to say what to show in both cases.</p>
