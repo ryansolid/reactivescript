@@ -39,7 +39,9 @@ class Fallback { get: () => unknown; constructor(g: () => unknown) { this.get = 
 function unwrapFallback(v0: unknown): unknown { let v = v0; if (v instanceof Fallback) v = v.get(); if (v instanceof Forward) throw v.err; return v; }
 /** A keyed answer is merged into the draft by key: a row whose key is still there keeps its object and takes the new
  *  leaves, so an equal answer changes nothing and a changed one changes only its leaves (#51). Any other answer is
- *  assigned. */
+ *  assigned.
+ *  TODO(Solid rc.22): return the keyed answer from the derive and let Solid reconcile it, dropping this merge. On
+ *  2.0.0-rc.21 that path throws in holdStaging (memo over latest() of the rows); fixed on Solid next (dba2aad). */
 function landDraft(draft: any, v: unknown, key: string | undefined) {
   if (!key || !Array.isArray(v) || !Array.isArray(draft)) return assignDraft(draft, v);
   const had = new Map<unknown, any>(); for (const row of draft) if (row && typeof row === "object") had.set(row[key], row);
