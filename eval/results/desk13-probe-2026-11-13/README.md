@@ -67,3 +67,8 @@ keyed `createProjection` over a memo of an async list, two `createOptimistic` gu
 close among overlapping assigns, then a switch to another list. When the new list's re-ask lands, `For` renders one
 `<li>` per row with no text. It fails on next b8a8c2805 and on cd4de2874 (before #4828). Without the projection
 (`For` over the memo) it passes. Errored, `Loading on` and the page remount are not needed.
+
+## On next f00ce6f52 (with the #4831 fix)
+
+The repro passes. rx-8 regrades 77/77, 38/38, 0/20: **0 defects** (rx-7..9 now 2, 0, 0). The reference stays at 0.
+rx-1 and rx-3 keep their blank detail heading (s11, s15): a plain memo, not a projection, so a separate bug.
