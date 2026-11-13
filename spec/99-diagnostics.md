@@ -106,7 +106,7 @@ named.
 | `STALE_WRITE_BACK`                | S   | AC-1e | S-infer-6 |
 | `GUESS_NO_QUESTION`          | S   | AC-3 / ST-5c | S-check-1, S-solid-32 |
 | `GUESS_ON_DEFERRED`          | S   | AC-3 / ST-5c (a deferred equation lags its truth, V-16) | S-guess-equation |
-| `GUESS_WHILE_LOADING`        | S   | AC-3a (Solid's `OPTIMISTIC_WRITE_WHILE_LOADING`, at compile time) | check.rs unit test |
+| `GUESS_WHILE_LOADING`        | S   | AC-3a (Solid's `OPTIMISTIC_WRITE_WHILE_LOADING`, at compile time) | S-guess-equation, check.rs unit test |
 | `INVALID_REFRESH_TARGET`, `INVALID_AFFECTS_TARGET` | S | AC-4, AC-5 | S-check-1 |
 | `REGION_ESCAPE`                   | S   | O-3, O-3a, O-3b | S-check-1 (seven shapes), S-module-1 |
 | `UNSTABLE_LIST_IDENTITY`          | S   | ST-4b (narrow form: `map` into fresh records, unkeyed) | S-store-3 |

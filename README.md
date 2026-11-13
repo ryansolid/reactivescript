@@ -55,7 +55,7 @@ export default component Counter() {
 Write to the equation instead, `double := 4`, and the checker refuses it:
 
 ```
-counter.rx:5: error WRITE_TO_NON_SOURCE [W-1] double is an equation: only sources are written (W-1)
+counter.rx:5: error WRITE_TO_NON_SOURCE [W-1] double is an equation: only sources are written
 ```
 
 Async is an `await` in an equation. The compiler tracks that the value can be

@@ -60,7 +60,16 @@
   ul.links { list-style: none; padding: 0; margin: 0; }
   ul.links li { padding: 8px 0; border-bottom: 1px solid var(--line); }
   ul.links li span { color: var(--muted); font-size: 15px; }
-  @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } header.hero { padding-top: 40px; } }
+  table.map { width: 100%; border-collapse: collapse; margin: 8px 0 14px; font-size: 15px; }
+  table.map th, table.map td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.map th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.map td:first-child { white-space: nowrap; }
+  .pair { display: grid; grid-template-columns: 1fr; gap: 0; margin-bottom: 26px; }
+  .pair h3 { font-size: 18px; margin: 26px 0 6px; }
+  .pair p { color: var(--muted); }
+  pre.ok { border-color: #2c5a3a; }
+  .label { font: 600 12px var(--sans); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 6px; }
+  @media (max-width: 600px) { table.map td:first-child { white-space: normal; } table.map code { word-break: break-word; } .grid { grid-template-columns: 1fr; } header.hero { padding-top: 40px; } }
   footer { max-width: 880px; margin: 0 auto; padding: 24px 20px 48px; color: var(--muted); font-size: 14px; border-top: 1px solid var(--line); }
 </style>
 </head>
@@ -79,10 +88,10 @@
     <a class="btn" href="https://github.com/solidjs/reactivescript/blob/main/guide/language.md">Read the guide</a>
     <a class="btn" href="https://github.com/solidjs/reactivescript">GitHub</a>
   </div>
-  <p class="status"><b>Experimental · 0.1.</b> Files are <code>.rx</code> and compile to plain Solid 2.0. Releases follow Solid 2.0's release candidates, so expect breaking changes until Solid 2.0 is final.</p>
+  <p class="status"><b>Experimental · 0.2.</b> Files are <code>.rx</code> and compile to plain Solid 2.0. Releases follow Solid 2.0's release candidates, so expect breaking changes until Solid 2.0 is final.</p>
 
-  <h2>Mistakes of shape become compile errors</h2>
-  <p>In Solid you already write UIs as derivations over signals. Most of what goes wrong is a shape mistake: writing to something that should be derived, writing during a computation, reading async data with no loading or error boundary above it. ReactiveScript makes those things the compiler refuses, the way Rust refuses a borrow.</p>
+  <h2>Mistakes of shape become errors</h2>
+  <p>In Solid you already write UIs as derivations over signals. Most of what goes wrong is a shape mistake: writing to something that should be derived, writing during a computation, reading async data with no loading or error boundary above it. ReactiveScript makes those things the checker refuses, the way Rust refuses a borrow.</p>
   <p>Three kinds of names do the work. A <code>source</code> is state, and only a source is written, with <code>:=</code>. An <b>equation</b>, <code>y = x * 2</code>, is always true and recomputes when what it reads changes. Writes happen only in an event handler or an <code>action</code>.</p>
 <pre><span class="fname">counter.rx</span><code><span class="k">export default component</span> Counter() {
   <span class="w">source</span> count := <span class="t">0</span>
@@ -90,11 +99,11 @@
 
   &lt;button onClick={() =&gt; { count := count + <span class="t">1</span> }}&gt;{count} × 2 = {double}&lt;/button&gt;
 }</code></pre>
-  <p>Write to the equation instead, <code>double := 4</code>, and it does not compile:</p>
-<pre class="err"><code>counter.rx:5: error WRITE_TO_NON_SOURCE [W-1] double is an equation: only sources are written (W-1)</code></pre>
+  <p>Write to the equation instead, <code>double := 4</code>, and the checker refuses it, in your editor and in CI:</p>
+<pre class="err"><code>counter.rx:5:3 - error WRITE_TO_NON_SOURCE: double is an equation: only sources are written (W-1)</code></pre>
 
   <h2>Async is just <code>await</code></h2>
-  <p>Put an <code>await</code> in an equation. The compiler tracks that the value can be pending and can fail, and asks you to say what to show in both cases.</p>
+  <p>Put an <code>await</code> in an equation. The checker tracks that the value can be pending and can fail, and asks you to say what to show in both cases.</p>
 <pre><span class="fname">profile.rx</span><code><span class="k">import pure</span> { fetchUser } <span class="k">from</span> <span class="s">"./api"</span>
 
 <span class="k">export default component</span> Profile() {
@@ -103,19 +112,86 @@
 
   &lt;section&gt;
     &lt;button onClick={() =&gt; { id := id + <span class="t">1</span> }}&gt;Next&lt;/button&gt;
-    {<span class="k">errored fallback</span>(e) { &lt;p&gt;Couldn't load: {e.message}&lt;/p&gt; } {
-      {<span class="k">loading fallback</span> { &lt;p&gt;Loading…&lt;/p&gt; } {
-        &lt;h1&gt;{user.name}&lt;/h1&gt;
-      }}
+    {<span class="k">loading fallback</span> { &lt;p&gt;Loading…&lt;/p&gt; } {
+      &lt;h1&gt;{user.name}&lt;/h1&gt;
     }}
   &lt;/section&gt;
 }</code></pre>
-  <p>Leave out the <code>errored</code> boundary and the checker says what's missing and how to fix it:</p>
-<pre class="err"><code>profile.rx:10: error UNHANDLED_FAILURE [R-f-5] a reader of user.name (in &lt;Profile&gt;) can fail with Error and no catch or errored boundary above it discharges Error — wrap it in `errored fallback(e) { … } { … }`, or catch it: `… catch (e) => …`</code></pre>
+  <p>There's a <code>loading</code> boundary but no <code>errored</code> one, so the checker says what's missing and how to fix it:</p>
+<pre class="err"><code>profile.rx:10:7 - error UNHANDLED_FAILURE: a reader of user.name (in &lt;Profile&gt;) can fail with Error and no catch or errored boundary above it discharges Error — wrap it in `errored fallback(e) { … } { … }`, or catch it: `… catch (e) =&gt; …` (R-f-5)</code></pre>
 
-  <h2>Why it's built this way</h2>
+  <h2>A like button, the first time you write it</h2>
+  <p>Show the new count at once, send it, and let the server's answer replace the guess. That's <code>guess</code>, which lowers to Solid's <code>createOptimistic</code>. This is how most people write it first:</p>
+<pre><span class="fname">like.rx</span><code><span class="k">import pure</span> { fetchLikes } <span class="k">from</span> <span class="s">"./api"</span>
+<span class="k">import</span> { like } <span class="k">from</span> <span class="s">"./api"</span>
+
+<span class="k">export default component</span> Like(props: { id: number }) {
+  likes = <span class="k">await</span> fetchLikes(props.id)
+
+  <span class="k">action</span> send() {
+    <span class="w">guess</span> likes := likes + <span class="t">1</span>        <span class="c">// show it now; the server's answer replaces it</span>
+    <span class="k">await</span> like(props.id)
+    <span class="k">refresh</span> likes
+  }
+
+  &lt;button onClick={() =&gt; { send() }}&gt;♥ {likes}&lt;/button&gt;
+}</code></pre>
+  <p>It has three bugs, and two only show when the network is slow or a request fails. The checker finds all three:</p>
+<pre class="err"><code>like.rx:13:3 - error UNHANDLED_FAILURE: a reader of likes (in &lt;Like&gt;) can fail with Error and no catch or errored boundary above it discharges Error — wrap it in `errored fallback(e) { … } { … }`, or catch it: `… catch (e) =&gt; …` (R-f-5)
+like.rx:7:3 - error UNCAUGHT_ACTION_FAILURE: action send can fail with Error and does not catch it: a handler cannot (it does not await the action) — `try { … } catch (e) { … }` in the body (R-f-6)
+like.rx:13:3 - error GUESS_WHILE_LOADING: &lt;button&gt; onClick starts `send`, which can run `guess likes` while likes is loading a new question (its question reads what the click reads): the guess composes on the previous answer, and the new answer replaces it, so the change disappears while it is out (D-34) — put the element inside the `loading` region whose content reads likes, or give it `disabled={pending? likes}`, or keep the pending change in a source of its own until it lands (AC-3a)</code></pre>
+  <p>The last one is the subtle one. Click while the count is still reloading and your +1 lands on the old answer, then vanishes when the new one arrives. Each error names the fix, and the fixed version passes:</p>
+<pre class="ok"><span class="fname">like.rx</span><code><span class="k">export default component</span> Like(props: { id: number }) {
+  likes = <span class="k">await</span> fetchLikes(props.id) <span class="k">catch</span> (e) =&gt; <span class="t">0</span>
+
+  <span class="k">action</span> send() {
+    <span class="w">guess</span> likes := likes + <span class="t">1</span>
+    <span class="k">try</span> {
+      <span class="k">await</span> like(props.id)
+      <span class="k">refresh</span> likes
+    } <span class="k">catch</span> (e) {}                     <span class="c">// the guess goes away by itself</span>
+  }
+
+  {<span class="k">loading fallback</span> { &lt;p&gt;Loading…&lt;/p&gt; } {
+    &lt;button onClick={() =&gt; { send() }}&gt;♥ {likes}&lt;/button&gt;
+  }}
+}</code></pre>
+
+  <h2>Races, refused</h2>
+  <p>The bugs that come from <code>await</code> in a handler don't show in a demo. They show when the network is slow or two clicks overlap.</p>
+  <div class="pair">
+    <h3>The "Saving…" that never shows</h3>
+    <p>A handler that writes and awaits is an action, and an action's writes land together when it ends. So this status only ever reads the result.</p>
+<pre><code>&lt;button onClick={() =&gt; {
+  status := <span class="s">"Saving…"</span>
+  <span class="k">let</span> r = <span class="k">await</span> saveName(<span class="s">"Ann"</span>) <span class="k">catch</span> (e) =&gt; e.message
+  status := r
+}}&gt;{status}&lt;/button&gt;</code></pre>
+<pre class="err"><code>save.rx:5:3 - error HELD_WRITE: status := … comes before an `await` in a body that is an action because it writes and awaits (AC-1b), so it is held until the body ends (AC-1): for state that shows while the work runs, `guess status := …` (a source with a question, ST-5c); for a reset that lands now, `onFlush(() =&gt; { status := … })` (EF-8); to hold it on purpose, declare the action (`action name() { … }`); or write it after the `await` (AC-1c)</code></pre>
+    <h3>The write that undoes another click</h3>
+    <p>Read, await, write back. If anything changed <code>tags</code> in between, this overwrites it.</p>
+<pre><code><span class="k">action</span> add(t: string) {
+  <span class="k">let</span> before = tags
+  <span class="k">let</span> saved = <span class="k">await</span> addTag(t) <span class="k">catch</span> (e) =&gt; t
+  tags := before + <span class="s">" "</span> + saved
+}</code></pre>
+<pre class="err"><code>tags.rx:5:3 - error STALE_WRITE_BACK: tags := … after an `await` is computed from tags as it was read before that `await`: whatever changed tags in between (another action, a reload) is overwritten — write functionally (`tags := v =&gt; …`, W-6), which applies to tags as it stands at the write, or guess it (`guess`, AC-3) and let the answer replace the guess (AC-1e)</code></pre>
+  </div>
+
+  <h2>Every word is a Solid primitive</h2>
+  <p>A <code>.rx</code> program compiles to ordinary Solid 2.0 and adds nothing at run time beyond what Solid does. Each form in the language has one counterpart:</p>
+  <table class="map">
+    <tr><th>.rx</th><th>Solid 2.0</th></tr>
+    <tr><td><code>source x := 0</code></td><td><code>createSignal</code>, or <code>createStore</code> for objects</td></tr>
+    <tr><td><code>y = x * 2</code></td><td><code>createMemo</code>, <code>createProjection</code></td></tr>
+    <tr><td><code>user = await fetchUser(id)</code></td><td>an async <code>createMemo</code></td></tr>
+    <tr><td><code>guess likes := likes + 1</code></td><td><code>createOptimistic</code></td></tr>
+    <tr><td><code>action send() { … }</code></td><td><code>action</code></td></tr>
+    <tr><td><code>effect (x) { … }</code></td><td><code>createEffect(compute, apply)</code></td></tr>
+    <tr><td><code>loading</code> / <code>errored</code></td><td><code>&lt;Loading&gt;</code> / <code>&lt;Errored&gt;</code></td></tr>
+  </table>
   <div class="grid">
-    <div class="card"><h3>Static checks only</h3><p>A <code>.rx</code> program compiles to ordinary Solid 2.0 code. It adds nothing at run time beyond what Solid does.</p></div>
+    <div class="card"><h3>Static checks only</h3><p>The checks run in your editor and in CI. The compiled code is Solid's, with Solid's runtime behaviour.</p></div>
     <div class="card"><h3>Easy for an AI to write</h3><p>The rules are small and explicit. Every error names the rule it enforces and usually the fix, so an agent can correct itself.</p></div>
     <div class="card"><h3>TypeScript underneath</h3><p>Expressions and JSX are TypeScript's, and types are checked by TypeScript in the editor and in CI.</p></div>
     <div class="card"><h3>The spec is the product</h3><p>Every behaviour is a numbered rule or an executable scenario, checked against Solid itself.</p></div>
@@ -130,7 +206,10 @@ npm i -D vite @solidjs/vite-plugin @reactivescript/compiler</code></pre>
 
 <span class="k">const</span> app = createApp({ root: document.getElementById(<span class="s">"app"</span>) });
 app.mount(main(app));</code></pre>
-  <p><b>In your editor.</b> The ReactiveScript extension brings highlighting, the checker's diagnostics, and TypeScript's hover, completion, rename and type errors on <code>.rx</code>. Get it from the <a href="https://marketplace.visualstudio.com/items?itemName=solidjs.reactivescript">VS Code Marketplace</a>, or from <a href="https://open-vsx.org/extension/solidjs/reactivescript">Open VSX</a> for Cursor and VSCodium. Other editors can run <code>npx @reactivescript/language-server --stdio</code>.</p>
+  <p><b>In your editor.</b> The ReactiveScript extension brings highlighting, the checker's errors, and TypeScript's hover, completion, rename and type errors on <code>.rx</code>. Get it from the <a href="https://marketplace.visualstudio.com/items?itemName=solidjs.reactivescript">VS Code Marketplace</a>, or from <a href="https://open-vsx.org/extension/solidjs/reactivescript">Open VSX</a> for Cursor and VSCodium. Other editors can run <code>npx @reactivescript/language-server --stdio</code>.</p>
+  <p><b>In CI.</b> Vite compiles <code>.rx</code> without checking it, as it does <code>.ts</code>. <code>rx-tsc</code> is <code>tsc</code> with <code>.rx</code> in the program: the same check the editor runs, with every error above.</p>
+<pre><code>npm i -D @reactivescript/language-server typescript
+npx rx-tsc --noEmit</code></pre>
 
   <h2>Learn more</h2>
   <ul class="links">

@@ -2350,7 +2350,7 @@ impl<'a> Checker<'a> {
                             let info = self.syms[c].ctx.clone().unwrap();
                             self.uses.push(UseRec { region, name: info.key.clone(), line: self.line, display: target.name.clone() });
                             if !info.source {
-                                self.err("WRITE_TO_NON_SOURCE", "O-4", format!("context {} is read beneath its provision: call an action it provides that writes it (O-4)", target.name));
+                                self.err("WRITE_TO_NON_SOURCE", "O-4", format!("context {} is read beneath its provision: call an action it provides that writes it", target.name));
                             }
                         }
                     } else {
@@ -2374,7 +2374,7 @@ impl<'a> Checker<'a> {
                                     k => format!("a {}", k.as_str()),
                                 };
                                 let hint = if k == SymKind::Props || k == SymKind::Value || self.syms[t].param { " — a source is written only in the region that declares it: have its owner pass an action that writes it (O-4)" } else { "" };
-                                self.err("WRITE_TO_NON_SOURCE", "W-1", format!("{} is {}: only sources are written (W-1){}", target.name, what, hint));
+                                self.err("WRITE_TO_NON_SOURCE", "W-1", format!("{} is {}: only sources are written{}", target.name, what, hint));
                             } else if let Some(imp) = self.syms[t].imported.clone() {
                                 self.err(
                                     "WRITE_TO_NON_SOURCE",
