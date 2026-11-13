@@ -102,6 +102,19 @@
   <p>Write to the equation instead, <code>double := 4</code>, and the checker refuses it, in your editor and in CI:</p>
 <pre class="err"><code>counter.rx:5:3 - error WRITE_TO_NON_SOURCE: double is an equation: only sources are written (W-1)</code></pre>
 
+  <h2>Destructure props, keep them live</h2>
+  <p>In Solid, destructuring props reads them once and the component stops updating. In .rx, destructure them right in the parameter list: every name follows its prop, defaults and rest included.</p>
+<pre><span class="fname">inbox.rx</span><code><span class="k">component</span> Badge({ label, tone = <span class="s">"info"</span>, ...rest }: { label: string; tone?: string; count: number }) {
+  &lt;span class={tone}&gt;{label}: {rest.count}&lt;/span&gt;
+}
+
+<span class="k">export default component</span> Inbox() {
+  <span class="w">source</span> user := { name: <span class="s">"Ada"</span>, unread: <span class="t">3</span> }
+
+  &lt;Badge label={user.name} count={user.unread} /&gt;   <span class="c">// Badge updates when user changes</span>
+  &lt;button onClick={() =&gt; { user := { ...user, unread: <span class="t">0</span> } }}&gt;Mark read&lt;/button&gt;
+}</code></pre>
+
   <h2>Async is just <code>await</code></h2>
   <p>Put an <code>await</code> in an equation. The checker tracks that the value can be pending and can fail, and asks you to say what to show in both cases.</p>
 <pre><span class="fname">profile.rx</span><code><span class="k">import pure</span> { fetchUser } <span class="k">from</span> <span class="s">"./api"</span>
@@ -186,6 +199,7 @@ like.rx:13:3 - error GUESS_WHILE_LOADING: &lt;button&gt; onClick starts `send`, 
     <tr><td><code>y = x * 2</code></td><td><code>createMemo</code>, <code>createProjection</code></td></tr>
     <tr><td><code>user = await fetchUser(id)</code></td><td>an async <code>createMemo</code></td></tr>
     <tr><td><code>guess likes := likes + 1</code></td><td><code>createOptimistic</code></td></tr>
+    <tr><td><code>component C({ label, ...rest })</code></td><td><code>props.label</code>, <code>omit(props, "label")</code></td></tr>
     <tr><td><code>action send() { … }</code></td><td><code>action</code></td></tr>
     <tr><td><code>effect (x) { … }</code></td><td><code>createEffect(compute, apply)</code></td></tr>
     <tr><td><code>loading</code> / <code>errored</code></td><td><code>&lt;Loading&gt;</code> / <code>&lt;Errored&gt;</code></td></tr>
