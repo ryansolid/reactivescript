@@ -37,6 +37,21 @@ function boundaryRead(f: () => unknown, match: (err: unknown) => boolean, alt: (
 /** A boundary's fallback that is decided when read, so a failure that changes class while the fallback shows is re-decided. */
 class Fallback { get: () => unknown; constructor(g: () => unknown) { this.get = g; } }
 function unwrapFallback(v0: unknown): unknown { let v = v0; if (v instanceof Fallback) v = v.get(); if (v instanceof Forward) throw v.err; return v; }
+/** A keyed answer is merged into the draft by key: a row whose key is still there keeps its object and takes the new
+ *  leaves, so an equal answer changes nothing and a changed one changes only its leaves (#51). Any other answer is
+ *  assigned.
+ *  TODO(Solid rc.22): return the keyed answer from the derive and let Solid reconcile it, dropping this merge. On
+ *  2.0.0-rc.21 that path throws in holdStaging (memo over latest() of the rows); fixed on Solid next (dba2aad). */
+function landDraft(draft: any, v: unknown, key: string | undefined) {
+  if (!key || !Array.isArray(v) || !Array.isArray(draft)) return assignDraft(draft, v);
+  const had = new Map<unknown, any>(); for (const row of draft) if (row && typeof row === "object") had.set(row[key], row);
+  v.forEach((x: any, i) => { const row = x && typeof x === "object" ? had.get(x[key]) : undefined; if (row) { mergeLeaves(row, x); if (draft[i] !== row) draft[i] = row; } else draft[i] = x; });
+  draft.length = v.length;
+}
+function mergeLeaves(o: any, v: any) {
+  for (const k of Object.keys(o)) if (!(k in v)) delete o[k];
+  for (const k of Object.keys(v)) { const a = o[k], b = v[k]; if (a && b && typeof a === "object" && typeof b === "object" && Array.isArray(a) === Array.isArray(b)) { if (Array.isArray(a)) { a.length = b.length; } mergeLeaves(a, b); } else if (a !== b) o[k] = b; }
+}
 /** A store draft becomes `v`: keys `v` lacks are removed, the rest assigned (an array's length follows). */
 function assignDraft(draft: any, v: unknown) {
   if (!v || typeof v !== "object") return;
@@ -257,7 +272,7 @@ export class Oracle {
             this.hoistAwaits(d.name, d.init, scope);
             const compute = this.computeOf(d.name, d.init, scope);
             if (this.optimisticTargets.has(d.name) && this.pathTargets.has(d.name)) {   // AC-3 path targets over ST-5 structured: createOptimisticStore(fn, seed) — the derive writes its draft; the setter guesses per key
-              const derive = async (draft: any) => { const r = compute(draft); const v = r instanceof Flight ? await r.first : await r; assignDraft(draft, v); };
+              const derive = async (draft: any) => { const r = compute(draft); const v = r instanceof Flight ? await r.first : await r; landDraft(draft, v, d.key); };
               const [store, setStore] = (createOptimisticStore as any)(derive, d.key ? [] : {}, d.key ? { key: d.key } : undefined);
               const plain = () => { throw new Unsupported("a plain write to an optimistic store"); };
               scope.vars.set(d.name, { k: "store", get: () => store, set: plain, setPath: plain, question: true, setGuess: setStore });
@@ -294,7 +309,7 @@ export class Oracle {
             const compute = this.computeOf(d.name, d.e, scope);
             const plain = () => { throw new Unsupported("a plain write to an equation"); };
             if (this.pathTargets.has(d.name) || d.key) {
-              const derive = async (draft: any) => { const r = compute(draft); const v = r instanceof Flight ? await r.first : await r; assignDraft(draft, v); };
+              const derive = async (draft: any) => { const r = compute(draft); const v = r instanceof Flight ? await r.first : await r; landDraft(draft, v, d.key); };
               const [store, setStore] = (createOptimisticStore as any)(derive, d.key ? [] : {}, d.key ? { key: d.key } : undefined);
               scope.vars.set(d.name, { k: "store", get: () => store, set: plain, setPath: plain, question: true, setGuess: setStore });
             } else {
@@ -508,7 +523,7 @@ export class Oracle {
       case "throw": throw untrack(() => this.ev(s.e, scope, env));
       case "action": this.lowerAction([], s.body, scope, env)(); return;
       case "refresh": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_REFRESH_TARGET"); const key = this.lastKey.get(s.name); if (key) this.forget(key); const d = Scope.all.find(x => x.vars.get(s.name) === b); for (const h of (d && this.hoistedByName.get(d)?.get(s.name)) ?? []) refresh(h as any); refresh((b.k === "store" ? b.get() : ((b.k === "sig" || b.k === "memo") && (b as any).truth) || b.get) as any); return; }
-      case "affects": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_AFFECTS_TARGET"); affects(b.get as any); return; }
+      case "affects": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_AFFECTS_TARGET"); affects((b.k === "store" ? b.get() : b.get) as any); return; }   // a store binding's get wraps the store: Solid takes the store (#50)
       case "optimistic": case "write": {
         const b = s.target.ctx ? this.provision(s.target.name, scope) : scope.lookup(s.target.name);
         const v = untrack(() => this.ev(s.e, scope, env));          // W-6: a function value is Solid's updater form — the setters take it as is

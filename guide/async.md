@@ -72,9 +72,15 @@ export action save(next: Profile) {
     profile := answer               // the truth
   } catch (e) {
     saveError := e.message          // lands in the same frame as the revert
+    onFlush(() => { saveError := e.message })   // and stays, if the body failed before its first await
   }
 }
 ```
+
+Write the error both ways. A failure after the `await` lands in the action's last instant, with the revert, and the
+`onFlush` run then writes the same value, which changes nothing. A failure before the first `await` (a `throw`, or a
+call that throws) lands in the action's first instant, so the clear above runs after it and would erase it; the second
+`onFlush` runs after the clear, in the same instant (EF-8: one step's callbacks run in call order), and puts it back.
 
 A handler can be the action itself, with no keyword: an arrow that writes `guess`, declares `affects`, or both
 writes and awaits is an action (AC-1b). Declare a named `action` when you call it from more than one place.

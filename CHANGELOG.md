@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+**Fixed**
+
+- `affects` on a keyed or structured source that takes a guess threw `INVALID_AFFECTS_TARGET` in a dev build, so the
+  action never reached its `await`, and did nothing in a production build, so `pending?` stayed false (#50,
+  S-affects-keyed).
+- A keyed source that takes a guess (`source rows key id = q.rows`) merges each answer by key instead of replacing every
+  row, so a row's readers re-run only when its own leaves change (#51).
+- The guide's action example (`guide/async.md` §3) lost an error thrown before the first `await`: the `onFlush` clear
+  ran after the catch. The catch now writes the error through `onFlush` as well (#52).
+
 ## 0.3.1
 
 **New**
