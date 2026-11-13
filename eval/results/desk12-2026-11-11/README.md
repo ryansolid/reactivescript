@@ -11,7 +11,12 @@
 **Grading:** `harness/grade.sh`, with hidden 77, overlap 38 and 20 fuzz seeds.
 - Defects are failed hidden tests, plus failed overlap tests, plus fuzz seeds that found a hole.
 - Only defects are counted.
-- No fuzz hole was traced to a legal hold, so nothing is excluded. Two holes are Solid bugs (filed), and they count against .rx, as pre-registered.
+- **Correction (2026-11-13):** rx-3 seed 5 ("closed row shown: #3") was later traced to a legal H-11 hold: the close is
+  guessed while an assign's re-ask of the list is out, so the row and the count both keep #3 until that re-ask answers,
+  and they never disagree. Excluded: rx-3 goes from 4 to 3 defects, frontier .rx from 3.17 to 3.0. The fuzzer now
+  excuses this hold (an accepted close whose guess never showed, while anything is in flight). Re-running all 60 apps
+  with it changed only that seed.
+- At grading time no fuzz hole was traced to a legal hold, so nothing was excluded. Two holes are Solid bugs (filed), and they count against .rx, as pre-registered.
 
 ## Defects per app
 

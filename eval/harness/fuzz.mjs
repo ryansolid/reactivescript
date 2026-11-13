@@ -111,7 +111,7 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
   const snaps = [snap()]; const snapNow = () => { const x = snap(); if (x !== snaps.at(-1)) snaps.push(x); };
   // writes in flight (key -> { issue, field, value }); declined values per issue/field during the busy period;
   // accepted writes per field in this busy period, in start order
-  const writes = new Map(); let declined = []; let started = []; let seq = 0; let gen = 0; let stale = []; let held = { filters: new Set(), selections: new Set(), rows: new Set() }; const settledCount = new Map();
+  const writes = new Map(); let declined = []; let started = []; let seq = 0; let gen = 0; let stale = []; let held = { filters: new Set(), selections: new Set(), rows: new Set() }; const heldCloses = new Set(); const settledCount = new Map();
   const trail = []; const found = [];
   const pending = () => page.evaluate(() => globalThis.__flights.pending());
   const texts = async id => (await page.locator(sel(id)).allTextContents()).map(norm);
@@ -159,7 +159,7 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
         const lingering = inFlight && declined.some(d => d.issue === p.id && d.field === "open");
         // H-11: a close guessed while another action's re-ask was out may be held with it; once accepted, its row may
         // stay until the re-ask answers, as long as the guess never showed (a shown close that comes back is still a hole)
-        const heldClose = inFlight && started.some(w => w.accepted && w.issue === p.id && w.field === "open" && !w.shown);
+        const heldClose = inFlight && heldCloses.has(p.id);
         if (!lingering && !heldClose) out.push(["closed row shown", `#${p.id} is closed on the server`]);
       }
       if (filter === "closed" && x.open) out.push(["open row in closed list", `#${p.id}`]);
@@ -282,6 +282,7 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
     }
     if (parsed.length && listText && !/loading/.test(listText)) {
       const v = listViolations(parsed, ui.filter);
+      if (ui.filter === "open") for (const id of heldCloses) if (!parsed.some(p => p.id === id)) heldCloses.delete(id);   // once gone, a held close may not come back
       // A5: a filter switch made while work is in flight may hold the previous filter's list (Ryan, 2026-10-28)
       if (v.length && !(held.filters.size && parsed.every(p => held.rows.has(p.id))) && ![...held.filters].some(f => !listViolations(parsed, f, false).length)) for (const [k, d] of v) note(k, d);
     }
@@ -437,9 +438,10 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
     if (w && !fail && w.gen !== gen && target) stale.push({ issue: w.issue, field: w.field, before });   // A4
     trail.push(`${fail ? "fail" : "land"} ${key}`);
     if (w) { writes.delete(key); if (fail) declined.push(w); else w.accepted = true; }
+    if (w && !fail && w.field === "open" && !w.shown && w.gen === gen) heldCloses.add(w.issue);   // H-11, see listViolations
     await page.evaluate(([k, a]) => a.fail ? globalThis.__flights.fail(k, "declined") : globalThis.__flights.land(k, a.value), [key, a]);
     await settle();
-    if (!(await pending()).length) declined = [];
+    if (!(await pending()).length) { declined = []; heldCloses.clear(); }
     if (!(await pending()).length) held = { filters: new Set(), selections: new Set(), rows: new Set() };
   }
 
@@ -476,7 +478,7 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
       case "filter": { const f = ui.filter === "open" ? "closed" : "open"; trail.push(`filter ${f}`); if ((await pending()).length) { held.filters.add(ui.filter); for (const t of await texts("issue")) { const m = t.match(/^#(\d+)/); if (m) held.rows.add(Number(m[1])); } } await click(`filter-${f}`); ui.filter = f; break; }
       case "focus": trail.push("focus"); await page.evaluate(() => { Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true }); for (const t of [document, window]) t.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("blur")); Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true }); for (const t of [document, window]) t.dispatchEvent(new Event("visibilitychange")); window.dispatchEvent(new Event("focus")); }); break;
       case "leave": trail.push("tab help"); await click("tab-help"); ui.page = "help"; gen++; break;
-      case "back": trail.push("tab issues"); await click("tab-issues"); ui.page = "issues"; ui.filter = "open"; ui.selected = null; gen++; stale = []; maxShown.clear(); held = { filters: new Set(), selections: new Set(), rows: new Set() }; break;
+      case "back": trail.push("tab issues"); await click("tab-issues"); ui.page = "issues"; ui.filter = "open"; ui.selected = null; gen++; stale = []; maxShown.clear(); heldCloses.clear(); held = { filters: new Set(), selections: new Set(), rows: new Set() }; break;
     }
     await settle();
   }
