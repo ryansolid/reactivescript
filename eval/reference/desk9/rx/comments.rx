@@ -1,0 +1,55 @@
+// The selected issue's comments, and posting one. Posts in flight live in their own source, so changing the
+// selection never waits for them, and each shows only under its own issue.
+
+import pure { fetchComments } from "./api"
+import { addComment } from "./api"
+
+export component Comments(props: { id: number; user: string }) {
+  source comments = await fetchComments(props.id)
+  source sending: { id: number; author: string; text: string }[] = []
+  shownSending = sending.filter(s => s.id == props.id)
+  source postError: string | null := null
+  source commentInput: string := ""
+
+  // a post error belongs to the issue it was made on: selecting another clears it
+  effect (props.id) { postError := null }
+
+  action postComment(id: number, author: string, text: string) {
+    onFlush(() => { postError := null })
+    try {
+      guess sending := [...sending, { id: id, author: author, text: text }]
+      await addComment(id, author, text)
+      refresh comments
+    } catch (e) {
+      postError := e.message
+    }
+  }
+
+  <div>
+    <div data-testid="comments">
+      {loading on(props.id) fallback { <p>loading comments</p> } {
+        {errored fallback(e) { <p>comments error: {e.message}</p> } {
+          <ul>
+            {for c in comments {
+              <li data-testid="comment">{c.author}: {c.text}</li>
+            }}
+            {for s in shownSending {
+              <li data-testid="comment">{s.author}: {s.text} (sending…)</li>
+            }}
+          </ul>
+        }}
+      }}
+    </div>
+    <input data-testid="comment-input" value={commentInput} onInput={e => { commentInput := e.target.value }} />
+    <button data-testid="post" onClick={() => {
+      if (commentInput != "") {
+        let text = commentInput
+        onFlush(() => { commentInput := "" })
+        postComment(props.id, props.user, text)
+      }
+    }}>post</button>
+    {if postError != null {
+      <p>post error: {postError}</p>
+    }}
+  </div>
+}

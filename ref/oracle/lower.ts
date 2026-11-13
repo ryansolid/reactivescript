@@ -299,7 +299,7 @@ export class Oracle {
             const compute = this.computeOf(d.name, d.e, scope);
             const src = createMemo(() => compute(undefined) as any, this.loadingValue(d.e, scope) as any);   // the answer (sync, or the tail await's) is a memo; the projection reconciles it by key (found by S-ai2-search)
             const proj = createProjection(() => src() as any, [] as any, { key: d.key } as any);
-            scope.vars.set(d.name, { k: "memo", get: () => proj });
+            scope.vars.set(d.name, { k: "memo", get: () => proj, truth: src } as any);   // AC-4: `refresh` re-asks the memo under the projection (S-keyed-refresh)
             break;
           }
           const fnDecl = this.fnOf(d.e, scope);
@@ -475,7 +475,7 @@ export class Oracle {
       }
       case "throw": throw untrack(() => this.ev(s.e, scope, env));
       case "action": this.lowerAction([], s.body, scope, env)(); return;
-      case "refresh": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_REFRESH_TARGET"); const key = this.lastKey.get(s.name); if (key) this.forget(key); const d = Scope.all.find(x => x.vars.get(s.name) === b); for (const h of (d && this.hoistedByName.get(d)?.get(s.name)) ?? []) refresh(h as any); refresh((b.k === "store" ? b.get() : (b.k === "sig" && b.truth) || b.get) as any); return; }
+      case "refresh": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_REFRESH_TARGET"); const key = this.lastKey.get(s.name); if (key) this.forget(key); const d = Scope.all.find(x => x.vars.get(s.name) === b); for (const h of (d && this.hoistedByName.get(d)?.get(s.name)) ?? []) refresh(h as any); refresh((b.k === "store" ? b.get() : ((b.k === "sig" || b.k === "memo") && (b as any).truth) || b.get) as any); return; }
       case "affects": { const b = scope.lookup(s.name); if (!b || !("get" in b)) throw new Error("INVALID_AFFECTS_TARGET"); affects(b.get as any); return; }
       case "optimistic": case "write": {
         const b = s.target.ctx ? this.provision(s.target.name, scope) : scope.lookup(s.target.name);

@@ -1,0 +1,12 @@
+== hidden
+77/77 passed
+== overlap
+38/38 passed
+== fuzz
+ref0: 3/20 seeds found a hole
+  seed 8 step 40: row title: #1 shows "Login fails", server "Delta"
+    land fetchIssues:open ; row-close 1 ; filter closed ; fail fetchIssues:closed ; select #4 ; land closeIssue:3 ; select #1 ; land fetchIssues:closed ; add-label bug ; (move failed: locator.click: Timeout 2000ms exceeded.) ; rename Bravo ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchIssue:1 ; rename Delta ; close ; add-label ui ; (move failed: locator.click: Timeout 2000ms
+  seed 11 step 39: page error: declined
+    tab help ; tab issues ; tab help ; land fetchIssues:open ; tab issues ; focus ; tab help ; tab issues ; land fetchIssues:open ; row-assign 1 ; land assign:3,guest ; filter closed ; user ann ; row-assign 0 ; focus ; land fetchIssues:open ; land assign:1,ann ; select #4 ; close ; land fetchIssues:closed ; close ; land fetchComments:4 ; fail fetchLabels:4 ; row-assign 0 ; close ; land fetchIssue:
+  seed 12 step 39: two views: row "#4 Typo in footer", detail "#4 Alphafooter says 2019saving filescras"
+    land fetchIssues:open ; focus ; select #1 ; row-close 1 ; select #4 ; land closeIssue:3 ; row-assign 1 ; rename Alpha ; (move failed: locator.click: Timeout 2000ms exceeded.) ; close ; rename Alpha ; (move failed: locator.click: Timeout 2000ms exceeded.) ; land fetchIssue:1 ; land fetchIssue:4 ; row-close 0 ; rename Alpha ; fail closeIssue:1 ; land assign:4,guest ; land fetchLabels:1 ; land fe

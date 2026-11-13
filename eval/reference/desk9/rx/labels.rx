@@ -1,0 +1,74 @@
+// The selected issue's labels, adding and removing them. Changes in flight live in their own sources, so changing
+// the selection never waits for them, and each shows only under its own issue.
+
+import pure { fetchLabels } from "./api"
+import { addLabel, removeLabel } from "./api"
+
+export component Labels(props: { id: number }) {
+  source labels = await fetchLabels(props.id)
+  source adding: { id: number; label: string }[] = []
+  source removing: { id: number; label: string }[] = []
+  shown = [
+    ...labels.filter(l => !removing.some(r => r.id == props.id && r.label == l)),
+    ...adding.filter(a => a.id == props.id).map(a => a.label),
+  ]
+  source labelError: string := ""
+  source labelInput: string := ""
+
+  // a label error belongs to the issue it was made on: selecting another clears it
+  effect (props.id) { labelError := "" }
+
+  action add(id: number, label: string) {
+    onFlush(() => { labelError := "" })
+    try {
+      guess adding := [...adding, { id: id, label: label }]
+      await addLabel(id, label)
+      refresh labels
+    } catch (e) {
+      labelError := e.message
+    }
+  }
+
+  action remove(id: number, label: string) {
+    onFlush(() => { labelError := "" })
+    try {
+      guess removing := [...removing, { id: id, label: label }]
+      await removeLabel(id, label)
+      refresh labels
+    } catch (e) {
+      labelError := e.message
+    }
+  }
+
+  <div>
+    <div data-testid="labels">
+      {loading on(props.id) fallback { <p>loading labels</p> } {
+        {errored fallback(e) { <p>labels error: {e.message}</p> } {
+          <ul>
+            {for l in shown {
+              <li><span data-testid="label">{l}</span>{" "}<button data-testid="remove-label" onClick={() => { remove(props.id, l) }}>remove {l}</button></li>
+            }}
+          </ul>
+        }}
+      }}
+    </div>
+    <input data-testid="label-input" value={labelInput} onInput={e => { labelInput := e.target.value }} />
+    {loading on(props.id) fallback { <button data-testid="add-label" disabled>add label</button> } {
+      {errored fallback(e) { <button data-testid="add-label" disabled>add label</button> } {
+        // the button reads what it guards: `shown` failing puts this region on its fallback, never under a live click
+        {for have in [shown] {
+          <button data-testid="add-label" disabled={pending? shown} onClick={() => {
+            if (labelInput != "" && !have.includes(labelInput)) {
+              let label = labelInput
+              onFlush(() => { labelInput := "" })
+              add(props.id, label)
+            }
+          }}>add label</button>
+        }}
+      }}
+    }}
+    {if labelError != "" {
+      <p>label error: {labelError}</p>
+    }}
+  </div>
+}

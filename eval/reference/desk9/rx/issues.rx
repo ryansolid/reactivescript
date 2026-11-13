@@ -1,0 +1,88 @@
+// The issues page: the filtered list, the selected issue's detail, and the controls for the writes in desk.rx.
+
+import { filter, selected, rows, detail, heading, assignError, renameError, closeError, rowError } from "./desk.rx"
+import { showFilter, select, assignTo, renameTo, closeOne } from "./desk.rx"
+import { Comments } from "./comments.rx"
+import { Labels } from "./labels.rx"
+import { Related } from "./related.rx"
+
+// the open list as shown (closes in flight already out of it) is the tab's count: it is read where the list is read,
+// under the list's boundary, so it holds and reveals with the rows; other lists, loads and failures leave it as it was
+component OpenCount(props: { n: number; onCount: (n: number) => void }) {
+  effect (props.n) {
+    props.onCount($0)
+  }
+}
+
+export component IssuesPage(props: { onOpenCount: (n: number) => void; onOpenHelp: (query: string, id: number) => void }) {
+  source user: string := "guest"
+  source titleInput: string := ""
+
+  <main>
+    <div>
+      <label>
+        user{" "}
+        <input data-testid="user" value={user} onInput={e => { user := e.target.value }} />
+      </label>
+    </div>
+    <div>
+      <button data-testid="filter-open" onClick={() => { showFilter("open") }}>open</button>
+      <button data-testid="filter-closed" onClick={() => { showFilter("closed") }}>closed</button>
+    </div>
+    {if rowError != "" {
+      <p data-testid="row-error">row error: {rowError}</p>
+    }}
+    <div data-testid="list">
+      {loading on(filter) fallback { <p>loading {latest filter} issues</p> } {
+        {errored fallback(e) { <p>list error: {e.message}</p> } {
+          {if filter == "open" {
+            <OpenCount n={rows.length} onCount={n => { props.onOpenCount(n) }} />
+          }}
+          <ul>
+            {for it in rows {
+              <li>
+                <span data-testid="issue" onClick={() => {
+                  titleInput := ""
+                  select(it.id)
+                }}>#{it.id} {it.title} ({it.assignee ?? "unassigned"})</span>{" "}
+                <button data-testid="row-assign" onClick={() => { assignTo(it.id, user, true) }}>assign to {user}</button>
+                {if filter == "open" {
+                  {" "}<button data-testid="row-close" onClick={() => { closeOne(it.id, true) }}>close</button>
+                }}
+              </li>
+            }}
+          </ul>
+        }}
+      }}
+    </div>
+    <div data-testid="detail">
+      {if selected != null {
+        {loading on(selected) fallback { <p>loading #{latest selected}</p> } {
+          {errored fallback(e) { <p>detail error: {e.message}</p> } {
+            <h2>#{detail.id} {heading}</h2>
+            <p>{detail.body}</p>
+            <Related title={heading} onOpen={(q, id) => { props.onOpenHelp(q, id) }} />
+          }}
+          <button data-testid="retry" onClick={() => { refresh detail }}>retry</button>
+        }}
+        <button data-testid="assign" onClick={() => { assignTo(selected, user, false) }}>assign to {user}</button>
+        {if assignError != "" {
+          <p data-testid="assign-error">{assignError}</p>
+        }}
+        <input data-testid="title-input" value={titleInput} onInput={e => { titleInput := e.target.value }} />
+        <button data-testid="rename" onClick={() => { if (titleInput != "") { renameTo(selected, titleInput) } }}>rename</button>
+        {if renameError != "" {
+          <p>rename error: {renameError}</p>
+        }}
+        <button data-testid="close" onClick={() => { closeOne(selected, false) }}>close</button>
+        {if closeError != "" {
+          <p>close error: {closeError}</p>
+        }}
+        <Labels id={selected} />
+        <Comments id={selected} user={user} />
+      } else {
+        <p>select an issue</p>
+      }}
+    </div>
+  </main>
+}

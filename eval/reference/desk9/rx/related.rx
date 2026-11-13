@@ -1,0 +1,23 @@
+// Help related to an issue: the first hits of a search for its title.
+
+import pure { search } from "./api"
+
+export component Related(props: { title: string; onOpen: (query: string, id: number) => void }) {
+  hits = await search(props.title)
+
+  <div data-testid="related">
+    {loading on(props.title) fallback { <p>finding related help</p> } {
+      {errored fallback(e) { <p>related help failed: {e.message}</p> } {
+        {if hits.length == 0 {
+          <p>no related help</p>
+        } else {
+          <ul>
+            {for h in hits.slice(0, 3) {
+              <li><button data-testid="related-hit" onClick={() => { props.onOpen(props.title, h.id) }}>{h.name}</button></li>
+            }}
+          </ul>
+        }}
+      }}
+    }}
+  </div>
+}
