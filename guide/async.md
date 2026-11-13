@@ -199,7 +199,8 @@ export action rename(id: string, name: string) {
 
 ### Data belongs with its lifetime
 
-Declare data where it lives as long as it is needed. A page's list usually belongs to the page: it loads when the page
+In .rx, state is not tied to components: a `source` can be declared in a module, a component or a region, and a
+component only reads and calls what it is given. So declare data where it lives as long as it is needed. A page's list usually belongs to the page: it loads when the page
 opens and goes when it closes. A write in flight lives until the server answers, which can be after its page closed;
 the data it refreshes must live at least as long. If it lives in the page, the write's `refresh` re-asks the closed
 page's question, and the page opened again keeps the answer it asked for before the write landed, beside views asked
