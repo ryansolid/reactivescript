@@ -68,6 +68,78 @@ struct Loader<'r> {
     parse_errors: Vec<ParseError>,
 }
 
+/// MO-10c: the file a package import resolves to, as a bundler finds it — `node_modules` up from the importer, the
+/// package's `exports` (a subpath, then the first of its conditions that a Solid build sets, in the package's order; `*`
+/// patterns), else `module` or `main`. Its declaration is beside it: the same name, `.d.rx`.
+pub fn package_declaration(from_file: &str, spec: &str, read: &dyn Fn(&str) -> Option<String>) -> Option<String> {
+    use serde_json::Value;
+    const CONDITIONS: [&str; 4] = ["solid", "browser", "import", "default"];
+    let seg: Vec<&str> = spec.split('/').collect();
+    let n = if spec.starts_with('@') { 2 } else { 1 };
+    if seg.len() < n || seg[..n].iter().any(|x| x.is_empty()) {
+        return None;
+    }
+    let pkg = seg[..n].join("/");
+    let sub = if seg.len() > n { format!("./{}", seg[n..].join("/")) } else { ".".to_string() };
+    let all: Vec<&str> = from_file.split('/').collect();
+    let dirs = &all[..all.len() - 1];
+    let min = if from_file.starts_with('/') { 1 } else { 0 };
+    fn pick(t: &Value) -> Option<String> {
+        match t {
+            Value::String(s) => Some(s.clone()),
+            Value::Array(xs) => xs.iter().find_map(pick),
+            Value::Object(m) => m.iter().filter(|(k, _)| CONDITIONS.contains(&k.as_str())).find_map(|(_, v)| pick(v)),
+            _ => None,
+        }
+    }
+    let mut i = dirs.len() as i64;
+    while i >= min {
+        let mut parts: Vec<&str> = dirs[..i as usize].to_vec();
+        parts.push("node_modules");
+        parts.push(&pkg);
+        let root = parts.join("/");
+        i -= 1;
+        let Some(pj) = read(&format!("{root}/package.json")) else { continue };
+        let Ok(json) = serde_json::from_str::<Value>(&pj) else { return None };
+        let target: Option<String> = match json.get("exports") {
+            Some(ex) => {
+                let map = match ex {
+                    Value::Object(m) if m.keys().any(|k| k.starts_with('.')) => Some(m),
+                    _ => None,
+                };
+                match map {
+                    None => (sub == ".").then(|| pick(ex)).flatten(),
+                    Some(m) => match m.get(&sub) {
+                        Some(v) => pick(v),
+                        None => m.iter().find_map(|(k, v)| {
+                            let star = k.find('*')?;
+                            let (pre, post) = (&k[..star], &k[star + 1..]);
+                            if sub.starts_with(pre) && sub.ends_with(post) && sub.len() >= pre.len() + post.len() {
+                                Some(pick(v).map(|t| t.replace('*', &sub[pre.len()..sub.len() - post.len()])))
+                            } else {
+                                None
+                            }
+                        }).flatten(),
+                    },
+                }
+            }
+            None => {
+                if sub == "." {
+                    Some(json.get("module").and_then(|v| v.as_str()).or_else(|| json.get("main").and_then(|v| v.as_str())).unwrap_or("./index.js").to_string())
+                } else {
+                    Some(sub.clone())
+                }
+            }
+        };
+        let target = target?;
+        let file = join_path(&format!("{root}/package.json"), &target);
+        let stem = PKG_EXT.replace(&file, "").to_string();
+        return Some(stem + ".d.rx");
+    }
+    None
+}
+static PKG_EXT: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| regex::Regex::new(r"\.(m?js|cjs|jsx|ts|tsx)$").unwrap());
+
 fn replace_js_ext(from: &str) -> String {
     for ext in [".mjs", ".js", ".ts"] {
         if let Some(s) = from.strip_suffix(ext) {
@@ -93,9 +165,11 @@ impl Loader<'_> {
         self.state.insert(path.to_string(), State::Busy);
         for d in p.decls.iter_mut() {
             let Decl::Import { from, line, resolved, declared, declared_errors, declared_pure, declared_side, .. } = d else { continue };
-            if !is_rx(from) && from.starts_with('.') {
+            // MO-10c: a package's declaration, beside the file it resolves to
+            let pkg_dts = if !is_rx(from) && !from.starts_with('.') && !from.starts_with('/') { package_declaration(path, from, &*self.read) } else { None };
+            if !is_rx(from) && (from.starts_with('.') || pkg_dts.is_some()) {
                 // MO-8: a JS module with a declaration file beside it
-                let dts = join_path(path, &(replace_js_ext(from) + ".d.rx"));
+                let dts = pkg_dts.unwrap_or_else(|| join_path(path, &(replace_js_ext(from) + ".d.rx")));
                 if !self.declarations.contains_key(&dts) {
                     if let Some(src) = (self.read)(&dts) {
                         let ds = parse_declarations(&src).map_err(|e| ParseError(format!("{}: {}", dts, e.0), e.1, Some(dts.clone()), e.3))?;

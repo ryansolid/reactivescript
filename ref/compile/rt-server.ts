@@ -5,6 +5,7 @@
 // solid-js primitives in the same order, so each owner, element and hole takes the id the client will look for (SV-3). A failure of a declared class (R-f-1, MO-8) is marked safe and goes
 // to the client as it is; anything else that reaches a boundary — a panic, or a JS rejection of plain `Error` — goes as
 // Solid's generic error (SV-5).
+import { primsSolid } from "./prims-solid.ts";
 import { Portal as WebPortal } from "@solidjs/web";
 import { getObserver } from "solid-js";
 import { provideRequestEvent } from "@solidjs/web/storage";
@@ -120,6 +121,8 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
       const f = opts.api[name] ?? (() => { throw new Error(`./api has no ${name}`); });
       return (...a: unknown[]) => { const r = f(...a); return r && typeof (r as PromiseLike<unknown>).then === "function" ? Promise.resolve(r).catch(e => { if (isA(e, declared)) markSafeError(e); throw e; }) : r; };
     },
+    /** MO-10: the scenario prelude's `./prims` — Solid primitives, as a library writes them (`ref/compile/prims-solid.ts`). */
+    prim: (name: string) => primsSolid({ createSignal: createSignal as any, createMemo: createMemo as any })[name] ?? (() => { throw new Error(`./prims has no ${name}`); }),
 
     reg(name: string, e: Entry) { let l = registry.get(name); if (!l) registry.set(name, (l = [])); l.push(e); },
     dget(name: string) { const e = app.lookup(name); return e.get ? app.snapshot(e.get) : e.value; },

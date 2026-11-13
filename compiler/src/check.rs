@@ -11,10 +11,11 @@ use crate::content::{misnested, misnested_inside, Shape, P_CLOSERS, P_SCOPE};
 use crate::infer::{inferred_action, run_findings, trigger_text, Code};
 use crate::model::{ModelBuilder, ModelSymbol};
 use crate::modules::ModuleSet;
-use crate::parse::{js_trim, JsDecl};
+use crate::parse::{js_trim, JsDecl, Part, Shape as FShape};
 use crate::signature::{Catch, CompSig, ExportSig, ModSig, Own, PropSig, SigParam, HOLD};
 use indexmap::{IndexMap, IndexSet};
 use regex::Regex;
+use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::sync::LazyLock;
 
@@ -238,6 +239,10 @@ struct Sym<'a> {
     server_rejects: Option<ServerRejects<'a>>,
     fn_decl: Option<&'a Decl>,
     decl_env: Option<EId>,
+    /// MO-10: a declared JS primitive (a fn) or an instance of one, or a part of it (an equation): what its result is
+    foreign: Option<FShape>,
+    /// MO-10d: bound from a foreign accessor — it may hold, as a question's reader does
+    reader: bool,
 }
 impl<'a> Sym<'a> {
     fn new(kind: SymKind, name: &str, region: RId, line: i64) -> Self {
@@ -271,6 +276,8 @@ impl<'a> Sym<'a> {
             server_rejects: None,
             fn_decl: None,
             decl_env: None,
+            foreign: None,
+            reader: false,
         }
     }
 }
@@ -834,6 +841,8 @@ pub struct Opts<'a> {
 }
 
 pub struct Checker<'a> {
+    /// MO-10d: CN-3e asks what may hold, where a foreign reader counts (R-8 asks what may be absent, where it does not)
+    holds_mode: Cell<bool>,
     pub diags: Vec<Diagnostic>,
     pub model: ModelBuilder,
     opts: Opts<'a>,
@@ -913,6 +922,7 @@ pub fn check_modules(set: &ModuleSet, spa: bool) -> Checked {
 impl<'a> Checker<'a> {
     pub fn new(opts: Opts<'a>) -> Self {
         Checker {
+            holds_mode: Cell::new(false),
             diags: vec![],
             model: ModelBuilder::default(),
             opts,
@@ -1201,6 +1211,7 @@ impl<'a> Checker<'a> {
                             }
                         }
                     }
+                    self.foreign_part(&mut sym, e, env);
                     if let Some(sf) = unwrap_server(e) {
                         sym.kind = SymKind::Server;
                         if let ExprKind::ServerFn { params, .. } = &sf.k {
@@ -1417,7 +1428,22 @@ impl<'a> Checker<'a> {
                     self.bind(env, alias, Sym::new(SymKind::ErrClass, alias, region, line));
                     continue;
                 }
-                JsDecl::Fn { pure: xpure, side: xside, rejects, .. } => {
+                JsDecl::Fn { pure: xpure, side: xside, rejects, params: xparams, refs, shape, instantiates, .. } => {
+                    if *instantiates {
+                        // MO-10a: a primitive is an instantiation (RG-6)
+                        if *pure && !xpure {
+                            self.err("IMPORT_ROW_MISMATCH", "MO-8", format!("{} is declared io in {} (`export fn`, not `export pure fn`); `pure` on the import cannot lower it", name, file));
+                        }
+                        let mut s = Sym::new(SymKind::Fn, alias, region, line);
+                        s.params = Some(xparams.iter().enumerate().map(|(i, n)| SigParam { name: n.clone(), r#ref: refs.get(i).copied().unwrap_or(false), ty: None }).collect());
+                        s.instantiating = true;
+                        s.foreign = Some(shape.clone());
+                        s.rows = Some(RowsT::Fixed(IndexSet::new()));
+                        s.fails_t = Some(FailsT::Fixed(IndexSet::new()));
+                        s.rejects = Some(IndexSet::new());
+                        self.bind(env, alias, s);
+                        continue;
+                    }
                     if *pure && !xpure {
                         self.err("IMPORT_ROW_MISMATCH", "MO-8", format!("{} is declared io in {} (`export fn`, not `export pure fn`); `pure` on the import cannot lower it", name, file));
                     }
@@ -1440,6 +1466,39 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// MO-10b: an equation bound from a primitive's result, or from a part of it (`[a, b] = f(…)`, `x.k`): a `ref` part is
+    /// a reader (it may hold, MO-10d), a function part is io (R-io-3), anything else is a value.
+    fn foreign_part(&self, sym: &mut Sym<'a>, e: &Expr, env: EId) {
+        let shape: Option<FShape> = match &e.k {
+            ExprKind::Call { f, .. } => match &f.k {
+                ExprKind::Id(n) => self.lookup(env, n).and_then(|t| if self.syms[t].kind == SymKind::Fn { self.syms[t].foreign.clone() } else { None }),
+                _ => None,
+            },
+            ExprKind::Index { o, i, .. } => match (&o.k, &i.k) {
+                (ExprKind::Id(on), ExprKind::Lit(Lit::Num(v))) => match self.lookup(env, on).and_then(|t| self.syms[t].foreign.clone()) {
+                    Some(FShape::Items(items)) if *v >= 0.0 && v.fract() == 0.0 => items.get(*v as usize).map(|p| FShape::Part(*p)),
+                    _ => None,
+                },
+                _ => None,
+            },
+            ExprKind::Member { o, p, .. } => match &o.k {
+                ExprKind::Id(on) => match self.lookup(env, on).and_then(|t| self.syms[t].foreign.clone()) {
+                    Some(FShape::Fields(fields)) => fields.iter().find(|f| &f.0 == p).map(|f| FShape::Part(f.1)),
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        };
+        let Some(shape) = shape else { return };
+        if shape == FShape::Part(Part::Fn) {
+            sym.io = true;
+        }
+        if shape == FShape::Part(Part::Ref) {
+            sym.reader = true;
+        }
+        sym.foreign = Some(shape);
+    }
     /// MO-3: this module's signature — every export as an importer sees it.
     pub fn signature(&mut self, p: &'a Program) -> ModSig {
         let mut exports = IndexMap::new();
@@ -3225,6 +3284,15 @@ impl<'a> Checker<'a> {
         if let Some(&b) = memo.get(&s) {
             return b;
         }
+        if self.holds_mode.get() {
+            // MO-10: a reader may hold; a primitive's other parts are bound as they are
+            if self.syms[s].reader {
+                return true;
+            }
+            if matches!(self.syms[s].foreign, Some(FShape::Part(Part::Fn | Part::Value))) {
+                return false;
+            }
+        }
         let Some((e, env)) = self.syms[s].expr else { return false };
         if !busy.insert(s) {
             return false;
@@ -3388,7 +3456,10 @@ impl<'a> Checker<'a> {
                         ExprKind::Id(name) => {
                             if let Some(t) = self.lookup(env, name) {
                                 if matches!(self.syms[t].kind, SymKind::Eq | SymKind::Source) && busy.insert(t) {
-                                    if self.absent(t, &mut HashMap::new(), &mut HashSet::new()) {
+                                    self.holds_mode.set(true);
+                                    let held = self.absent(t, &mut HashMap::new(), &mut HashSet::new());
+                                    self.holds_mode.set(false);
+                                    if held {
                                         out.push(t);
                                     }
                                     if let Some((te, tenv)) = self.syms[t].expr {

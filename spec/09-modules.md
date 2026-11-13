@@ -310,6 +310,15 @@ export component Search(props: { start: boolean, q: string }) {
 
 ## Implementation
 
+- MO-10: `parseDeclarations` reads `ref`, `ref T` and `instantiates` into a
+  declaration's `refs` and `shape`; the checker binds a primitive as an
+  instantiating fn (so E-9, E-10 and RG-6's checks are an `.rx` fn's) and
+  marks each equation bound from its result a reader, an io function or a
+  value. The lowering calls it once and binds a `ref` part to the accessor
+  itself. A package's declaration is found by `packageDeclaration`
+  (`modules.ts`, `package_declaration` in the crate). The scenarios' Solid
+  library is `./prims` (`ref/src/prims.ts`: the `.rx` the interpreter runs,
+  and `compile/prims-solid.ts`, the Solid primitives the other runners call).
 - `ref/src/modules.ts` loads an entry and every `.rx` module it imports,
   sets each import's resolved key, orders them dependencies first, and
   reports cycles and missing modules. Scenarios declare modules in a
@@ -364,5 +373,4 @@ export component Search(props: { start: boolean, q: string }) {
    drafted and dropped, Ryan 2026-11-13: nothing needs it), else a local
    re-export declares it; a project-level folder of
    declarations keyed by package was the alternative, not taken.
-   Not yet built: array destructuring (07 decision 20) is ruled but not
-   parsed, and the crate and `ref/` do not yet read MO-10.
+   Built in `ref/` and the crate (S-module-4).

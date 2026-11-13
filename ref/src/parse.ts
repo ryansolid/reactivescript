@@ -132,7 +132,7 @@ export function parseProgram(src: string): Program {
 /** MO-8: a declaration file (`api.d.rx`) for a JS module — what each export is, in rows: `export pure fn f(a) rejects(A | B)`,
  *  `export fn g(a)` (io: dirty is the default, R-io-4), `export error NotFound` (a JS class that is an error class), `export type T`. */
 export type JsDecl =
-  | { kind: "fn"; name: string; pure: boolean; params: string[]; rejects?: string[]; line: number; side?: "server" | "client"; ptypes?: (string | undefined)[]; ret?: string }   // side: 12 SF-5; types: text, for TY (types/)
+  | { kind: "fn"; name: string; pure: boolean; params: string[]; rejects?: string[]; line: number; side?: "server" | "client"; ptypes?: (string | undefined)[]; ret?: string; refs?: boolean[]; shape?: Shape; instantiates?: boolean }   // side: 12 SF-5; types: text, for TY (types/), `ref` taken out; MO-10: refs (ref parameters), shape (what its result is), instantiates (written, or inferred from a ref)
   | { kind: "error"; name: string; line: number }
   | { kind: "type"; name: string; line: number; text?: string };
 export function parseDeclarations(src: string): JsDecl[] {
@@ -148,16 +148,39 @@ export function parseDeclarations(src: string): JsDecl[] {
     const pure = c.keyword("pure"); c.ws();
     if (!c.keyword("fn")) c.fail("fn");
     c.ws(); const name = c.ident() ?? c.fail("fn name"); c.ws(); c.expect("("); c.ws();
-    const params: string[] = []; const ptypes: (string | undefined)[] = [];
-    while (!c.startsWith(")")) { params.push(c.ident() ?? c.fail("param")); ptypes.push(optType(c)); c.ws(); if (!c.eat(",")) break; c.ws(); }
+    const params: string[] = []; const ptypes: (string | undefined)[] = []; const refs: boolean[] = [];
+    while (!c.startsWith(")")) { const r = c.keyword("ref"); if (r) c.ws(); refs.push(r); params.push(c.ident() ?? c.fail("param")); c.ws(false); ptypes.push(c.peek() === ":" ? (c.i++, c.ws(), parseType(c, false, true)) : undefined); c.ws(); if (!c.eat(",")) break; c.ws(); }   // MO-10a: a ref parameter takes an accessor
     c.expect(")");
-    const save = c.i; c.ws(false); let ret: string | undefined;
-    if (c.peek() === ":" ) { c.i++; c.ws(); const t = c.src.slice(c.i).split("\n")[0]; const r = /\brejects\(/.exec(t); ret = (r ? t.slice(0, r.index) : t).replace(/\/\/.*$/, "").trim() || undefined; c.i += r ? r.index : t.length; } else c.i = save;
+    const save = c.i; c.ws(false); let ret: string | undefined; let shape: Shape | undefined;
+    if (c.peek() === ":" ) { c.i++; c.ws(); const t = c.src.slice(c.i).split("\n")[0]; const r = /\brejects\(|\binstantiates\b/.exec(t); const raw = (r ? t.slice(0, r.index) : t).replace(/\/\/.*$/, "").trim(); shape = raw ? shapeOf(raw) : undefined; ret = raw.replace(/\bref\s+/g, "") || undefined; c.i += r ? r.index : t.length; } else c.i = save;   // MO-10b: `ref T` is an accessor, read as T
     c.ws(false); let rejects: string[] | undefined;
     if (c.keyword("rejects")) { c.ws(); c.expect("("); rejects = parseClasses(c) ?? ["Error"]; c.ws(); c.expect(")"); }
-    out.push({ kind: "fn", name, pure, params, rejects, line, ptypes, ret, ...(side ? { side } : {}) });
+    c.ws(false); const written = c.keyword("instantiates");
+    const instantiates = written || refs.some(x => x) || shapeHasRef(shape);   // MO-10a: inferred from a ref on either side
+    out.push({ kind: "fn", name, pure, params, rejects, line, ptypes, ret, ...(side ? { side } : {}), ...(instantiates ? { refs, shape: shape ?? "value", instantiates } : {}) });
   }
 }
+
+/** MO-10b: what a primitive's result is — a reader (`ref T`, an accessor), an io function, a value; or a tuple or record of
+ *  those (only the result and its parts are declared). */
+export type Part = "ref" | "fn" | "value";
+export type Shape = Part | { items: Part[] } | { fields: [string, Part][] };
+function splitTop(s: string, seps: string): string[] {
+  const out: string[] = []; let depth = 0, from = 0;
+  for (let i = 0; i < s.length; i++) { const ch = s[i]; if ("([{<".includes(ch)) depth++; else if (")]}>".includes(ch) && !(ch === ">" && s[i - 1] === "=")) depth--; else if (depth === 0 && seps.includes(ch)) { out.push(s.slice(from, i)); from = i + 1; } }
+  out.push(s.slice(from)); return out.map(x => x.trim()).filter(x => x);
+}
+function partOf(t: string): Part {
+  if (/^ref\s/.test(t)) return "ref";
+  if (t.startsWith("(") && /\)\s*=>/.test(t)) return "fn";
+  return "value";
+}
+function shapeOf(t: string): Shape {
+  if (t.startsWith("[") && t.endsWith("]")) return { items: splitTop(t.slice(1, -1), ",").map(partOf) };
+  if (t.startsWith("{") && t.endsWith("}")) return { fields: splitTop(t.slice(1, -1), ",;").map(f => { const i = f.indexOf(":"); return [f.slice(0, i).trim().replace(/\?$/, ""), partOf(f.slice(i + 1).trim())] as [string, Part]; }) };
+  return partOf(t);
+}
+export function shapeHasRef(s?: Shape): boolean { return !!s && (s === "ref" || (typeof s === "object" && ("items" in s ? s.items : s.fields.map(f => f[1])).includes("ref"))); }
 
 /** RG-4b, 07 §5: a destructuring pattern, `{ a, b: c, d = 1, e: { f }, ...rest }` or `[a, , b, ...rest]`. */
 type Pat = { k: "name"; name: string; line: number } | { k: "obj"; props: { key: string; pat: Pat; dflt?: Expr }[]; rest?: Pat } | { k: "arr"; items: ({ pat: Pat; dflt?: Expr } | null)[]; rest?: Pat };

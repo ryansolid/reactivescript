@@ -18,6 +18,37 @@ export function joinPath(fromFile: string, rel: string): string {
   return (rel.startsWith("/") ? "/" : "") + parts.join("/");
 }
 
+/** MO-10c: the file a package import resolves to, as a bundler finds it — `node_modules` up from the importer, the package's
+ *  `exports` (a subpath, then the first of its conditions that a Solid build sets, in the package's order; `*` patterns),
+ *  else `module` or `main`. Its declaration is beside it: the same name, `.d.rx`. */
+const CONDITIONS = new Set(["solid", "browser", "import", "default"]);
+export function packageDeclaration(fromFile: string, spec: string, read: (path: string) => string | undefined): string | undefined {
+  const seg = spec.split("/"); const n = spec.startsWith("@") ? 2 : 1; if (seg.length < n || seg.slice(0, n).some(x => !x)) return undefined;
+  const pkg = seg.slice(0, n).join("/"); const sub = seg.length > n ? "./" + seg.slice(n).join("/") : ".";
+  const dirs = fromFile.split("/").slice(0, -1);
+  for (let i = dirs.length; i >= (fromFile.startsWith("/") ? 1 : 0); i--) {
+    const root = [...dirs.slice(0, i), "node_modules", pkg].join("/"); const pj = read(root + "/package.json"); if (pj === undefined) continue;
+    let json: any; try { json = JSON.parse(pj); } catch { return undefined; }
+    const pick = (t: unknown): string | undefined => {
+      if (typeof t === "string") return t;
+      if (Array.isArray(t)) { for (const x of t) { const r = pick(x); if (r) return r; } return undefined; }
+      if (t && typeof t === "object") { for (const [k, v] of Object.entries(t)) if (CONDITIONS.has(k)) { const r = pick(v); if (r) return r; } }
+      return undefined;
+    };
+    let target: string | undefined;
+    const ex = json.exports;
+    if (ex !== undefined) {
+      const map: Record<string, unknown> | null = typeof ex === "object" && ex && !Array.isArray(ex) && Object.keys(ex).some(k => k.startsWith(".")) ? ex : null;
+      if (!map) target = sub === "." ? pick(ex) : undefined;
+      else if (sub in map) target = pick(map[sub]);
+      else for (const [k, v] of Object.entries(map)) { const star = k.indexOf("*"); if (star < 0) continue; const pre = k.slice(0, star), post = k.slice(star + 1); if (sub.startsWith(pre) && sub.endsWith(post) && sub.length >= pre.length + post.length) { const t = pick(v); if (t) target = t.split("*").join(sub.slice(pre.length, sub.length - post.length)); break; } }
+    } else target = sub === "." ? (typeof json.module === "string" ? json.module : typeof json.main === "string" ? json.main : "./index.js") : sub;
+    if (!target) return undefined;
+    return joinPath(root + "/package.json", target).replace(/\.(m?js|cjs|jsx|ts|tsx)$/, "") + ".d.rx";
+  }
+  return undefined;
+}
+
 /** Load `entry` and everything it imports from `.rx`. `read` returns a module's source, or undefined when there is none. */
 export function loadModules(entry: string, read: (path: string) => string | undefined): ModuleSet {
   const programs = new Map<string, Program>(); const order: string[] = []; const diags: Diagnostic[] = []; const declarations = new Map<string, JsDecl[]>(); const signatures = new Map<string, ModSig>();
@@ -30,8 +61,9 @@ export function loadModules(entry: string, read: (path: string) => string | unde
     try { p = parseProgram(src); } catch (e) { if (e instanceof ParseError) throw Object.assign(new ParseError(`${path}: ${e.message}`), { code: e.code }); throw e; }
     programs.set(path, p); state.set(path, "busy");
     for (const d of p.decls) {
-      if (d.k === "import" && !isRx(d.from) && d.from.startsWith(".")) {             // MO-8: a JS module with a declaration file beside it
-        const dts = joinPath(path, d.from.replace(/\.(m?js|ts)$/, "") + ".d.rx");
+      const pkgDts = d.k === "import" && !isRx(d.from) && !d.from.startsWith(".") && !d.from.startsWith("/") ? packageDeclaration(path, d.from, read) : undefined;   // MO-10c
+      if (d.k === "import" && !isRx(d.from) && (d.from.startsWith(".") || pkgDts)) {             // MO-8: a JS module with a declaration file beside it
+        const dts = pkgDts ?? joinPath(path, d.from.replace(/\.(m?js|ts)$/, "") + ".d.rx");
         if (!declarations.has(dts)) { const src = read(dts); if (src !== undefined) { try { declarations.set(dts, parseDeclarations(src)); } catch (e) { if (e instanceof ParseError) throw Object.assign(new ParseError(`${dts}: ${e.message}`), { code: e.code }); throw e; } } }
         const ds = declarations.get(dts);
         if (ds) { d.declared = dts; d.declaredErrors = ds.filter(x => x.kind === "error").map(x => x.name); d.declaredPure = ds.filter(x => x.kind === "fn" && x.pure).map(x => x.name); d.declaredSide = Object.fromEntries(ds.flatMap(x => x.kind === "fn" && x.side ? [[x.name, x.side]] : [])); }
