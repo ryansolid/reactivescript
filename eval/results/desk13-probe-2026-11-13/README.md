@@ -72,3 +72,16 @@ close among overlapping assigns, then a switch to another list. When the new lis
 
 The repro passes. rx-8 regrades 77/77, 38/38, 0/20: **0 defects** (rx-7..9 now 2, 0, 0). The reference stays at 0.
 rx-1 and rx-3 keep their blank detail heading (s11, s15): a plain memo, not a projection, so a separate bug.
+
+## The blank heading, in plain Solid
+
+`repro/blank-heading.spec.tsx` reproduces rx-1/rx-3 s15 on next f00ce6f52 in about 45 lines. There is no projection
+and no error boundary. Setup:
+
+- a list memo, and a detail memo that is still loading;
+- one `createOptimistic` rename guess, read by both the list's rows and the heading memo;
+- another action, out at the same time, that re-asks the list;
+- the rename itself, still out.
+
+When the other action lands (its re-ask goes out), and then the detail lands, the `<h2>` renders empty while
+`detail.body` beside it shows. Without the other action the test passes.
