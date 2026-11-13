@@ -59,3 +59,11 @@ count inside the list's region.
   or not-found message instead of showing loading (agent; not a lifetime case).
 - rx-8 s16: the rows render as empty text (`["","",""]`) after the open list lands, while the tab counts 3. Same
   shape as rx-1/rx-3's blank heading: a text node left empty while its value is there. Likely Solid; no minimal repro.
+
+## The blank text, in plain Solid
+
+`repro/blank-rows.spec.tsx` (drop into solid-next `packages/web/test/`) reproduces rx-8 s16 in about 50 lines: a
+keyed `createProjection` over a memo of an async list, two `createOptimistic` guess lists (assigns, closes), a declined
+close among overlapping assigns, then a switch to another list. When the new list's re-ask lands, `For` renders one
+`<li>` per row with no text. It fails on next b8a8c2805 and on cd4de2874 (before #4828). Without the projection
+(`For` over the memo) it passes. Errored, `Loading on` and the page remount are not needed.
