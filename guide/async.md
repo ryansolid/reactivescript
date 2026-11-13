@@ -197,14 +197,16 @@ export action rename(id: string, name: string) {
   its guess up until the answer lands.
 - A removal is the same: `source removing: string[] = []`, and the list equation filters those ids out.
 
-### Where server data lives: with the app, not the page
+### A write that outlives its page
 
-A write can outlive the page it was made on: the user leaves while it is out and comes back. Its `refresh` re-asks
-the question it can see. If that question was the old page's, it is gone, and the new page keeps the answer it asked
-for before the write landed, beside views asked after it that show the write.
+Server data usually belongs to the page that shows it: it loads when the page opens and goes when it closes. The one
+case that needs more is a write still out when its page closes. Its `refresh` re-asks the question it can see, the
+closed page's, and the page opened again keeps the answer it asked for before the write landed, beside views asked
+after it that show the write.
 
-Declare the data a write changes, its equations and its actions in a module (top-level `source`s and `action`s), and
-let pages read it and call the actions. To make a page start fresh when it opens, have opening it call an action that
+For the data such a write changes (the list and the item it refreshes), declare it, its writes in flight and its
+actions in a module (top-level `source`s and `action`s), and let the page read it and call the actions. Everything else
+the page shows stays in the page. To make the page start fresh when it opens, have opening it call an action that
 resets the module's inputs and moves a counter the question reads (`source visit := 0`,
 `items = visit >= 0 ? await loadItems(filter) : []`). The page's own inputs (a draft, a text field) stay in the page.
 
