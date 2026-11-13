@@ -1,0 +1,12 @@
+== hidden
+✗ base: tabs: the settings page loads again when reopened, with a fresh draft
+76/77 passed
+== overlap
+✗ base: tabs: a save that answers after the page was left shows the reloaded settings
+37/38 passed
+== fuzz
+desk13-rx-1: 2/20 seeds found a hole
+  seed 11 step 44: detail title: "#3 Bravofooter says 2019finding related helpretry assign to ", server "Delta"
+    tab help ; tab issues ; tab help ; land loadSettings: ; tab issues ; filter closed ; tab help ; land fetchIssues:open ; land fetchIssues:closed ; tab issues ; tab help ; tab issues ; focus ; land fetchIssues:open ; select #4 ; rename Alpha ; rename Bravo ; post me too ; post fixed? ; land fetchIssue:4 ; row-assign 0 ; row-close 0 ; select #3 ; focus ; close ; land fetchComments:4 ; row-close 0
+  seed 15 step 33: detail title: "#2 long gonefinding related helpretry assign to ann close re", server "Old bug"
+    land fetchIssues:open ; row-assign 1 ; row-assign 0 ; land assign:3,guest ; land fetchIssues:open ; land loadSettings: ; filter closed ; land assign:1,guest ; land fetchIssues:closed ; user ann ; row-close 0 ; row-close 0 ; row-close 0 ; land closeIssue:2 ; row-close 0 ; select #2 ; land fetchIssues:closed ; assign ; row-close 0 ; land fetchComments:2 ; land closeIssue:2 ; assign ; land fetchI

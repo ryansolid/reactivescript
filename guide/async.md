@@ -200,17 +200,29 @@ export action rename(id: string, name: string) {
 ### Data belongs with its lifetime
 
 In .rx, state is not tied to components: a `source` can be declared in a module, a component or a region, and a
-component only reads and calls what it is given. So declare data where it lives as long as it is needed. A page's list usually belongs to the page: it loads when the page
-opens and goes when it closes. A write in flight lives until the server answers, which can be after its page closed;
-the data it refreshes must live at least as long. If it lives in the page, the write's `refresh` re-asks the closed
-page's question, and the page opened again keeps the answer it asked for before the write landed, beside views asked
-after it that show the write.
+component only reads and calls what it is given. So give each value one lifetime, and declare it where that lifetime
+is. There are three:
 
-So for the data such a write changes (the list and the item it refreshes), declare it, its writes in flight and its
-actions in a module (top-level `source`s and `action`s), and let the page read it and call the actions. The page's own
-inputs (a draft, a text field) live as long as the page and stay in it. To make the page start fresh when it opens,
-have opening it call an action that resets the module's inputs and moves a counter the question reads
-(`source visit := 0`, `items = visit >= 0 ? await loadItems(filter) : []`).
+- **The visit.** What a page asks for and its inputs: asked when the page opens, gone when it closes.
+- **The write.** A write lives until the server answers, which can be after its page closed. Its guess lives exactly
+  as long, and so does whatever it re-asks.
+- **The screen.** What copies what is shown lives where it is shown, inside the region that shows it.
+
+When one value would need two lifetimes, split it into two values. Each case below follows from that:
+
+- **A list a write refreshes** is needed by the visit and by the write, so it outlives both: declare it, the writes
+  and their actions in a module (top-level `source`s and `action`s), and let the page read it. The visit becomes a
+  counter its question reads, moved by opening the page (`source visit := -1`,
+  `items = visit >= 0 ? await loadItems(filter) : []`). A module's question is asked when the app starts, so the
+  counter starts below the guard and the first open asks; start it at `0` only for the page the app opens on.
+- **A write whose answer is the new value** (a save that returns the saved settings) re-asks nothing, so its data
+  needs only the visit and stays in the page.
+- **A guess** never goes on the module's question: that would give the question the write's lifetime, and the next
+  visit's load, with the page switch that asks it, would wait for the write. Guesses go in lists of their own, laid
+  over the answer (the next section).
+- **A count in a tab** copies the rows on screen, so it is an `effect` in a component inside the list's region
+  (`<OpenCount n={rows.length} … />` under the list's `loading`), not beside the module: outside the region it waits
+  for every re-ask of the list and misses the guesses the rows already show.
 
 ### Data the server owns: three layers
 

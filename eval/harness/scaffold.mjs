@@ -18,6 +18,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { copyContractReference, exact2, newContractDesk, startHere } from "./contract.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const evalDir = path.resolve(here, "..");
@@ -30,6 +31,7 @@ const statelyDocs = process.env.STATELY_DOCS ?? path.resolve(evalDir, "../../sta
 export function scaffold(task, arm, dir, { reference = false, brief = null, base = null, inline = false } = {}) {
   const t = path.join(evalDir, "tasks", task);
   dir = path.resolve(dir);
+  if (arm === "contract") newContractDesk(dir);
   mkdirSync(path.join(dir, "src"), { recursive: true }); mkdirSync(path.join(dir, "tests"), { recursive: true });
   writeFileSync(path.join(dir, "arm"), `${arm}\n`);
   cpSync(path.join(t, brief ? `brief-${brief}.md` : "brief.md"), path.join(dir, "BRIEF.md"));
@@ -69,7 +71,8 @@ export function scaffold(task, arm, dir, { reference = false, brief = null, base
   }
   // Solid's own docs ship in its package: the agent can read them there before its first build
   if (arm === "solid" && !existsSync(path.join(dir, "node_modules"))) symlinkSync(path.join(evalDir, "node_modules"), path.join(dir, "node_modules"));
-  if (reference) cpSync(path.join(evalDir, "reference", task, arm), path.join(dir, "src"), { recursive: true });
+  if (reference && arm === "contract") copyContractReference(path.join(evalDir, "reference", task, arm), dir);
+  else if (reference) cpSync(path.join(evalDir, "reference", task, arm), path.join(dir, "src"), { recursive: true });
   if (base) {
     cpSync(path.join(t, "BASE.md"), path.join(dir, "BASE.md"));
     // everything the earlier app had (a chain step's base is the previous agent's src/, which may hold more than
@@ -85,11 +88,13 @@ export function scaffold(task, arm, dir, { reference = false, brief = null, base
 export function prompt(arm, dir, { plain = false, change = false, inline = false } = {}) {
   const docs = inline && arm !== "react";
   const fill = { ...JSON.parse(readFileSync(path.join(here, "prompt-arms.json"), "utf8"))[docs ? `${arm}-inline` : arm] };
+  if (arm === "contract") fill.EXACT2 = exact2();
   fill.BACKEND_NOTE = plain ? "" : " whose answers the tests control";
   let text = readFileSync(path.join(here, change ? "prompt-change.md" : "prompt.md"), "utf8");
   for (let i = 0; i < 2; i++) for (const k of [...Object.keys(fill), "DIR"]) text = text.replaceAll(`{{${k}}}`, k === "DIR" ? dir : fill[k]);
   if (docs && arm === "rx") for (const f of ["language.md", "async.md", "reference.md"]) text += `\n---\n\n${readFileSync(path.join(evalDir, "../guide", f), "utf8")}`;
   if (docs && arm === "foldkit") text += `\n---\n\n${readFileSync(path.join(foldkitRepo, "packages/create-foldkit-app/templates/base/FOLDKIT.md"), "utf8")}`;
+  if (docs && arm === "contract") text += `\n---\n\n${startHere()}`;
   if (docs && arm === "xstate") text += `\n---\n\n${readFileSync(path.join(statelyDocs, "content/docs/cheatsheet.mdx"), "utf8").replace(/^---\n[\s\S]*?\n---\n+/, "")}\n---\n\n${readFileSync(path.join(evalDir, "node_modules/@xstate/react/README.md"), "utf8")}`;
   if (docs && arm === "solid") text += `\n---\n\n${readFileSync(path.join(evalDir, "node_modules/solid-js/skills/solid-2.0/SKILL.md"), "utf8").replace(/^---\n[\s\S]*?\n---\n+/, "")}`;
   return text;

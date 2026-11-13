@@ -1,0 +1,14 @@
+== hidden
+✗ base: tabs: the settings page loads again when reopened, with a fresh draft
+76/77 passed
+== overlap
+✗ base: tabs: a save that answers after the page was left shows the reloaded settings
+37/38 passed
+== fuzz
+desk13-rx-3: 3/20 seeds found a hole
+  seed 11 step -1: page crash: session timed out (120 s): the page hangs
+    
+  seed 15 step 33: detail title: "#2 long gonefinding related helpretryassign to ann renameclo", server "Old bug"
+    land fetchIssues:open ; row-assign 1 ; row-assign 0 ; land assign:3,guest ; land fetchIssues:open ; land loadSettings: ; filter closed ; land assign:1,guest ; land fetchIssues:closed ; user ann ; row-close 0 ; row-close 0 ; row-close 0 ; land closeIssue:2 ; row-close 0 ; select #2 ; land fetchIssues:closed ; assign ; row-close 0 ; land fetchComments:2 ; land closeIssue:2 ; assign ; land fetchI
+  seed 19 step -1: page crash: session timed out (120 s): the page hangs
+    
