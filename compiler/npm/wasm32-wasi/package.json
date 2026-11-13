@@ -1,6 +1,6 @@
 {
   "name": "@reactivescript/compiler-wasm32-wasi",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "main": "compiler.wasi.cjs",
   "browser": "compiler.wasi-browser.js",
   "files": [

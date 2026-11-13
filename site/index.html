@@ -88,7 +88,7 @@
     <a class="btn" href="https://github.com/solidjs/reactivescript/blob/main/guide/language.md">Read the guide</a>
     <a class="btn" href="https://github.com/solidjs/reactivescript">GitHub</a>
   </div>
-  <p class="status"><b>Experimental · 0.2.</b> Files are <code>.rx</code> and compile to plain Solid 2.0. Releases follow Solid 2.0's release candidates, so expect breaking changes until Solid 2.0 is final.</p>
+  <p class="status"><b>Experimental · 0.3.</b> Files are <code>.rx</code> and compile to plain Solid 2.0. Releases follow Solid 2.0's release candidates, so expect breaking changes until Solid 2.0 is final.</p>
 
   <h2>Mistakes of shape become errors</h2>
   <p>In Solid you already write UIs as derivations over signals. Most of what goes wrong is a shape mistake: writing to something that should be derived, writing during a computation, reading async data with no loading or error boundary above it. ReactiveScript makes those things the checker refuses, the way Rust refuses a borrow.</p>
@@ -197,6 +197,19 @@ like.rx:13:3 - error GUESS_WHILE_LOADING: &lt;button&gt; onClick starts `send`, 
     <div class="card"><h3>The spec is the product</h3><p>Every behaviour is a numbered rule or an executable scenario, checked against Solid itself.</p></div>
   </div>
 
+  <h2>Use any Solid library</h2>
+  <p>A Solid library is plain JavaScript, and .rx can use any of them: solid-primitives, a design system's hooks, your own <code>create*</code> helpers. Declare what you use once, in a <code>.d.rx</code> beside it, and the checker holds every use to that declaration. A <code>ref</code> is an accessor: you pass and read plain values, and the compiler adds the calls.</p>
+<pre><span class="fname">media.d.rx</span><code><span class="c">// beside ./media.js, which re-exports it from @solid-primitives/media</span>
+<span class="k">export pure fn</span> createMediaQuery(query: string): <span class="w">ref</span> boolean</code></pre>
+<pre><span class="fname">nav.rx</span><code><span class="k">import</span> { createMediaQuery } <span class="k">from</span> <span class="s">"./media.js"</span>
+
+<span class="k">export default component</span> Nav() {
+  wide = createMediaQuery(<span class="s">"(min-width: 768px)"</span>)   <span class="c">// runs once; read it like any equation</span>
+
+  &lt;nav&gt;{<span class="k">if</span> wide { &lt;Links /&gt; } <span class="k">else</span> { &lt;Menu /&gt; }}&lt;/nav&gt;
+}</code></pre>
+  <p>A package can ship its own <code>.d.rx</code> beside its build, and then there's nothing to declare. See <a href="https://github.com/solidjs/reactivescript/blob/main/guide/libraries.md">Using Solid libraries</a>.</p>
+
   <h2 id="install">Install</h2>
   <p><b>In a Solid app (Vite).</b> Install the compiler and the runtime beside Solid 2.0. Solid's Vite plugin (3.0.0-next.57 or later) finds the compiler and compiles <code>.rx</code> on its own, so <code>vite.config.js</code> stays as it is.</p>
 <pre><code>npm i solid-js@next @solidjs/web@next @solidjs/signals@next @reactivescript/runtime
@@ -215,6 +228,7 @@ npx rx-tsc --noEmit</code></pre>
   <ul class="links">
     <li><a href="https://github.com/solidjs/reactivescript/blob/main/guide/language.md">The language on one page</a> <span>: the whole working language</span></li>
     <li><a href="https://github.com/solidjs/reactivescript/blob/main/guide/async.md">Talking to a server</a> <span>: async, guesses and what waits</span></li>
+    <li><a href="https://github.com/solidjs/reactivescript/blob/main/guide/libraries.md">Solid libraries</a> <span>: declare a library once in a <code>.d.rx</code></span></li>
     <li><a href="https://github.com/solidjs/reactivescript/blob/main/guide/diagnostics.md">Diagnostics</a> <span>: every error code, why, and the fix</span></li>
     <li><a href="https://github.com/solidjs/reactivescript/tree/main/spec">The spec</a> <span>: the language as numbered rules</span></li>
     <li><a href="https://github.com/solidjs/reactivescript/tree/main/examples">Examples</a> <span>: real apps in <code>.rx</code></span></li>
