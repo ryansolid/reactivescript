@@ -24,7 +24,7 @@ one machine, so a wave's builds and browsers shared the CPU.
 
 - **.rx (2): both are page hangs, and both are a Solid bug.** rx-1 seed 2 and rx-6 seed 19 time out (120 s): selecting
   another issue while a guess is out (a rename, or an assign) never returns. Reduced to
-  `repro/guess-select-loop.spec.tsx` (plain Solid, about 35 lines): a detail rendered per selection through `<For>`
+  `repro/guess-select-loop.spec.tsx` (plain Solid, about 35 lines; filed solidjs/solid#4840): a detail rendered per selection through `<For>`
   under a component that passes its children by getter, a heading memo reading a `createOptimistic` guess, and a
   selection change while that guess's action is out. Solid's dev build reports "Potential Infinite Loop Detected. Kept
   alive by scheduled work; last staged node: <For>"; the production build spins. rx-6 s19 is the rename case exactly;
@@ -38,7 +38,7 @@ one machine, so a wave's builds and browsers shared the CPU.
   clear each other; contract-1 doesn't reload settings when the page reopens (2 tests); contract-6 asks the server
   for an invalid name.
 
-## Also traced: desk13 rx-1 seed 11 (Solid)
+## Also traced: desk13 rx-1 seed 11 (Solid, filed solidjs/solid#4841)
 
 The detail of issue #3 showed issue #4's data. Instrumenting the app showed the detail memo computing #3's answer
 while the screen kept #4's. `repro/wrong-detail-after-error.spec.tsx` (plain Solid): a heading memo reading a rename
