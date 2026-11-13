@@ -136,7 +136,7 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
     },
     question(name: string, compute: (prev: unknown) => unknown, o: { loadingValue?: unknown } | undefined, mode: { optimistic: boolean; structured: boolean; derived?: boolean }, key?: string): [Acc, Writer] {
       const fn = named(name, compute);
-      if (mode.optimistic && mode.structured) { const [store] = (createOptimisticStore as any)((draft: any) => { const r = fn(draft); if (r instanceof Flight || r instanceof Promise) return (async () => assignDraft(draft, r instanceof Flight ? await r.first : await r))(); assignDraft(draft, r); }, key ? [] : {}, key ? { key } : undefined); return ro(() => store); }
+      if (mode.optimistic && mode.structured) { const [store] = (createOptimisticStore as any)((draft: any) => { const r = fn(draft); if (r instanceof Flight || r instanceof Promise) return (async () => landDraft(draft, r instanceof Flight ? await r.first : await r, key))(); landDraft(draft, r, key); }, key ? [] : {}, key ? { key } : undefined); return ro(() => store); }
       if (mode.optimistic && mode.derived) { const [get] = createOptimistic(fn as any, o as any); return ro(get as Acc); }   // AC-3 over an equation: the client's createOptimistic(fn), so the owner trees (and hydration keys) match
       if (mode.optimistic) { const [truth] = createSignal(fn as any, o as any); const [get] = createOptimistic(() => (truth as Acc)()); return ro(get as Acc); }
       if (mode.structured) {
@@ -241,6 +241,19 @@ export function createApp(opts: { api?: Record<string, (...a: any[]) => unknown>
 }
 export type ServerApp = ReturnType<typeof createApp>;
 
+/** A keyed answer is merged into the draft by key: a row whose key is still there keeps its object and takes the new
+ *  leaves, so an equal answer changes nothing and a changed one changes only its leaves (#51). Any other answer is
+ *  assigned. */
+function landDraft(draft: any, v: unknown, key: string | undefined) {
+  if (!key || !Array.isArray(v) || !Array.isArray(draft)) return assignDraft(draft, v);
+  const had = new Map<unknown, any>(); for (const row of draft) if (row && typeof row === "object") had.set(row[key], row);
+  v.forEach((x: any, i) => { const row = x && typeof x === "object" ? had.get(x[key]) : undefined; if (row) { mergeLeaves(row, x); if (draft[i] !== row) draft[i] = row; } else draft[i] = x; });
+  draft.length = v.length;
+}
+function mergeLeaves(o: any, v: any) {
+  for (const k of Object.keys(o)) if (!(k in v)) delete o[k];
+  for (const k of Object.keys(v)) { const a = o[k], b = v[k]; if (a && b && typeof a === "object" && typeof b === "object" && Array.isArray(a) === Array.isArray(b)) { if (Array.isArray(a)) { a.length = b.length; } mergeLeaves(a, b); } else if (a !== b) o[k] = b; }
+}
 /** A store draft becomes `v`: keys `v` lacks are removed, the rest assigned (an array's length follows). */
 function assignDraft(draft: any, v: unknown) {
   if (!v || typeof v !== "object") return;
