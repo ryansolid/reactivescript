@@ -157,7 +157,10 @@ async function session(browser, url, seed, steps, log, r9 = false, others = fals
       if (valuesToo && !allowed(p.id, "assignee").has(p.assignee)) out.push(["row assignee", `#${p.id} shows ${p.assignee}, server ${x.assignee}`]);
       if (filter === "open" && !x.open && !(others && otherClosed.has(p.id)) && ![...writes.values()].some(w => w.issue === p.id && w.field === "open") && !stale.some(t => t.issue === p.id && t.field === "open")) {
         const lingering = inFlight && declined.some(d => d.issue === p.id && d.field === "open");
-        if (!lingering) out.push(["closed row shown", `#${p.id} is closed on the server`]);
+        // H-11: a close guessed while another action's re-ask was out may be held with it; once accepted, its row may
+        // stay until the re-ask answers, as long as the guess never showed (a shown close that comes back is still a hole)
+        const heldClose = inFlight && started.some(w => w.accepted && w.issue === p.id && w.field === "open" && !w.shown);
+        if (!lingering && !heldClose) out.push(["closed row shown", `#${p.id} is closed on the server`]);
       }
       if (filter === "closed" && x.open) out.push(["open row in closed list", `#${p.id}`]);
     }
