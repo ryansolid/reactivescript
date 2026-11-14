@@ -13,9 +13,9 @@ name: editor
 on:
   push:
     branches: [main]
-    paths: ["compiler/**", "tooling/**", ".github/workflows/editor.yml"]
+    paths: ["compiler/**", "tooling/**", "runtime/**", "ref/compile/rt-*.ts", ".github/workflows/editor.yml"]
   pull_request:
-    paths: ["compiler/**", "tooling/**", ".github/workflows/editor.yml"]
+    paths: ["compiler/**", "tooling/**", "runtime/**", "ref/compile/rt-*.ts", ".github/workflows/editor.yml"]
   workflow_dispatch:
 
 jobs:
@@ -41,6 +41,8 @@ jobs:
           cargo build --lib --release --target wasm32-unknown-unknown --manifest-path compiler/Cargo.toml
       - name: Solid next (the types the tests check against)
         run: sh ref/scripts/solid-next.sh && npm --prefix ref install
+      - name: The runtime (test/tsc.js checks an entry against its types)
+        run: npm --prefix runtime ci && npm --prefix runtime run build
       - name: Language server tests
         working-directory: tooling/rx-language-server
         run: |
