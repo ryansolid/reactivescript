@@ -29,6 +29,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 solidjs-compiler = { git = "https://github.com/solidjs/solid", rev = "2105ffb8ca2fced55f5fac0763177fc93f97c2c2", default-features = false }
 oxc_allocator = "0.144"
 oxc_ast = "0.144"
+oxc_codegen = "0.144"
 oxc_span = "0.144"
 oxc_sourcemap = "8.1"
 oxc_syntax = "0.144"

@@ -2,7 +2,7 @@
 //! compiler for `target`, each importing its dependencies by `.rx` path, with the program's stylesheet. What `rxc app`
 //! prints and the Node-API build (`src/node.rs`) returns to `@reactivescript/compiler/vite`.
 use crate::check::check_modules;
-use crate::emit::{compile_linked, lower_view, Target};
+use crate::emit::{compile_linked, lower_view, view_jsx, Target};
 use crate::modules::load_modules;
 use serde_json::{json, Map, Value};
 use std::path::Path;
@@ -26,16 +26,22 @@ pub fn target(name: &str) -> Target {
 /// `{entry, css, modules: {path: {code, map}}}`, or `{diagnostics: [...]}` / `{error}`. `entry` is an absolute path.
 /// `spa`: a client-only build, checked under 08 CN-3d.
 pub fn app(entry: &str, target: Target, module_name: &str, spa: bool) -> Value {
+    app_with(entry, target, module_name, spa, false, &read_disk)
+}
+
+/// `app` over `read` in place of the disk: the WebAssembly build's host, or an editor's open files. `jsx`: each module
+/// also carries the JSX Solid's compiler was handed (`view_jsx`).
+pub fn app_with(entry: &str, target: Target, module_name: &str, spa: bool, jsx: bool, read: &dyn Fn(&str) -> Option<String>) -> Value {
     // module keys are POSIX paths (`modules::join_path`); Windows takes `D:/a/b.rx` as it takes `D:\a\b.rx`
     let entry = &entry.replace('\\', "/");
     (|| {
-        if read_disk(entry).is_none() {
+        if read(entry).is_none() {
             return Err(json!({ "error": format!("{entry}: no such file") }));
         }
-        let set = load_modules(entry, &read_disk).map_err(|e| {
+        let set = load_modules(entry, read).map_err(|e| {
             // a parse error is a diagnostic like the checker's, with its code (PARSE, or the habit it names)
             let file = e.2.clone().unwrap_or_else(|| entry.to_string());
-            let mut d = crate::serve::parse_error_in(&file, &e, read_disk(&file).as_deref());
+            let mut d = crate::serve::parse_error_in(&file, &e, read(&file).as_deref());
             d["msg"] = json!(crate::serve::parse_message(&e));
             json!({ "diagnostics": [d] })
         })?;
@@ -47,9 +53,13 @@ pub fn app(entry: &str, target: Target, module_name: &str, spa: bool) -> Value {
         let mut modules = Map::new();
         for (name, module) in &out.files {
             let path = &out.paths[name];
-            let text = read_disk(path).unwrap_or_default();
+            let text = read(path).unwrap_or_default();
             let l = lower_view(module, path, target, module_name, Some((path, &text))).map_err(|e| json!({ "error": e }))?;
-            modules.insert(path.clone(), json!({ "code": l.code, "map": l.map }));
+            let mut m = json!({ "code": l.code, "map": l.map });
+            if jsx {
+                m["jsx"] = json!(view_jsx(module));
+            }
+            modules.insert(path.clone(), m);
         }
         Ok(json!({ "entry": set.entry, "css": out.css, "modules": modules }))
     })()
