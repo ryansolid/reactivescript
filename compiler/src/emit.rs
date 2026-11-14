@@ -1829,6 +1829,13 @@ pub struct Lowered {
     pub map: Option<String>,
 }
 
+/// A module as the JSX Solid's compiler is handed, printed: what `lower_view` compiles, before templates.
+pub fn view_jsx(module: &[S]) -> String {
+    let alloc = oxc_allocator::Allocator::default();
+    let program = crate::oxc::Build::new(&alloc).program(module);
+    oxc_codegen::Codegen::new().build(&program).code
+}
+
 /// Each module's JSX → JavaScript for `target` (`ref/compile/jsx.ts`): dom and ssr with hydration; universal over the
 /// renderer `module_name`. With `rx` (the module's `.rx` path and text), the output carries a source map onto it. CP-1c:
 /// Solid's positions are the program's layout; each maps to the `.rx` line it was lowered from (`oxc::Build::lines`), at
