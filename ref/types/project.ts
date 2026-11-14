@@ -53,6 +53,8 @@ export declare function wire<A extends unknown[], R>(f: (...a: A) => Promise<R>,
 /** 07 §6: a view (\`props.children: View\`); R-f-10: the class a panic is. */
 export type View = JSX.Element;
 export type Panic = Error;
+/** CP-4a: an entry's default export, a function of the app (\`createApp\`'s, either build) giving the view \`app.mount\` takes. */
+export type Main = (app: object) => () => View;
 export interface Ctx<T> { readonly __ctx: T }
 export declare function ctx<T>(d?: T): Ctx<T>;
 export declare function use<T>(c: Ctx<T>): T;
@@ -125,6 +127,8 @@ class Proj {
     const body = new W(); const saved = this.w; this.w = body;
     this.decls(p.decls, "", true);
     if (p.view.length) { this.w.emit(`export const __view = (`, p.view[0].line ?? 1); this.markup(p.view, "  "); this.w.emit(`);`, p.view[p.view.length - 1].line ?? 1); }
+    const main = p.decls.find(d => d.k === "component" && d.isDefault);
+    if (main) this.w.emit(`declare const __main: __.Main; export default __main;`, main.line);   // CP-4a: what JS imports from an entry
     this.w = saved;
     const prelude = [...this.used].filter(n => !this.declared.has(n));
     const types = ["View", "Panic"].filter(n => !this.declared.has(n));
