@@ -6,6 +6,8 @@
 // - duplicate card: no card id shows twice, and an added card never shows beside its own "(adding…)" row;
 // - heading: a loaded column's heading counts the cards it shows;
 // - count: the selected card's "<done>/<total>" equals the checklist's "<done>/<total> done" while both show;
+// - card count: every card's "<done>/<total>" is the server's, give or take that card's own toggles and item adds
+//   still in the air (not checked in a B1 visit);
 // - limit: while Doing shows 3 or more cards, every To do card's right and every Done card's left is disabled;
 // - detail: the selected card's detail names the column it shows in, and the title its card shows (two views).
 // Settled (nothing in the air), on the board page with all three columns loaded, and at the end of a session:
@@ -149,6 +151,16 @@ async function session(browser, url, seed, steps, log) {
       const shownReal = COLS.flatMap(col => (b[col]?.rows ?? []).filter(x => !x.adding && x.title === t && x.id >= 10)).length;
       const n = placeholders.filter(p => p === t).length, out = addsOut.filter(a => a === t).length;
       if (n > out) note("duplicate card", `"${t} (adding…)" shows ${n} time(s) with ${out} add(s) of it in the air${shownReal ? ", beside its added card" : ""}`);
+    }
+    // every card's count: the server's, give or take that card's own toggles and item adds still in the air
+    if (!lateVisit) {
+      const out = await pending();
+      for (const col of COLS) for (const x of b[col]?.rows ?? []) {
+        if (x.adding) continue;
+        const xs = srv.items[x.id] ?? [], sd = xs.filter(y => y.done).length;
+        const t = out.filter(k => k.startsWith(`toggleItem:${x.id},`)).length, ad = out.filter(k => k.startsWith(`addItem:${x.id},`)).length;
+        if (x.total < xs.length || x.total > xs.length + ad || x.done < sd - t || x.done > sd + t) note("card count", `card "${x.text}", server ${sd}/${xs.length} with ${t} toggle(s) and ${ad} item add(s) of it in the air`);
+      }
     }
     // the work-in-progress limit
     if (b.doing && b.doing.rows.length >= 3) {
