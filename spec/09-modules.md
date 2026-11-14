@@ -296,6 +296,166 @@ export component Search(props: { start: boolean, q: string }) {
   Solid's batching, and AC-1d cannot say so; the guide teaches it. A plain
   closure passed as a callback option is unchecked, as O-4a's is.
 
+## MO-11 — Solid components and routers (taken by default 2026-11-13; veto here)
+
+A Solid component is a JS function from props to a view. Its declaration
+(MO-8) says so, and `.rx` applies it as it applies its own. A JS function may
+also hand back a component, which is how `@solidjs/router` 2.0 makes its
+router from a route table, and either may take components as values where
+the declaration asks for them. Nothing is added at run time: an application
+is the same JSX, a factory's call is MO-10's once-only call, and a component
+value is the compiled component.
+
+```rx
+// router.d.rx, beside ./router.js (`export { createRouter, useParams, useNavigate } from "@solidjs/router"`)
+export type Params = Record<string, string>
+export type RouteDefinition = { path?: string; component?: Component; children?: RouteDefinition[] }
+export pure fn createRouter(config: { routes: RouteDefinition[] }): Component
+export pure fn useParams(): Params instantiates
+export pure fn useNavigate(): (to: string) => void instantiates
+```
+
+```rx
+import { createRouter, useParams } from "./router.js"
+import { fetchPerson, NotFound } from "./people.js"
+
+component Layout(props) {
+  <nav><a href="/">Home</a> <a href="/people/1">Ann</a></nav>   // the router handles a link's click
+  <main>{props.children}</main>
+}
+component Home() { <h1>People</h1> }
+component Person() {
+  params = useParams()                      // once, in the page's region (MO-10a); a store: params.id tracks
+  person = await fetchPerson(params.id)     // per-route data: asked again when the param changes
+  errored fallback(e: NotFound) { <p>{e.message}</p> } {
+    loading fallback { <p>loading…</p> } { <h1>{person.name}</h1> }
+  }
+}
+Router = createRouter({ routes: [{ path: "/", component: Layout, children: [
+  { path: "/", component: Home }, { path: "/people/:id", component: Person }] }] })
+
+export default component App() {
+  <Router />
+}
+```
+
+- **MO-11a (Declared components).** A JS module's `.d.rx` may declare a
+  component: `export component Link(props: { href: string; children?: View })`.
+  Each field is a TypeScript type (TY-4b): `View` for a view (07 §6),
+  `Component` (`Component<P>`) for a component value (MO-11c). A field may
+  start with `catches(…)`, what the component discharges for it (MO-3).
+  After the props, `fails(…)` says what escapes its root and `shape(…)` what
+  SV-7d needs where it is applied (MO-9b's words). Absent, each is empty.
+  The application is any component's, `<Link href="/">home</Link>`, and it
+  lowers to the import as a JSX tag; with no children it is JSX's `<X />`,
+  with no `children` prop (an `.rx` component's is an empty view). A JS
+  import applied without a declaration is `UNKNOWN_COMPONENT`, and the
+  message names the line to write.
+- **MO-11b (What the checks see).** A declared JS component is one step of
+  the static application tree, with its declaration as its summary (MO-3):
+  an argument's failures, and its children's (RG-4c), continue at the
+  application unless the field `catches` them, a prop it does not declare
+  included; it needs no provision. What its own body reads is outside the
+  graph (CN-3b): its pending is not seen, and its failures are not in the
+  row unless `fails(…)` names them. Solid's boundaries take them at run
+  time, as they take a panic (CN-6b).
+- **MO-11c (Components as values).** A component, declared in this module
+  or imported, and named with a capital as its tag would be, may be the value of a JS component's prop whose declared type
+  is `Component` (`<Shell header={Title} />`), or sit anywhere inside the
+  record and array literals of a factory's arguments (MO-11f). Those are the
+  only places a component is a value (`COMPONENT_AS_VALUE` elsewhere): `.rx`
+  has no way to apply a value, so only JS takes one. The checker checks it
+  as applied there, with no arguments, among the children of the
+  application (for a factory, of every application of the component it made):
+  what escapes it (R-f-5), the provisions it uses (RG-7b), a first load it
+  waits on (CN-3d) and its content model (SV-7d) are checked above that
+  application, on every path, whether or not the library ever renders it.
+  Its props are the library's (`params`, `location`, `children`) and carry
+  no rows. It lowers to the compiled component itself.
+- **MO-11d (Hooks).** A library's hooks are MO-10's primitives. `useParams`
+  and `useLocation` hand back a store, a value whose fields track at run
+  time (MO-10b), so `id = params.id` follows the URL. `useNavigate` hands
+  back a function, which is io (R-io-3) and called from an action or a
+  handler. Each is called once, in the component's region (MO-10a), which
+  is where Solid's `useContext` finds the router. A hook called with no
+  router above throws at run time; the checker does not know the router's
+  context.
+- **MO-11e (Route data).** A route's data is an `await` equation over its
+  params, in the route's component: `person = await fetchPerson(params.id)`.
+  A change of `params.id` is a new question, held as any re-ask is (H-2); a
+  newly matched route mounts its component, whose question holds where
+  nothing above it shows a fallback. Its failures and its first load are
+  checked above `<Router />` or in the page (MO-11c). The router's `query()`
+  is a JS function: wrapped in a JS module and declared `pure fn`, it is
+  awaited like any other, and its cache is the library's. A route's
+  `preload` is a closure handed to JS, unchecked (MO-10e).
+- **MO-11f (Component factories).** A JS fn whose declared result is
+  `Component` hands back a component: `createRouter(config): Component`. Its
+  call is an instantiation (MO-10a; `instantiates` is inferred from the
+  result), so it is bound once (`Router = createRouter({ … })`), and the
+  bound name is a component, applied in a view (`<Router />`) and never read
+  as a value. The components in its arguments are values there (MO-11c).
+  The checker knows what the call was given only in the module that makes
+  it, so the made component is applied there: `export Router = …` is
+  `COMPONENT_AS_VALUE`; export the components it takes instead. For SV-7d
+  the made component has no element of its own: what it was given is
+  checked where it is applied, and counts in the shape of the component that
+  applies it (as a component value does). Links need
+  nothing of the language: the router handles a click on any `<a href>`.
+- **DV-24 (a component value is owned at its application) — taken by
+  default 2026-11-13.** Solid lets a library render a component value
+  anywhere: under any owner, any number of times, or never. MO-11c's check
+  assumes it is rendered beneath the owner of the application it was passed
+  to, which is what `@solidjs/router` does (every route renders inside
+  `<Router />`, so an `errored` or a `provide` above `<Router />` reaches it).
+  A library that renders one under a root of its own escapes the check
+  (CN-3b); Solid's run-time errors stand there. The assumption also gives
+  away precision: a route component is checked as a child of `<Router />`,
+  not of its parent route's `props.children`, so a `provide` or an
+  `errored` in a layout route is not credited to the routes it wraps. A
+  layout that provides a context to its pages is refused
+  (`CONTEXT_NOT_FOUND`); provide it above `<Router />`.
+
+### Design note: why declared components and factories, not a routing form
+
+`@solidjs/router` 2.0 (`2.0.0-next.44`) is a route table, not markup:
+`createRouter({ routes })` returns the router component, a route is an
+object whose `component` is a component, and a link is a plain `<a href>`.
+Three ways were weighed for using it from `.rx`.
+
+- **(a) Declared JS components and factories (taken).** MO-11a to MO-11f.
+  The router's own API is usable as it is, and so is any Solid component
+  library: two declaration forms and one value rule, with no router
+  semantics in the language. What the checks keep across the boundary:
+  R-f-5 and RG-7b over every route as if rendered at `<Router />` (MO-11c);
+  CN-3d over every route's first load, so a client-only app cannot ship a
+  page that shows nothing while it loads; SV-7d where a declaration writes
+  `shape(…)`; owner order on both sides is Solid's, since the router and
+  the compiled components are both Solid code (CP-4a). What they lose:
+  which route renders when, a layout route's boundaries and provisions
+  (DV-24), and the hooks' context (MO-11d). Types are TypeScript's, from the
+  router's own `.d.ts`, in `rx-tsc` (TY-1c).
+- **(b) A routing form in the language** (`routes { "/people/:id" => Person }`,
+  compiled onto `createRouter`). The checker would know the route tree, so
+  it could credit a layout's `errored` and `provide`, type each route's
+  params from its path, and check a link's target. The cost is a form whose
+  meaning is one library's, a second place to follow the router's releases
+  (its 2.0 API moved from `<Router>`/`<Route>` markup to a route table while
+  this was written), and no help for any other component library. Most of
+  what it would prove can be added to (a) later as declaration words.
+- **(c) Something smaller.** Only the hooks from `.rx`, with the route table
+  in TSX. That needs TSX to import an `.rx` page as a Solid component, but a
+  compiled module's default export is a function of the app (CP-4a), not a
+  component, and the projection's default export is drafted elsewhere (#65).
+  It also checks nothing across the routes. (a) does not need it; it
+  remains a separate interop question.
+
+Executable: S-module-5 (declared components and component values, checked
+only), S-module-6 (the router: a factory, hooks, route data; checked only,
+against a package that ships its `.d.rx`), and `examples/router/`, built by
+Vite with `@solidjs/router` 2.0.0-next.44 and driven in Chromium
+(`compiler/test/vite.mjs`).
+
 ---
 
 ## Diagnostics this document adds
@@ -307,6 +467,7 @@ export component Search(props: { start: boolean, q: string }) {
 | `MODULE_CYCLE` | S | MO-5 |
 | `NOT_EXPORTED`, `MODULE_NOT_FOUND` | S | MO-6a; MO-8b for a declared JS module |
 | `CONTEXT_NOT_FOUND` across modules | S | MO-7, RG-7b |
+| `UNKNOWN_COMPONENT` for an undeclared JS component, `COMPONENT_AS_VALUE` outside MO-11c's places | S | MO-11a, MO-11c, MO-11f |
 
 ## Implementation
 
@@ -374,3 +535,30 @@ export component Search(props: { start: boolean, q: string }) {
    re-export declares it; a project-level folder of
    declarations keyed by package was the alternative, not taken.
    Built in `ref/` and the crate (S-module-4).
+8. **Solid components and factories are declared, and components are values
+   only to JS** (MO-11; taken by default 2026-11-13, veto here). Open for a
+   maintainer:
+   - (a) over a routing form (b): the design note above.
+   - A JS component's fields are TypeScript types, with `catches(…)` as the
+     only row word on a field. Its own failures default to none (CN-6b), not
+     to `Error` as a JS fn's rejections do (MO-8a): `.rx` does not await a
+     component's body.
+   - A component is a value only on a `Component` prop of a JS component or
+     inside a factory's argument literals; an `.rx` component cannot take
+     one (it would need a form to apply a value).
+   - A factory's component is applied only in the module that makes it
+     (MO-11f). Exporting it would need its summary to carry the escaping
+     rows of the components it was given.
+   - DV-24: a component value is checked as applied among the children of
+     the application it reaches. A word that says where the library renders
+     it (a route's `component` inside its parent's `props.children`) would
+     credit layout boundaries and provisions; not added.
+   - The hooks' context is not checked statically (MO-11d). A `uses(…)`
+     word naming a JS context, satisfied by the factory's component, would
+     make `useParams` outside the router a compile error; not added.
+   - `.rx` has no type arguments, so `useParams<{ id: string }>()` cannot be
+     written: a param is the router's `string | undefined` in `rx-tsc`.
+     `defineRoute`'s typed params, or a declaration word for them, are open.
+   - Not covered: TSX importing an `.rx` page (CP-4a's default export, #65),
+     and the router under SSR (`ref/ssr` runs no JS component; a server
+     render needs the router's `url`).

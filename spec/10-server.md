@@ -160,6 +160,8 @@ by default — see the list at the end.
 
 ## Divergences from Solid's server render and hydration (`ref/ssr/`)
 
+DV-24 (a component value handed to JS is checked as owned where it is passed) is a static assumption, not a run-time divergence; it is recorded with its rule, 09 MO-11.
+
 Each has a standalone repro with nothing of ReactiveScript in it — one
 `app.jsx` compiled by `@solidjs/compiler` for both sides — in
 `ref/oracle/repros/`, re-run on `next` @ `0847122` (2026-10-26).

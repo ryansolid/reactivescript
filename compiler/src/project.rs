@@ -226,9 +226,23 @@ fn signature_stub(sig: &ModSig) -> String {
 }
 /// MO-8: a `.d.rx` as TypeScript's `.d.ts` for the same JS module.
 fn declaration_file(decls: &[JsDecl]) -> String {
-    decls
-        .iter()
-        .map(|d| match d {
+    let own: IndexSet<&str> = decls.iter().filter(|d| matches!(d, JsDecl::Type { .. })).map(|d| d.name()).collect();
+    let mut head: Vec<String> = vec![];
+    if decls.iter().any(|d| matches!(d, JsDecl::Comp { .. } | JsDecl::Fn { shape: crate::parse::Shape::Comp, .. })) {
+        // MO-11a: a field's types
+        if !own.contains("View") {
+            head.push("type View = import(\"@solidjs/web/jsx-runtime\").JSX.Element;".into());
+        }
+        if !own.contains("Component") {
+            head.push("type Component<P = any> = (props: P) => View;".into());
+        }
+    }
+    head.into_iter()
+        .chain(decls.iter().map(|d| match d {
+            JsDecl::Comp { name, props, .. } => {
+                let fs: Vec<String> = props.iter().map(|p| format!("{}{}: {};", p.name, if p.optional { "?" } else { "" }, p.ty.as_deref().unwrap_or("any"))).collect();
+                format!("export declare function {name}(props: {{ {} }}): View;", fs.join(" "))
+            }
             JsDecl::Type { text, .. } => format!("export {text}"),
             JsDecl::Error { name, .. } => format!("export declare class {name}$ extends Error {{}}\nexport declare const {name}: (message?: string) => {name}$;\nexport type {name} = {name}$;"),
             JsDecl::Fn { name, params, ptypes, ret, .. } => {
@@ -238,7 +252,7 @@ fn declaration_file(decls: &[JsDecl]) -> String {
                 });
                 format!("export declare function {name}({}): {};", ps.collect::<Vec<_>>().join(", "), ret.as_deref().unwrap_or("any"))
             }
-        })
+        }))
         .collect::<Vec<_>>()
         .join("\n")
         + "\n"

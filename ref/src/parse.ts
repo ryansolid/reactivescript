@@ -1,5 +1,7 @@
 // Hand-rolled scanner/parser for the abstract syntax (spec/02-core.md §1).
 import type { Decl, Expr, Markup, Param, Program, Stmt, Target } from "./ast.ts";
+import type { Shape as ContentShape } from "./content.ts";
+import { contentShapeOf } from "./signature.ts";
 
 /** A parse error; `code` names the habit it looks like when `hint` recognises one (guide/diagnostics.md), else `PARSE`. */
 export class ParseError extends Error { code = "PARSE"; }
@@ -134,16 +136,21 @@ export function parseProgram(src: string): Program {
 export type JsDecl =
   | { kind: "fn"; name: string; pure: boolean; params: string[]; rejects?: string[]; line: number; side?: "server" | "client"; ptypes?: (string | undefined)[]; ret?: string; refs?: boolean[]; shape?: Shape; instantiates?: boolean }   // side: 12 SF-5; types: text, for TY (types/), `ref` taken out; MO-10: refs (ref parameters), shape (what its result is), instantiates (written, or inferred from a ref)
   | { kind: "error"; name: string; line: number }
-  | { kind: "type"; name: string; line: number; text?: string };
+  | { kind: "type"; name: string; line: number; text?: string }
+  | { kind: "comp"; name: string; line: number; props: JsProp[]; fails: string[]; content?: ContentShape };   // MO-11a: a Solid component
+/** MO-11a: a declared JS component's prop — its TypeScript type, what the component discharges for it, and whether it takes a
+ *  component value (MO-11c: its type is `Component`). */
+export type JsProp = { name: string; optional: boolean; type?: string; catches?: string[] | "*"; component: boolean };
 export function parseDeclarations(src: string): JsDecl[] {
   const c = new Cursor(src); const out: JsDecl[] = [];
   for (;;) {
     c.ws(); if (c.eof()) return out;
     const line = c.line;
-    if (!c.keyword("export")) c.fail("a declaration file declares exports: `export pure fn …`, `export fn …`, `export error …`, `export type …`");
+    if (!c.keyword("export")) c.fail("a declaration file declares exports: `export pure fn …`, `export fn …`, `export component …`, `export error …`, `export type …`");
     c.ws();
     if (c.startsWith("type") || c.startsWith("interface")) { const t0 = c.i; c.keyword("type") || c.keyword("interface"); c.ws(); const name = c.ident() ?? c.fail("type name"); c.ws(); if (c.eat("=")) { c.ws(); parseType(c, false, true); } else if (c.startsWith("{")) { let depth = 0; do { if (c.peek() === "{") depth++; if (c.peek() === "}") depth--; c.i++; } while (!c.eof() && depth); } out.push({ kind: "type", name, line, text: c.src.slice(t0, c.i) }); continue; }
     if (c.keyword("error")) { c.ws(); const name = c.ident() ?? c.fail("error class name"); out.push({ kind: "error", name, line }); continue; }
+    if (c.keyword("component")) { out.push(parseJsComponent(c, line)); continue; }
     const side = c.keyword("server") ? "server" as const : c.keyword("client") ? "client" as const : undefined; c.ws();   // 12 SF-5: runs on one side only
     const pure = c.keyword("pure"); c.ws();
     if (!c.keyword("fn")) c.fail("fn");
@@ -156,15 +163,58 @@ export function parseDeclarations(src: string): JsDecl[] {
     c.ws(false); let rejects: string[] | undefined;
     if (c.keyword("rejects")) { c.ws(); c.expect("("); rejects = parseClasses(c) ?? ["Error"]; c.ws(); c.expect(")"); }
     c.ws(false); const written = c.keyword("instantiates");
-    const instantiates = written || refs.some(x => x) || shapeHasRef(shape);   // MO-10a: inferred from a ref on either side
+    const instantiates = written || refs.some(x => x) || shapeHasRef(shape) || shape === "comp";   // MO-10a: inferred from a ref on either side; MO-11f: a component handed back
     out.push({ kind: "fn", name, pure, params, rejects, line, ptypes, ret, ...(side ? { side } : {}), ...(instantiates ? { refs, shape: shape ?? "value", instantiates } : {}) });
   }
+}
+
+/** MO-11: `Component` or `Component<P>`, and nothing that only contains one (`Component[]`). */
+function isComponentType(t: string): boolean {
+  const m = /^Component\s*/.exec(t); if (!m) return false; const r = t.slice(m[0].length); if (!r) return true; if (r[0] !== "<") return false;
+  let depth = 0; for (let i = 0; i < r.length; i++) { if (r[i] === "<") depth++; else if (r[i] === ">" && r[i - 1] !== "=" && --depth === 0) return i === r.length - 1; }
+  return false;
+}
+/** MO-11a: `component A(props: { href: string; children?: View }) fails(…) shape(…)`. */
+function parseJsComponent(c: Cursor, line: number): JsDecl {
+  c.ws(); const name = c.ident() ?? c.fail("component name"); c.ws(); c.expect("("); c.ws();
+  const props: JsProp[] = [];
+  if (!c.startsWith(")")) {
+    if (c.ident() !== "props") c.fail("a component's props: `(props: { … })`"); c.ws(); c.expect(":"); c.ws(); c.expect("{");
+    for (;;) {
+      c.ws(); if (c.eat("}")) break;
+      const fname = c.ident() ?? c.fail("a prop name"); c.ws(false); const optional = c.eat("?"); c.ws(false);
+      let type: string | undefined; let catches: string[] | "*" | undefined;
+      if (c.eat(":")) {
+        c.ws(false);
+        if (c.keyword("catches")) { c.ws(false); c.expect("("); c.ws(); if (c.eat("*")) catches = "*"; else catches = parseClasses(c) ?? "*"; c.ws(); c.expect(")"); c.ws(false); }
+        const t0 = c.i; let depth = 0;
+        while (!c.eof()) {
+          const ch = c.peek(); if (depth === 0 && (ch === ";" || ch === "," || ch === "}" || ch === "\n" || c.startsWith("//"))) break;
+          if (ch === '"' || ch === "'" || ch === "`") { c.i++; while (!c.eof() && c.peek() !== ch) { if (c.peek() === "\\") c.i++; c.i++; } c.i++; continue; }   // a string literal type
+          if ("([{<".includes(ch)) depth++; else if (")]}".includes(ch) || (ch === ">" && c.src[c.i - 1] !== "=")) depth--; c.i++;
+        }
+        type = c.src.slice(t0, c.i).trim() || undefined;
+      }
+      props.push({ name: fname, optional, ...(type ? { type } : {}), ...(catches ? { catches } : {}), component: !!type && isComponentType(type) });
+      c.ws(false); if (!c.eat(";") && !c.eat(",") && c.peek() !== "\n") { c.ws(); c.expect("}"); break; }   // a newline separates fields too, as in TypeScript
+    }
+    c.ws();
+  }
+  c.expect(")");
+  let fails: string[] = []; let content: ContentShape | undefined;
+  for (;;) {
+    c.ws(false);
+    if (c.keyword("fails")) { c.ws(false); c.expect("("); fails = parseClasses(c) ?? ["Error"]; c.ws(); c.expect(")"); continue; }
+    if (c.keyword("shape")) { c.ws(false); c.expect("("); const t0 = c.i; while (!c.eof() && c.peek() !== ")") c.i++; const t = c.src.slice(t0, c.i); c.expect(")"); try { content = contentShapeOf(t); } catch (e) { c.fail((e as Error).message); } continue; }
+    break;
+  }
+  return { kind: "comp", name, line, props, fails, ...(content ? { content } : {}) };
 }
 
 /** MO-10b: what a primitive's result is — a reader (`ref T`, an accessor), an io function, a value; or a tuple or record of
  *  those (only the result and its parts are declared). */
 export type Part = "ref" | "fn" | "value";
-export type Shape = Part | { items: Part[] } | { fields: [string, Part][] };
+export type Shape = Part | "comp" | { items: Part[] } | { fields: [string, Part][] };   // "comp": the whole result is a component (MO-11f)
 function splitTop(s: string, seps: string): string[] {
   const out: string[] = []; let depth = 0, from = 0;
   for (let i = 0; i < s.length; i++) { const ch = s[i]; if ("([{<".includes(ch)) depth++; else if (")]}>".includes(ch) && !(ch === ">" && s[i - 1] === "=")) depth--; else if (depth === 0 && seps.includes(ch)) { out.push(s.slice(from, i)); from = i + 1; } }
@@ -178,6 +228,7 @@ function partOf(t: string): Part {
 function shapeOf(t: string): Shape {
   if (t.startsWith("[") && t.endsWith("]")) return { items: splitTop(t.slice(1, -1), ",").map(partOf) };
   if (t.startsWith("{") && t.endsWith("}")) return { fields: splitTop(t.slice(1, -1), ",;").map(f => { const i = f.indexOf(":"); return [f.slice(0, i).trim().replace(/\?$/, ""), partOf(f.slice(i + 1).trim())] as [string, Part]; }) };
+  if (isComponentType(t)) return "comp";
   return partOf(t);
 }
 export function shapeHasRef(s?: Shape): boolean { return !!s && (s === "ref" || (typeof s === "object" && ("items" in s ? s.items : s.fields.map(f => f[1])).includes("ref"))); }

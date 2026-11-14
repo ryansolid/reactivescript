@@ -44,6 +44,7 @@ function add(sc: Scenario, title: string, src: string, expect: string | null) {
     const rel = relative(root, p.path.startsWith("/") ? p.path : "/" + p.path); const f = join(dir, rel);
     mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, p.code); files.set(f, p);
   }
+  for (const [p, text] of sc.modules) if (/(^|\/)node_modules\/.*package\.json$/.test(p)) { const f = join(dir, relative(root, p.startsWith("/") ? p : "/" + p)); mkdirSync(dirname(f), { recursive: true }); writeFileSync(f, text); }   // MO-10c: a package's own, so its projected `.d.ts` resolves
   writeFileSync(join(dir, "__prelude.ts"), PRELUDE);
   units.push({ sc: sc.name, title, expect, dir, files });
 }

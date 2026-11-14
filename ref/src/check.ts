@@ -41,7 +41,7 @@ const escF = (chain: Step[], cls: string) => !chain.some(s => s.f && caught(s.f,
 const escP = (chain: Step[], name: string) => !chain.some(s => s.p && (s.p === "all" || s.p.has(name)));
 /** MO-3: an exported component as an importer sees it — what escapes its root, the provisions it needs from above, and per prop
  *  what it discharges on every path from its reads (`f`, `p`), and what an action reading it catches. */
-export type CompSig = { own: { cls: string; what: string; at?: string }[]; requires: string[]; props: Record<string, { f: Catch; p: Catch; rendered: boolean; action?: { f: Catch; name: string } }>; shape?: Shape; stored?: Record<string, string[]> };   // shape: SV-7d; stored: O-3, a prop the component stores where it outlives it ("module", or a provision's key)
+export type CompSig = { own: { cls: string; what: string; at?: string }[]; requires: string[]; props: Record<string, { f: Catch; p: Catch; rendered: boolean; action?: { f: Catch; name: string }; component?: boolean }>; shape?: Shape; stored?: Record<string, string[]> };   // shape: SV-7d; stored: O-3, a prop the component stores where it outlives it ("module", or a provision's key)
 const noFails = (): Fails => ({ cls: new Set(), props: [] });
 /** A context key (`file#name`, `@n` for one declared in a block) → its name. */
 export const keyName = (k: string) => k.split("#").pop()!.replace(/@\d+$/, "");
@@ -96,6 +96,7 @@ type Sym = {
   serverRejects?: () => Set<string>;   // SF-6b: what a call's promise rejects with — its body's failures, and Error (transit)
   foreign?: Shape;                     // MO-10: a declared JS primitive (a fn) or an instance of one (an equation): what its result is
   reader?: boolean;                    // MO-10d: bound from a foreign accessor — it may hold, as a question's reader does
+  factory?: { args: Expr[]; env: Env; values?: string[] };   // MO-11f: a component a JS factory made — the call's arguments, and the components in them
   fnDecl?: Extract<Decl, { k: "fn" }>; declEnv?: Env;   // a fn's declaration and the scope it names from (SF-3: what it reaches)   // a context (RG-7): its identity, whether it carries a source, and its declared rows (null: inferred from its provisions)
 };
 const reactiveKinds = new Set<SymKind>(["source", "eq", "props"]);
@@ -574,6 +575,12 @@ class Checker {
       if (!x) { this.err("NOT_EXPORTED", "MO-8", `${file} declares no export ${name} (declare it, or it is not ${d.from}'s)`); this.bind(env, alias, { kind: "import", name: alias, region: env.region, line: d.line, io: true }); continue; }
       if (x.kind === "type") continue;
       if (x.kind === "error") { this.bind(env, alias, { kind: "errclass", name: alias, region: env.region, line: d.line }); continue; }
+      if (x.kind === "comp") {                                                             // MO-11a: a Solid component — its declaration is its summary
+        const sig: CompSig = { own: x.fails.map(cls => ({ cls, what: `${alias}'s root`, at: file })), requires: [], props: { "*": { f: new Set(), p: new Set(), rendered: true } }, shape: x.content };   // MO-11b: an undeclared prop is read too
+        for (const p of x.props) sig.props[p.name] = { f: p.catches === "*" ? "all" : new Set(p.catches ?? []), p: new Set(), rendered: true, ...(p.component ? { component: true } : {}) };
+        const r = this.region(null, "imported", { component: true, name: alias }); r.sig = sig;
+        this.bind(env, alias, { kind: "comp", name: alias, region: env.region, line: d.line, compRegion: r }); continue;
+      }
       if (d.pure && !x.pure) this.err("IMPORT_ROW_MISMATCH", "MO-8", `${name} is declared io in ${file} (\`export fn\`, not \`export pure fn\`); \`pure\` on the import cannot lower it`);
       if (d.side && x.side !== d.side) this.err("IMPORT_ROW_MISMATCH", "SF-5", `${name} is declared ${x.side ? `\`${x.side}\`` : "for both sides"} in ${file}; \`${d.side}\` on the import cannot restate it`);
       if (x.instantiates) { this.bind(env, alias, { kind: "fn", name: alias, region: env.region, line: d.line, params: x.params.map((n, i) => ({ name: n, ref: !!x.refs?.[i] })), instantiating: true, foreign: x.shape, rows: () => new Set(), failsT: () => ({ cls: new Set(), props: [] }), rejects: new Set() }); continue; }   // MO-10a: a primitive is an instantiation (RG-6)
@@ -591,6 +598,10 @@ class Checker {
     }
     if (!shape) return;
     sym.foreign = shape;
+    if (shape === "comp" && e.k === "call") {                                              // MO-11f: the bound name is a component
+      const r = this.region(null, "imported", { component: true, name: sym.name }); r.sig = { own: [], requires: [], props: { "*": { f: new Set(), p: new Set(), rendered: true } }, shape: { roots: [], closesP: false, a: false, form: false, childrenAt: [[]] } };   // it renders what it was given where it is applied
+      sym.kind = "comp"; sym.compRegion = r; sym.factory = { args: e.args, env };
+    }
     if (shape === "fn") sym.io = true;
     if (shape === "ref") sym.reader = true;
   }
@@ -679,6 +690,8 @@ class Checker {
       }
       case "eq": {
         const kind = d.deferred ? "deferred" : d.key ? "keyed" : "memo";
+        const made = env.vars.get(d.name);
+        if (made?.factory) { this.factoryValues(made); this.readers.push({ region: env.region, e: d.e, env, line: this.line });   /* the call runs once, here: its failures and holds are a reader's */ if (d.exported) this.err("COMPONENT_AS_VALUE", "MO-11f", `${d.name} is a component made by a JS factory: apply it in this module (export the components it takes instead)`); }
         if (d.e.k === "call" && d.e.f.k === "id") { const f = env.lookup(d.e.f.name); if (f?.kind === "fn" && f.instantiating) { const call = d.e; this.snapshotArgs(call, f, env); this.comp(kind, env, { name: d.name }, () => { this.model.call(f); call.args.forEach((a, i) => { const value = !!f.params![i] && !f.params![i].ref; if (value) this.model.snap++; this.expr(a, env, reactive); if (value) this.model.snap--; }); }); this.rowCheck(d.name, d.type, env); return; } }   // E-10: a value parameter's argument is a snapshot
         this.comp(kind, env, { name: d.name }, () => this.expr(d.e, env, reactive)); this.rowCheck(d.name, d.type, env); return;
       }
@@ -841,7 +854,7 @@ class Checker {
     const go = (x: Expr) => this.expr(x, env, ctx);
     switch (e.k) {
       case "lit": return;
-      case "id": { const s = this.resolve(e.name, env, ctx); if (s) this.model.read(s, ctx.scope === "imperative", false, field); if (s?.kind === "comp") this.err("COMPONENT_AS_VALUE", "RG-4a", `component ${e.name} used as a value: apply it in a view`); if (s?.kind === "context") this.err("CONTEXT_AS_VALUE", "RG-7", `context ${e.name} used as a value: read the nearest provision with \`use ${e.name}\``); return; }
+      case "id": { if (this.valueIds.has(e)) return; const s = this.resolve(e.name, env, ctx); if (s) this.model.read(s, ctx.scope === "imperative", false, field); if (s?.kind === "comp") this.err("COMPONENT_AS_VALUE", "RG-4a", `component ${e.name} used as a value: apply it in a view, or pass it where JS takes a \`Component\`: a JS component's prop, or a JS factory's arguments (MO-11c, MO-11f)`); if (s?.kind === "context") this.err("CONTEXT_AS_VALUE", "RG-7", `context ${e.name} used as a value: read the nearest provision with \`use ${e.name}\``); return; }
       case "pre": { const s = this.resolve(e.name, env, ctx); if (s) this.model.read(s, ctx.scope === "imperative", true); if (s && !reactiveKinds.has(s.kind)) this.err("PRE_OF_NON_REACTIVE", "C-2", `pre of ${e.name}, which is not reactive`); if (e.init) go(e.init); return; }
       case "use": { if (ctx.server) this.err("SERVER_CAPTURE", "SF-3", `a server function's body reads \`use ${e.name}\`: a provision is the client's — pass it as an argument`); const c = this.ctxOf(e.name, env); if (c) this.model.read(c, ctx.scope === "imperative"); if (c && !c.ctx!.dflt) this.uses.push({ region: env.region, name: c.ctx!.key, line: this.line, display: e.name }); return; }
       case "peek": this.model.snap++; go(e.e); this.model.snap--; return;                  // E-5: a snapshot
@@ -1108,14 +1121,17 @@ class Checker {
         case "el": {
           if (/^[A-Z]/.test(m.tag)) {
             const s = env.lookup(m.tag);
-            if (!s || s.kind !== "comp") { this.err("UNKNOWN_COMPONENT", "RG-4a", `<${m.tag}> is not a component declared here`); }
-            for (const a of m.attrs) this.comp(isHandler(a.name) ? "handler" : "prop", env, { at: `${m.tag} ${a.name}` }, () => this.expr(a.e, env, { scope: isHandler(a.name) ? "imperative" : "reactive" }));   // R-2: an argument is read where the component reads it
+            if (!s || s.kind !== "comp") { this.err("UNKNOWN_COMPONENT", "RG-4a", s?.kind === "import" ? `<${m.tag}> is imported from JS, which declares no component ${m.tag}: declare it beside the module, \`export component ${m.tag}(props: { … })\` (MO-11a)` : `<${m.tag}> is not a component declared here`); }
+            const values = this.componentValues(m, env);
+            const args = m.attrs.filter(a => !values.has(a));
+            for (const a of args) this.comp(isHandler(a.name) ? "handler" : "prop", env, { at: `${m.tag} ${a.name}` }, () => this.expr(a.e, env, { scope: isHandler(a.name) ? "imperative" : "reactive" }));   // R-2: an argument is read where the component reads it
             if (s?.kind === "comp") {
               s.compRegion!.appSites.push(env.region);
-              this.apps.push({ comp: s.compRegion!, site: env.region, line: this.line, tag: m.tag, args: m.attrs.filter(a => !isHandler(a.name)).map(a => ({ field: a.name === "..." ? "*" : a.name, e: a.e, env })), passed: m.attrs.map(a => ({ field: a.name === "..." ? "*" : a.name, e: a.e, env })) });   // a spread is every field: "*"   // R-2: passing is not reading — checked where the component reads it
+              this.apps.push({ comp: s.compRegion!, site: env.region, line: this.line, tag: m.tag, args: args.filter(a => !isHandler(a.name)).map(a => ({ field: a.name === "..." ? "*" : a.name, e: a.e, env })), passed: args.map(a => ({ field: a.name === "..." ? "*" : a.name, e: a.e, env })) });   // a spread is every field: "*"   // R-2: passing is not reading — checked where the component reads it
               const kids = this.region(env.region, "children", { provParent: s.compRegion!, name: m.tag });              // RG-4c: children are named by the caller, owned where the component reads them
               kids.kids = { comp: s.compRegion!, site: env.region };
-              this.markup(m.children, new Env(env, kids));
+              this.markup([...m.children, ...values.values()], new Env(env, kids));
+              if (s.factory && !this.expanding.markup.has(s)) { this.expanding.markup.add(s); this.markup(this.applied(this.factoryValues(s), m.line), new Env(s.factory.env, kids)); this.expanding.markup.delete(s); }   // MO-11f: named where the factory was called
             } else this.markup(m.children, env);
             break;
           }
@@ -1165,6 +1181,33 @@ class Checker {
     }
   }
 
+  /** MO-11c: a component passed to a JS component's `Component` prop — checked as applied, with no arguments, among the
+   *  application's children (DV-24). */
+  private componentValues(m: Extract<Markup, { k: "el" }>, env: Env): Map<Extract<Markup, { k: "el" }>["attrs"][number], Markup> {
+    const out = new Map<Extract<Markup, { k: "el" }>["attrs"][number], Markup>();
+    const sig = env.lookup(m.tag)?.compRegion?.sig;
+    for (const a of m.attrs) if (sig?.props[a.name]?.component && a.e.k === "id" && /^[A-Z]/.test(a.e.name) && env.lookup(a.e.name)?.kind === "comp") out.set(a, this.applied([a.e.name], m.line)[0]);
+    return out;
+  }
+  /** MO-11c: `<C />` for each component value, as the checks see it. */
+  private applied(tags: string[], line?: number): Markup[] { return tags.map(tag => ({ k: "el", tag, attrs: [], children: [], line }) as Markup); }
+  /** MO-11f: the factories being expanded, per walk (a factory may be given itself; C-1 reports that cycle). */
+  private expanding = { markup: new Set<Sym>(), content: new Set<Sym>(), shape: new Set<Sym>() };
+
+  /** MO-11f: the components in a factory call's arguments — anywhere inside its record and array literals. */
+  private valueIds = new Set<Expr>();
+  private factoryValues(s: Sym): string[] {
+    const f = s.factory!; if (f.values) return f.values;
+    const out: string[] = [];
+    const walk = (e: Expr) => {
+      if (e.k === "id" && /^[A-Z]/.test(e.name) && f.env.lookup(e.name)?.kind === "comp") { this.valueIds.add(e); out.push(e.name); }   // a value is applied by its tag, so it is capitalised as one
+      else if (e.k === "rec") { for (const x of e.fields) if (!("spread" in x)) walk(x.v); }
+      else if (e.k === "arr") { for (const x of e.items) if (x.k !== "spread") walk(x); }
+    };
+    f.args.forEach(walk);
+    return f.values = out;
+  }
+
   // ---- SV-7d: the content model across templates ----
   private shapes = new Map<Sym, Shape | null>();   // null: being computed (a recursive component contributes nothing more)
   /** What a component contributes where it is applied (content.ts Shape): from its signature, or its body. */
@@ -1184,7 +1227,11 @@ class Checker {
             const s = env.lookup(m.tag); if (s?.kind !== "comp") break; const S = this.shape(s);
             if (!anc.length) S.roots.forEach(r => roots.add(r));
             if (S.closesP && !scoped) sh.closesP = true; if (S.a) sh.a = true; if (S.form) sh.form = true;
-            for (const ch of S.childrenAt) walk(m.children, [...anc, ...ch], scoped || ch.some(t => P_SCOPE.has(t)), env);   // the caller's children, where that component puts them
+            for (const ch of S.childrenAt) {                                               // the caller's children, where that component puts them
+              const sc = scoped || ch.some(t => P_SCOPE.has(t));
+              walk([...m.children, ...this.componentValues(m, env).values()], [...anc, ...ch], sc, env);
+              if (s.factory && !this.expanding.shape.has(s)) { this.expanding.shape.add(s); walk(this.applied(this.factoryValues(s), m.line), [...anc, ...ch], sc, s.factory.env); this.expanding.shape.delete(s); }
+            }
             break;
           }
           if (!anc.length) roots.add(m.tag);
@@ -1214,7 +1261,10 @@ class Checker {
             const s = env.lookup(m.tag); if (s?.kind !== "comp") break; const S = this.shape(s);
             for (const r of S.roots) report(r === "#text" ? `<${m.tag}>'s text` : `<${r}>, the root of <${m.tag}>,`, misnested(anc, r));
             report(`<${m.tag}>`, misnestedInside(anc, S));
-            for (const ch of S.childrenAt) this.contentCheck(m.children, env, [...anc, ...ch]);
+            for (const ch of S.childrenAt) {
+              this.contentCheck([...m.children, ...this.componentValues(m, env).values()], env, [...anc, ...ch]);
+              if (s.factory && !this.expanding.content.has(s)) { this.expanding.content.add(s); this.contentCheck(this.applied(this.factoryValues(s), m.line), s.factory.env, [...anc, ...ch]); this.expanding.content.delete(s); }
+            }
             break;
           }
           report(`<${m.tag}>`, misnested(anc, m.tag));

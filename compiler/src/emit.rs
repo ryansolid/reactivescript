@@ -630,6 +630,13 @@ impl<'p> Gen<'p> {
                             self.set(env, &n.alias, b);
                             continue;
                         }
+                        // MO-11a: a JS component is a JSX tag
+                        if let Some(JsDecl::Comp { .. }) = x {
+                            let mut c = bind(Kind::Comp, cm(&n.alias));
+                            c.shape = Some(FShape::Comp);
+                            self.set(env, &n.alias, c);
+                            continue;
+                        }
                         let mut b = val(mg(&n.alias));
                         b.client = *side == Some(crate::ast::Side::Client)
                             || declared_side.as_ref().is_some_and(|ds| ds.iter().any(|(k, s)| *k == n.name && *s == crate::ast::Side::Client));
@@ -656,6 +663,14 @@ impl<'p> Gen<'p> {
                     let mut b = bind(Kind::Acc, mg(name));
                     if let ExprKind::Call { f, .. } = &e.k {
                         if let ExprKind::Id(fname) = &f.k {
+                            // MO-11f: a factory's component is a JSX tag
+                            if self.lookup(env, fname).is_some_and(|x| x.kind == Kind::Jfn && x.shape == Some(FShape::Comp)) {
+                                let mut c = bind(Kind::Comp, cm(name));
+                                c.inst = Some(cm(name));
+                                c.shape = Some(FShape::Comp);
+                                self.set(env, name, c);
+                                continue;
+                            }
                             if let Some(jf) = self.lookup(env, fname).filter(|x| x.kind == Kind::Jfn) {
                                 b.inst = Some(format!("r${name}"));
                                 b.shape = jf.shape.clone();
@@ -692,8 +707,9 @@ impl<'p> Gen<'p> {
                 } else {
                     return fail(format!("{name} from \"{from}\" is not in the scenario prelude"));
                 };
-                out.push(konst(mg(alias), v));
-                out.push(sexpr(rtc("reg", vec![str(alias.clone()), obj(vec![("value", id(mg(alias)))])])));
+                let js = if self.lookup(env, alias).is_some_and(|b| b.kind == Kind::Comp) { cm(alias) } else { mg(alias) };
+                out.push(konst(js.clone(), v));
+                out.push(sexpr(rtc("reg", vec![str(alias.clone()), obj(vec![("value", id(js))])])));
             }
             at(&mut out, n0, d.line());
         }
@@ -1032,7 +1048,11 @@ impl<'p> Gen<'p> {
                         }
                     }
                 }
-                if let Some(fx) = self.foreign(e, env, &b)? {
+                if let Some(mut fx) = self.foreign(e, env, &b)? {
+                    if b.kind == Kind::Comp {
+                        fx.push(sexpr(rtc("reg", vec![str(name.clone()), obj(vec![("value", id(b.js.clone()))])])));
+                        return Ok(fx);
+                    }
                     return fin(fx, self);
                 }
                 if let Some(k) = key {
@@ -1198,8 +1218,13 @@ impl<'p> Gen<'p> {
                     }
                     out.push(rtc("memo", vec![E::Null, thunk(self.expr(a, env, &reactive())?)]));
                 }
+                // MO-11f: the component the factory hands back
+                if fb.shape == Some(FShape::Comp) {
+                    return Ok(Some(vec![konst(b.js.clone(), call(id(fb.js.clone()), out))]));
+                }
                 let r = b.inst.clone().unwrap();
                 let whole = match fb.shape.as_ref().unwrap() {
+                    FShape::Comp => unreachable!(),
                     FShape::Part(p) => part(id(r.clone()), *p),
                     FShape::Items(items) => rtc(
                         "memo",
@@ -1465,7 +1490,7 @@ impl<'p> Gen<'p> {
         };
         match b.kind {
             Kind::Acc | Kind::Src => Ok(if ctx.imp { rtc("snapshot", vec![id(b.js)]) } else { call(id(b.js), vec![]) }),
-            Kind::Comp => fail(format!("component {name} used as a value")),
+            // a component value is the compiled component (MO-11c)
             _ => Ok(id(b.js)),
         }
     }
@@ -1690,7 +1715,10 @@ impl<'p> Gen<'p> {
                     xs.push(self.attr(&a.name, &a.e, env)?);
                 }
                 if children.is_empty() {
-                    xs.push(("children".into(), AttrValue::Expr(E::Arr(vec![]))));
+                    // MO-11: a JS component gets JSX's own `<X />`, with no children prop
+                    if b.shape != Some(FShape::Comp) {
+                        xs.push(("children".into(), AttrValue::Expr(E::Arr(vec![]))));
+                    }
                     el(JsxName::Ident(b.js), xs, vec![], true)
                 } else {
                     el(JsxName::Ident(b.js), xs, self.kids(children, env)?, false)
