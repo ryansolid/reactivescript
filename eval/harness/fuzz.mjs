@@ -19,7 +19,8 @@
 // - two views: an issue's row and the detail heading show the same title;
 // - count: with the open list on screen, the tab count equals its rows.
 // Writes weigh twice as much among the moves and answers come a little less often (0.4), so writes overlap.
-// Usage: node harness/fuzz.mjs <dir> [--seeds N] [--steps N] [--from S] [--r9] [--json out.json] [--log]
+// Round 15 (`--r15`, implies --r9): A2 is dropped; at rest a field shows the server's last answer (Ryan, 2026-11-14).
+// Usage: node harness/fuzz.mjs <dir> [--seeds N] [--steps N] [--from S] [--r9] [--r15] [--json out.json] [--log]
 import { writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -73,7 +74,7 @@ export function answer(srv, key, fail) {
 }
 
 /** one session; returns the violations it found (each with the step and the log so far) */
-async function session(browser, url, seed, steps, log, r9 = false) {
+async function session(browser, url, seed, steps, log, r9 = false, r15 = false) {
   const r = rng(seed); const pick = xs => xs[Math.floor(r() * xs.length)];
   const page = await browser.newPage();
   const errors = []; page.on("pageerror", e => { errors.push(e.message); if (process.env.FUZZ_STACK) console.log("PAGEERROR after", trail.at(-1), trail.length, e.message); });
@@ -204,7 +205,8 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     if (!listText || /error/.test(listText)) return;
     const parsed = (await texts("issue")).map(t => t.match(/^#(\d+) (.*) \((.*)\)$/)).filter(Boolean).map(m => ({ id: Number(m[1]), title: m[2], assignee: m[3] === "unassigned" ? null : m[3] }));
     const want = srv.issues.filter(i => i.open === (ui.filter === "open") || (ui.filter === "open" && stale.some(t => t.issue === i.id && t.field === "open") && parsed.some(p => p.id === i.id)));
-    const newest = (id, field) => { const ws = started.filter(w => w.issue === id && w.field === field && w.accepted); return ws.length ? ws.at(-1).value : undefined; };
+    // A2 is dropped with --r15 (Ryan, 2026-11-14: the server's last answer is the only correct one)
+    const newest = (id, field) => { if (r15) return undefined; const ws = started.filter(w => w.issue === id && w.field === field && w.accepted); return ws.length ? ws.at(-1).value : undefined; };
     const late = (id, ...fields) => stale.some(t => t.issue === id && fields.includes(t.field));   // A4: not judged on the new page
     const ok = (id, field, v) => { const x = srv.issues.find(i => i.id === id); return v === x[field] || v === newest(id, field) || stale.some(t => t.issue === id && t.field === field && t.before === v); };   // A2, A4
     const ids = parsed.map(p => p.id).join(",");
@@ -316,7 +318,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
   return found.slice(0, 1);
 }
 
-export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false, r9 = false } = {}) {
+export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false, r9 = false, r15 = false } = {}) {
   const b = await build(dir);
   if (!b.ok) return { dir, build: false, seeds, violations: [] };
   const server = await serve(b.dist); let browser = await launch();
@@ -324,7 +326,7 @@ export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false,
   try {
     for (let s = from; s < from + seeds; s++) {
       // a page that crashes or hangs the browser is a hole of its own; the next seed gets a fresh browser
-      try { let t; violations.push(...await Promise.race([session(browser, server.url, s, steps, log, r9), new Promise((_, rej) => { t = setTimeout(() => rej(new Error("session timed out (120 s): the page hangs")), 120000); })]).finally(() => clearTimeout(t))); }
+      try { let t; violations.push(...await Promise.race([session(browser, server.url, s, steps, log, r9 || r15, r15), new Promise((_, rej) => { t = setTimeout(() => rej(new Error("session timed out (120 s): the page hangs")), 120000); })]).finally(() => clearTimeout(t))); }
       catch (e) { violations.push({ seed: s, step: -1, kind: "page crash", detail: e.message.split("\n")[0].slice(0, 120), trail: [] }); await browser.close().catch(() => {}); browser = await launch(); }
     }
   }
@@ -334,7 +336,7 @@ export async function fuzz(dir, { seeds = 40, steps = 30, from = 1, log = false,
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const a = process.argv.slice(2); const opt = (k, d) => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : d; };
-  const res = await fuzz(path.resolve(a[0]), { seeds: Number(opt("--seeds", 40)), steps: Number(opt("--steps", 30)), from: Number(opt("--from", 1)), log: a.includes("--log"), r9: a.includes("--r9") });
+  const res = await fuzz(path.resolve(a[0]), { seeds: Number(opt("--seeds", 40)), steps: Number(opt("--steps", 30)), from: Number(opt("--from", 1)), log: a.includes("--log"), r9: a.includes("--r9"), r15: a.includes("--r15") });
   console.log(`${path.basename(res.dir)}: ${res.build ? `${res.violations.length}/${res.seeds} seeds found a hole` : "build failed"}`);
   for (const v of res.violations) console.log(`  seed ${v.seed} step ${v.step}: ${v.kind}: ${v.detail}\n    ${v.trail.join(" ; ")}`);
   if (opt("--json")) writeFileSync(opt("--json"), JSON.stringify(res, null, 2) + "\n");

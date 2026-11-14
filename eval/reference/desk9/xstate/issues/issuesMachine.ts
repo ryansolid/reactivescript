@@ -80,7 +80,7 @@ export type IssuesContext = {
   seq: number;
   /** the writes in flight, oldest first */
   writes: Write[];
-  /** per issue field, the seq of the newest write the server accepted: an older write's answer must not replace it */
+  /** per issue field, the seq of the newest write the server accepted: guesses older than it no longer show */
   confirmed: Record<string, number>;
   /** per channel, the newest write started: only it reports its failure */
   latest: Partial<Record<Channel, number>>;
@@ -147,10 +147,10 @@ export const sendingComments = (ctx: IssuesContext) =>
 
 function accepted(ctx: IssuesContext, w: Write, outcome: Outcome): Partial<IssuesContext> {
   const confirm = (field: Field, value: string): Partial<IssuesContext> => {
+    // the server's last answer is its value, whichever write it answers; the floor only hides older guesses
     const key = fieldKey(w.issueId, field);
-    if ((ctx.confirmed[key] ?? 0) > w.seq) return {};
     return {
-      confirmed: { ...ctx.confirmed, [key]: w.seq },
+      confirmed: { ...ctx.confirmed, [key]: Math.max(ctx.confirmed[key] ?? 0, w.seq) },
       server: { ...ctx.server, [field]: { ...ctx.server[field], [w.issueId]: value } },
     };
   };

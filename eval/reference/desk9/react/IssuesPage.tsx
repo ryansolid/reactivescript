@@ -40,17 +40,15 @@ export default function IssuesPage({ onOpenCount, onOpenHelp }: Props) {
   const seqRef = useRef(0);
   const nextSeq = () => ++seqRef.current;
 
-  // assignments in the air, and the newest one confirmed per issue (an older answer must not overwrite it)
+  // assignments in the air; every answer the server gives is its value, whichever write it answers
   const [assigning, setAssigning] = useState<Guesses<string>>({});
   const [assignError, setAssignError] = useState<VisitError | null>(null);
   const lastAssignRef = useRef(0);
-  const confirmedAssignRef = useRef<Record<number, number>>({});
 
   const [renaming, setRenaming] = useState<Guesses<string>>({});
   const [renameError, setRenameError] = useState<VisitError | null>(null);
   const [titleInput, setTitleInput] = useState("");
   const lastRenameRef = useRef(0);
-  const confirmedRenameRef = useRef<Record<number, number>>({});
 
   // closes in the air, by issue id, with how many are out
   const [closing, setClosing] = useState<Record<number, number>>({});
@@ -132,12 +130,9 @@ export default function IssuesPage({ onOpenCount, onOpenHelp }: Props) {
     setAssigning(prev => addGuess(prev, id, { seq, value: who }));
     try {
       const res = await assign(id, who);
-      if ((confirmedAssignRef.current[id] ?? 0) < seq) {
-        confirmedAssignRef.current[id] = seq;
-        queryClient.setQueriesData<Issue[]>({ queryKey: ["issues"] }, old =>
-          old?.map(i => (i.id === id ? { ...i, assignee: res.assignee } : i)),
-        );
-      }
+      queryClient.setQueriesData<Issue[]>({ queryKey: ["issues"] }, old =>
+        old?.map(i => (i.id === id ? { ...i, assignee: res.assignee } : i)),
+      );
     } catch (e) {
       reportFailure(e);
     } finally {
@@ -152,13 +147,10 @@ export default function IssuesPage({ onOpenCount, onOpenHelp }: Props) {
     setRenaming(prev => addGuess(prev, id, { seq, value: title }));
     try {
       const res = await renameIssue(id, title);
-      if ((confirmedRenameRef.current[id] ?? 0) < seq) {
-        confirmedRenameRef.current[id] = seq;
-        queryClient.setQueriesData<Issue[]>({ queryKey: ["issues"] }, old =>
-          old?.map(i => (i.id === id ? { ...i, title: res.title } : i)),
-        );
-        queryClient.setQueryData<Detail>(["issue", id], old => (old ? { ...old, title: res.title } : old));
-      }
+      queryClient.setQueriesData<Issue[]>({ queryKey: ["issues"] }, old =>
+        old?.map(i => (i.id === id ? { ...i, title: res.title } : i)),
+      );
+      queryClient.setQueryData<Detail>(["issue", id], old => (old ? { ...old, title: res.title } : old));
     } catch (e) {
       if (lastRenameRef.current === seq) setRenameError({ visit, message: errorMessage(e) });
     } finally {

@@ -11,3 +11,6 @@ select); spawned actors' done/error events are untyped.
 
 Brief ambiguities seen (none tested): `assign` error prefix; related-help query after an optimistic rename; a failed
 save overtaken by a newer accepted save; inputs not cleared on selection; clicking the open tab does not reset it.
+
+Round 15 rule (`--r15`, Ryan 2026-11-14): two accepted writes to one field show the server's last answer. The
+reference takes every write answer as the server's value; earlier it kept the newest started (failed r15 seed 18).
