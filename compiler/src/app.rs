@@ -23,7 +23,7 @@ pub fn target(name: &str) -> Target {
     }
 }
 
-/// `{entry, css, modules: {path: {code, map}}}`, or `{diagnostics: [...]}` / `{error}`. `entry` is an absolute path.
+/// `{entry, css, modules: {path: {code, map, css}}}` (the program's stylesheet, and each module's own), or `{diagnostics: [...]}` / `{error}`. `entry` is an absolute path.
 /// `spa`: a client-only build, checked under 08 CN-3d.
 pub fn app(entry: &str, target: Target, module_name: &str, spa: bool) -> Value {
     // module keys are POSIX paths (`modules::join_path`); Windows takes `D:/a/b.rx` as it takes `D:\a\b.rx`
@@ -49,7 +49,7 @@ pub fn app(entry: &str, target: Target, module_name: &str, spa: bool) -> Value {
             let path = &out.paths[name];
             let text = read_disk(path).unwrap_or_default();
             let l = lower_view(module, path, target, module_name, Some((path, &text))).map_err(|e| json!({ "error": e }))?;
-            modules.insert(path.clone(), json!({ "code": l.code, "map": l.map }));
+            modules.insert(path.clone(), json!({ "code": l.code, "map": l.map, "css": out.module_css[name] }));
         }
         Ok(json!({ "entry": set.entry, "css": out.css, "modules": modules }))
     })()

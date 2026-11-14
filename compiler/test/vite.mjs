@@ -118,8 +118,50 @@ if (!filter || "shared".includes(filter)) {   // two programs on one page, shari
 if (!filter || "todo".includes(filter)) {   // the dev server: modules transformed on request
   const dir = project("todo-dev", "todo.rx");
   const server = await vite.createServer(config(dir, "todo.rx")); await server.listen(0);
-  await drive("todo (dev)", `http://127.0.0.1:${server.httpServer.address().port}/`, todo);
+  await drive("todo (dev)", server.resolvedUrls.local[0], todo);
   await server.close();
+}
+if (!filter || "styles".includes(filter)) {   // CSS-4 under the dev server: a dependency's <style> edit reaches the page
+  const dir = project("styles-dev", "styled/main.rx");
+  mkdirSync(path.join(dir, "src/styled"));
+  writeFileSync(path.join(dir, "src/styled/main.rx"), `import { Badge } from "./badge.rx"\n\nexport default component Main() {\n  <main><Badge /></main>\n}\n`);
+  const badge = path.join(dir, "src/styled/badge.rx");
+  const style = color => `export component Badge() {\n  <style>\n    .badge { color: ${color} }\n  </style>\n  <p class="badge">badge</p>\n}\n`;
+  writeFileSync(badge, style("rgb(0, 0, 255)"));
+  const server = await vite.createServer(config(dir, "styled/main.rx")); await server.listen(0);
+  const url = server.resolvedUrls.local[0];
+  const color = page => page.$eval(".badge", e => getComputedStyle(e).color);
+  const until = async (page, want, what) => {
+    for (let i = 0; i < 40 && await color(page).catch(() => "") !== want; i++) await page.waitForTimeout(100);
+    const got = await color(page).catch(e => e.message.split("\n")[0]); if (got !== want) throw new Error(`${what}: color ${got}, not ${want}`);
+  };
+  await drive("styles (dev)", url, async page => {
+    await until(page, "rgb(0, 0, 255)", "first load");
+    writeFileSync(badge, style("rgb(255, 0, 0)"));
+    await until(page, "rgb(255, 0, 0)", "after the edit");
+    await page.reload(); await until(page, "rgb(255, 0, 0)", "after a reload");
+    const fresh = await browser.newPage();
+    try { await fresh.goto(url); await until(fresh, "rgb(255, 0, 0)", "in a new page"); } finally { await fresh.close(); }
+  });
+  await server.close();
+}
+if (!filter || "cold".includes(filter)) {   // a dependency asked for before its entry, as Vitest's `fsModuleCache` leaves it
+  const { default: rx } = await import(pathToFileURL(path.join(pkg, "vite.mjs")).href);
+  const root = project("cold", "shop/main.rx"), catalog = path.join(root, "src/shop/catalog.rx");
+  const ctx = (id, moduleId) => ({ id, moduleId, root, ssr: false, solid: { generate: "dom", hydratable: false }, addWatchFile() {} });
+  try {
+    // a commented-out import is not an edge: read as one, it would make main.rx look imported and leave no entry
+    writeFileSync(catalog, readFileSync(catalog, "utf8") + `\n// import { x } from "./main.rx"\n`);
+    const warm = rx(); warm.compile("", ctx(path.join(root, "src/shop/main.rx"), path.join(root, "src/shop/main.rx")));
+    const want = warm.compile("", ctx(catalog, `${catalog}?rx-dep`)).code;
+    const got = rx().compile("", ctx(catalog, `${catalog}?rx-dep`)).code;
+    if (got !== want) throw new Error("the dependency compiled cold differs from the one compiled after its entry");
+    writeFileSync(catalog, readFileSync(catalog, "utf8") + "\nexport bad = missingName\n");
+    let report = "";
+    try { rx().compile("", ctx(catalog, `${catalog}?rx-dep`)); } catch (e) { report = e.message; }
+    if (!/catalog\.rx:\d+(:\d+)?: error /.test(report)) throw new Error(`a cold dependency that does not compile reports ${JSON.stringify(report.slice(0, 200))}`);
+    pass++; console.log("✓ cold dependency: compiled from the program that holds it, or that program's diagnostics");
+  } catch (e) { fail++; console.log(`✗ cold dependency: ${e.message.split("\n")[0]}`); }
 }
 await browser.close();
 console.log(`\n${pass} pass, ${fail} fail (vite ${vite.version}, @solidjs/vite-plugin ${JSON.parse(readFileSync(path.join(pluginDir, "package.json"), "utf8")).version})`);

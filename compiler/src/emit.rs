@@ -180,6 +180,8 @@ pub struct Compiled {
     pub entry: String,
     /// CSS-4: the modules' stylesheets, beside their JavaScript
     pub css: String,
+    /// CSS-4: each module's own stylesheet, by its output name
+    pub module_css: IndexMap<String, String>,
 }
 
 /// 09 MO-1: one ES module per `.rx` module. A dependency's module is a factory over the app (`__rt.module` runs it once per
@@ -197,8 +199,10 @@ pub fn compile_linked(set: &ModuleSet, extra: &[Vec<Stmt>], by_source: bool) -> 
     g.by_source = by_source;
     let mut files = IndexMap::new();
     let mut paths = IndexMap::new();
+    let mut module_css = IndexMap::new();
     for path in &set.order {
         let p = &set.programs[path];
+        let css0 = g.css.len();
         g.begin_module(path, &p.decls);
         let mut deps: Vec<&str> = vec![];
         for d in &p.decls {
@@ -232,10 +236,11 @@ pub fn compile_linked(set: &ModuleSet, extra: &[Vec<Stmt>], by_source: bool) -> 
             fbody.append(&mut inner);
             body.push(S::ExportDefault(Func { name: Some("module".into()), params: vec![P::Id("__rt".into())], directives: vec![], body: fbody, is_async: false, generator: false }));
         }
+        module_css.insert(g.out(path), g.css[css0..].join("\n"));
         files.insert(g.out(path), body);
         paths.insert(g.out(path), path.clone());
     }
-    Ok(Compiled { files, paths, entry: g.out(&set.entry), css: g.css.join("\n") })
+    Ok(Compiled { files, paths, entry: g.out(&set.entry), css: g.css.join("\n"), module_css })
 }
 
 struct Gen<'p> {
