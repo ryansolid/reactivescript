@@ -1,0 +1,96 @@
+// The board as shown: the server's answers with this visit's writes laid over them. Pure functions only.
+//
+// A write is a record in a list of its kind. While it is out, its record shows it (`moves`, `renames`, …, in the order
+// they were made, the newest winning); when the server takes it, its outcome joins the accepted list of its kind (in
+// the order the server answered, so two accepted writes to one field show the server's last answer); when the server
+// declines, its record goes and what was under it shows again.
+
+import { Card, Item } from "./api"
+
+// a card as an answer gives it (or as an accepted add made it), with its place: `rank` orders a column
+export type Base = { id: number; title: string; done: number; total: number; col: string; rank: number }
+// a card added on this visit: `id` is -1 until the server answers it
+export type CardAdd = { key: number; id: number; title: string }
+export type Move = { key: number; id: number; col: string; rank: number }
+export type Rename = { key: number; id: number; title: string }
+export type Archive = { key: number; id: number }
+export type Toggle = { key: number; card: number; item: number; done: boolean }
+export type ItemAdd = { key: number; card: number; text: string }
+// a checklist as this visit knows it: its last answer, with the writes the server took since
+export type Known = { card: number; items: Item[] }
+export type Writes = {
+  moves: Move[]; moved: Move[]; renames: Rename[]; renamed: Rename[]; archiving: Archive[]; archived: number[];
+  toggles: Toggle[]; itemAdds: ItemAdd[]; known: Known[];
+}
+
+// a card as a column shows it
+export type Shown = { key: string; id: number; title: string; done: number; total: number; adding: boolean; rank: number }
+// with what its move buttons would do: `pos` its place among the column's cards, `up`/`down` its rank after a swap
+export type Placed = { key: string; id: number; title: string; done: number; total: number; adding: boolean; rank: number; pos: number; hasUp: boolean; hasDown: boolean; up: number; down: number }
+export type ItemRow = { key: string; id: number; text: string; done: boolean; adding: boolean }
+
+export fn answered(ans: Card[] | null, col: string): Base[] =>
+  ans == null ? [] : ans.map((c, i) => ({ id: c.id, title: c.title, done: c.done, total: c.total, col: col, rank: i }))
+export fn once(bs: Base[]): Base[] => bs.filter((b, i) => bs.findIndex(x => x.id == b.id) == i)
+// accepted adds go at the bottom of To do, in the order they were made
+export fn addedCards(adds: CardAdd[], all: Base[]): Base[] =>
+  adds.filter(a => a.id >= 0 && !all.some(b => b.id == a.id)).map(a => ({ id: a.id, title: a.title, done: 0, total: 0, col: "todo", rank: 1000000 + a.key }))
+
+fn lastMove(ms: Move[], id: number): Move | null => ms.filter(x => x.id == id).at(-1) ?? null
+fn placeOf(b: Base, w: Writes): Move => lastMove(w.moves, b.id) ?? lastMove(w.moved, b.id) ?? { key: -1, id: b.id, col: b.col, rank: b.rank }
+fn lastTitle(rs: Rename[], id: number): string | null => rs.filter(r => r.id == id).at(-1)?.title ?? null
+export fn titleOf(w: Writes, id: number, title: string): string => lastTitle(w.renames, id) ?? lastTitle(w.renamed, id) ?? title
+fn gone(w: Writes, id: number): boolean => w.archived.includes(id) || w.archiving.some(a => a.id == id)
+
+fn doneOf(ts: Toggle[], card: number, item: number, done: boolean): boolean => ts.reduce((d, t) => t.card == card && t.item == item ? t.done : d, done)
+// a checklist as shown: its items with the toggles out, then the items being added
+export fn layItems(items: Item[], card: number, w: Writes): ItemRow[] =>
+  [
+    ...items.map(it => ({ key: `i${it.id}`, id: it.id, text: it.text, done: doneOf(w.toggles, card, it.id, it.done), adding: false })),
+    ...w.itemAdds.filter(a => a.card == card).map(a => ({ key: `a${a.key}`, id: -1, text: a.text, done: false, adding: true })),
+  ]
+export fn knownItems(w: Writes, card: number): Item[] | null => w.known.find(k => k.card == card)?.items ?? null
+fn countDone(rows: ItemRow[]): number => rows.filter(r => r.done).length
+
+// a card's count: its checklist's as shown, once this visit has loaded it; else its column's answer
+fn shownCard(b: Base, w: Writes): Shown => shownWith(b, placeOf(b, w), titleOf(w, b.id, b.title), knownItems(w, b.id), w)
+fn shownWith(b: Base, at: Move, title: string, items: Item[] | null, w: Writes): Shown =>
+  items == null ? ({ key: `c${b.id}`, id: b.id, title: title, done: b.done, total: b.total, adding: false, rank: at.rank }) : countedCard(b, at, title, layItems(items, b.id, w))
+fn countedCard(b: Base, at: Move, title: string, rows: ItemRow[]): Shown =>
+  ({ key: `c${b.id}`, id: b.id, title: title, done: countDone(rows), total: rows.length, adding: false, rank: at.rank })
+
+fn addingIn(c: string, adds: CardAdd[]): Shown[] =>
+  c != "todo" ? [] : adds.filter(a => a.id < 0).map(a => ({ key: `a${a.key}`, id: -1, title: a.title, done: 0, total: 0, adding: true, rank: 1000000 + a.key }))
+
+// the cards column `c` shows, top first
+export fn shownIn(c: string, cards: Base[], adds: CardAdd[], w: Writes): Shown[] =>
+  [...cards.filter(b => !gone(w, b.id) && placeOf(b, w).col == c).map(b => shownCard(b, w)), ...addingIn(c, adds)].sort((x, y) => x.rank - y.rank)
+
+fn prevReal(rows: Shown[], p: number): number => rows.reduce((a, r, i) => i < p && !r.adding ? i : a, -1)
+fn nextReal(rows: Shown[], p: number): number => rows.findIndex((r, i) => i > p && !r.adding)
+fn upRank(rows: Shown[], q: number): number => q < 0 ? 0 : q >= 1 ? (rows[q - 1].rank + rows[q].rank) / 2 : rows[q].rank - 1
+fn downRank(rows: Shown[], n: number): number => n < 0 ? 0 : n + 1 < rows.length ? (rows[n].rank + rows[n + 1].rank) / 2 : rows[n].rank + 1
+
+export fn placed(rows: Shown[]): Placed[] =>
+  rows.map((r, p) => ({
+    key: r.key, id: r.id, title: r.title, done: r.done, total: r.total, adding: r.adding, rank: r.rank,
+    pos: rows.filter((x, i) => i < p && !x.adding).length,
+    hasUp: prevReal(rows, p) >= 0,
+    hasDown: nextReal(rows, p) >= 0,
+    up: upRank(rows, prevReal(rows, p)),
+    down: downRank(rows, nextReal(rows, p)),
+  }))
+
+// where a card moved in from another column goes: below the column's last card, above the cards being added below it
+fn lastReal(rows: Placed[]): number => rows.reduce((a, r, i) => r.adding ? a : i, -1)
+fn rankBelow(rows: Placed[], q: number): number =>
+  q < 0 ? (rows.length > 0 ? rows[0].rank - 1 : 0) : q + 1 < rows.length ? (rows[q].rank + rows[q + 1].rank) / 2 : rows[q].rank + 1
+export fn bottomRank(rows: Placed[]): number => rankBelow(rows, lastReal(rows))
+export fn cardCount(rows: Placed[]): number => rows.filter(r => !r.adding).length
+
+// the accepted writes, written into what this visit knows of a checklist
+export fn knowAnswer(ks: Known[], card: number, items: Item[]): Known[] => [...ks.filter(k => k.card != card), { card: card, items: items }]
+export fn knowToggle(ks: Known[], card: number, item: number, done: boolean): Known[] =>
+  ks.map(k => k.card != card ? k : { card: card, items: k.items.map(it => it.id == item ? { id: it.id, text: it.text, done: done } : it) })
+export fn knowItem(ks: Known[], card: number, it: Item): Known[] =>
+  ks.map(k => k.card != card || k.items.some(x => x.id == it.id) ? k : { card: card, items: [...k.items, it] })

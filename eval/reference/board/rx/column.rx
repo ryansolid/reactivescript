@@ -1,0 +1,50 @@
+// One column of the board: its heading, its load (loading, error and retry), and its cards with their move buttons.
+
+import { Card } from "./api"
+import { Placed } from "./lay.rx"
+
+export component Column(props: {
+  col: string; name: string; ans: Card[] | null; loaded: boolean; retrying: boolean; rows: Placed[];
+  leftCol: string; rightCol: string; leftOk: boolean; rightOk: boolean;
+  leftSize: number; rightSize: number; leftRank: number; rightRank: number;
+  onRetry: () => void; onSelect: (id: number) => void; onMove: (id: number, to: string, index: number, rank: number) => void;
+}) {
+  <section data-testid={`col-${props.col}`} style="min-width: 14rem">
+    <h2 data-testid={`head-${props.col}`}>{props.name}{props.loaded && !props.retrying ? ` (${props.rows.length})` : ""}</h2>
+    {if props.retrying {
+      <p>loading</p>
+    } else {
+      {errored fallback(e) {
+        <p>error: {e.message}{" "}<button data-testid={`retry-${props.col}`} onClick={() => { props.onRetry() }}>retry</button></p>
+      } {
+        {if props.ans == null {
+          <p>loading</p>
+        } else {
+          <ul>
+            {for r in props.rows {
+              <li>
+                {if r.adding {
+                  <span data-testid="card">{r.title} (adding…)</span>
+                } else {
+                  <button data-testid="card" onClick={() => { props.onSelect(r.id) }}>#{r.id} {r.title} · {r.done}/{r.total}</button>
+                  {if props.leftCol != "" {
+                    {" "}<button data-testid="left" disabled={!props.leftOk} onClick={() => { props.onMove(r.id, props.leftCol, props.leftSize, props.leftRank) }}>left</button>
+                  }}
+                  {if props.rightCol != "" {
+                    {" "}<button data-testid="right" disabled={!props.rightOk} onClick={() => { props.onMove(r.id, props.rightCol, props.rightSize, props.rightRank) }}>right</button>
+                  }}
+                  {if r.hasUp {
+                    {" "}<button data-testid="up" onClick={() => { props.onMove(r.id, props.col, r.pos - 1, r.up) }}>up</button>
+                  }}
+                  {if r.hasDown {
+                    {" "}<button data-testid="down" onClick={() => { props.onMove(r.id, props.col, r.pos + 1, r.down) }}>down</button>
+                  }}
+                }}
+              </li>
+            }}
+          </ul>
+        }}
+      }}
+    }}
+  </section>
+}
