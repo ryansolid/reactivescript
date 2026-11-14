@@ -1,0 +1,53 @@
+// Doing's region reads Done (for a button's disabled), and Done is loading a new question, so Doing waits. A guess on
+// `moving`, which every column reads, then shows Doing's heading with its count over an empty list.
+import pure { fetchCards } from "./api"
+import { moveCard } from "./api"
+
+source visit: number := 0
+doing = visit >= 0 ? (await fetchCards("doing") -> null) : null
+done = visit >= 0 ? (await fetchCards("done") -> null) : null
+source moving: number[] = []
+doingRows = doing == null ? null : doing.filter(c => !moving.includes(c.id))
+doneRows = done == null ? null : done.filter(c => !moving.includes(c.id))
+
+action move(id: number) {
+  try {
+    guess moving := ms => [...ms, id]
+    await moveCard(id, "done", 0)
+  } catch (e) {
+  }
+}
+
+component Doing() {
+  <section data-testid="doing">
+    {loading fallback { <p>loading doing</p> } { errored fallback(e) { <p>err</p> } {
+      <h2>Doing {doingRows == null ? "" : `(${doingRows.length})`}</h2>
+      {if doingRows == null {
+        <p>first load</p>
+      } else {
+        <ul>
+          {for c in doingRows {
+            <li>{if c.done > 0 {
+              <span>done</span>
+            } else {
+              <span>#{c.id} <button disabled={doneRows == null}>right</button></span>
+            }}</li>
+          }}
+        </ul>
+      }}
+    } }}
+  </section>
+}
+
+export default component App() {
+  source page: string := "board"
+  <div>
+    <button data-testid="away" onClick={() => { page := "other" }}>away</button>
+    <button data-testid="back" onClick={() => {
+      visit := visit + 1
+      page := "board"
+    }}>back</button>
+    <button data-testid="move" onClick={() => { move(1) }}>move</button>
+    {if page == "board" { <Doing /> } else { <p>other</p> }}
+  </div>
+}

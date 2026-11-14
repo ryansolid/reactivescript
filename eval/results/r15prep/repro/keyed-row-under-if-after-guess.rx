@@ -1,0 +1,23 @@
+// an add: the guess row (key "b…") goes and the answer's row (key "a…") comes, in the action's last instant
+import pure { fetchChecklist } from "./api"
+import { addItem } from "./api"
+
+source a = await fetchChecklist(2)
+source adding: string[] = []
+rows key k = [...a.map(it => ({ k: `a${it.id}`, t: it.text, adding: false })), ...adding.map(t => ({ k: `b${t}`, t: t, adding: true }))]
+
+action add(t: string) {
+  try {
+    guess adding := xs => [...xs, t]
+    let r = await addItem(2, t)
+    a := xs => [...xs, r]
+  } catch (e) {
+  }
+}
+
+export default component App() {
+  <div>
+    <button data-testid="go" onClick={() => { add("two") }}>go</button>
+    <p data-testid="out">{loading fallback { <span>loading</span> } { errored fallback(e) { <span>err</span> } { <span>{rows.length}:</span>{for r in rows { {if r.adding { <span>[{r.t} (adding)]</span> } else { <span>[{r.t}]</span> }} }} } }}</p>
+  </div>
+}

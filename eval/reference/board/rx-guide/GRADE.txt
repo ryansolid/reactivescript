@@ -1,0 +1,19 @@
+== hidden
+✗ a move error stays when another move is accepted
+✗ two adds show both, each taking its own id
+✗ an added item can be toggled once it has its id
+42/45 passed
+== overlap
+✗ one of two moves declined puts back only its card
+✗ an add accepted while To do reloads shows the card once
+✗ an item added while the checklist reloads shows once
+✗ two renames, the later declined after the earlier was accepted: the earlier title stays
+✗ a move into Doing that fills it while a move out is pending disables the rest
+✗ an add accepted after the board was left does not show twice on the next visit
+20/26 passed
+== fuzz
+board-rx2: 2/20 seeds found a hole
+  seed 7 step 43: duplicate card: "Delta 1 (adding…)" shows 1 time(s) with 0 add(s) of it in the air
+    land fetchCards:todo ; up #2 ; select #1 ; up #1 ; up #2 ; land fetchCards:done ; fail moveCard:1,todo,0 ; up #1 ; land moveCard:2,todo,0 ; select #5 ; add Delta 1 ; add Delta 2 ; select #1 ; fail fetchCards:todo ; land addCard:todo,Delta 1 ; down #1 ; up #1 ; land fetchChecklist:1 ; up #2 ; up #1 ; tab archive ; tab board ; tab archive ; land addCard:todo,Delta 2 ; tab board ; add Delta 3 ; (
+  seed 15 step 49: heading: head-todo counts 3, the column shows 6 cards
+    land fetchCards:doing ; select #4 ; up #4 ; land fetchCards:done ; fail moveCard:4,doing,0 ; land fetchCards:todo ; rename Bravo ; fail fetchChecklist:4 ; select #4 ; land renameCard:4,Bravo ; add Alpha 1 ; add Alpha 2 ; land fetchCards:todo ; add Bravo 3 ; select #5 ; land fetchCards:doing ; up #4 ; left #5 ; rename Alpha ; land renameCard:4,Alpha ; land fetchChecklist:4 ; left #5 ; down #2 ;

@@ -1,0 +1,49 @@
+// Keyed (`items key k`): after 'accept toggle' the loading on(selected) region, which showed its fallback for card 4,
+// shows card 2's rows again (with the toggle guess); unkeyed (`items = …` of strings) it stays on the fallback. In the
+// board (seed 14) the region then stays on card 2's rows after card 4's checklist landed.
+// An item add on card 2 is out (it stays out), and a toggle on card 2's checklist; card 4 is selected (its checklist is asked); the toggle is accepted and
+// re-asks the checklist; card 4's checklist lands. The checklist should be card 4's.
+import pure { fetchChecklist } from "./api"
+import { toggleItem, addItem } from "./api"
+
+source selected: number := 2
+source checklist = { card: selected, items: await fetchChecklist(selected) }
+source toggling: number[] = []
+source adding: { card: number; text: string }[] = []
+items key k = [
+  ...checklist.items.map(it => ({ k: `i${it.id}`, t: `${checklist.card}/${it.text}${toggling.includes(it.id) ? " (toggling)" : ""}` })),
+  ...adding.filter(a => a.card == checklist.card).map((a, i) => ({ k: `a${i}`, t: `${a.card}/${a.text} (adding)` })),
+]
+
+action addOne(card: number, text: string) {
+  try {
+    guess adding := as => [...as, { card: card, text: text }]
+    let it = await addItem(card, text)
+    checklist := l => l.card != card ? l : { card: card, items: [...l.items, it] }
+  } catch (e) {
+  }
+}
+
+action toggle(card: number, item: number) {
+  try {
+    guess toggling := ts => [...ts, item]
+    await toggleItem(card, item, true)
+    refresh checklist
+  } catch (e) {
+  }
+}
+
+export default component App() {
+  <div>
+    <button data-testid="sel4" onClick={() => { selected := 4 }}>select 4</button>
+    <button data-testid="add" onClick={() => { addOne(2, "ship") }}>add ship</button>
+    <button data-testid="toggle" onClick={() => { toggle(2, 22) }}>toggle 22</button>
+    <div data-testid="out">
+      {loading on(selected) fallback { <p>loading checklist</p> } {
+        {errored fallback(e) { <p>err</p> } {
+          <p>{items.length}: {for it in items { <span>{it.t} </span> }}</p>
+        }}
+      }}
+    </div>
+  </div>
+}

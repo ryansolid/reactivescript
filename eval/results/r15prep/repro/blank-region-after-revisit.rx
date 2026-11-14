@@ -1,0 +1,45 @@
+// An add is out (a guess on `adding`); the page is left and opened again (a new question for `cards`); the add's
+// answer lands (a write to `cards`), then the new question's answer. The page's region then shows nothing at all.
+import pure { fetchCards } from "./api"
+import { addCard } from "./api"
+
+source visit: number := 0
+source cards = visit >= 0 ? (await fetchCards("todo") -> null) : null
+source adding: string[] = []
+rows = cards == null ? null : [...cards.map(c => c.title), ...adding]
+
+action add(t: string) {
+  try {
+    guess adding := as => [...as, t]
+    let r = await addCard("todo", t)
+    cards := cs => cs == null ? cs : [...cs, { id: r.id, title: r.title, done: 0, total: 0 }]
+  } catch (e) {
+  }
+}
+
+component Page() {
+  <div data-testid="out">
+    {loading fallback { <p>loading</p> } {
+      {errored fallback(e) { <p>err</p> } {
+        {if rows == null {
+          <p>first load</p>
+        } else {
+          <p>{rows.join(",")}</p>
+        }}
+      }}
+    }}
+  </div>
+}
+
+export default component App() {
+  source page: string := "a"
+  <div>
+    <button data-testid="add" onClick={() => { add("x") }}>add</button>
+    <button data-testid="away" onClick={() => { page := "b" }}>away</button>
+    <button data-testid="back" onClick={() => {
+      visit := visit + 1
+      page := "a"
+    }}>back</button>
+    {if page == "a" { <Page /> } else { <p>other page</p> }}
+  </div>
+}
