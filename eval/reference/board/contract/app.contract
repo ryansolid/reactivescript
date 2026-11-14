@@ -1,0 +1,323 @@
+// The sprint board: a board page and an archive page behind two tabs.
+//
+// Every resource is the root's, so a page's state lives here too, and opening a page resets it. A resource asks only
+// while its page is open (`when`) and asks again each time it opens; "loading" is `not current(…)`, so a reload after
+// a write keeps what shows. Each kind of write is a `parallel` mutation that refreshes every resource it changes;
+// app.ts's overlay lays the writes still out over the answers, so each shows at once and until an answer has it.
+//
+// `visit` counts page openings: every read and write carries it, so a write from a page that was left is not laid
+// over the next visit, and its error is not reported there. `pick` counts selections, for the detail's errors. Each
+// kind of write counts its sends (`moves`, `adds`…): an error belongs to the latest send of its kind, so the next
+// action of its kind clears it, and one that was accepted meanwhile does not (`writeErrors` in app.ts).
+
+shape Card
+  id: number
+  title: string
+  done: number
+  total: number
+  adding: bool
+  key: string
+
+shape Item
+  id: number
+  text: string
+  done: bool
+  adding: bool
+  key: string
+
+shape Archived
+  id: number
+  title: string
+
+shape Moved
+  id: number
+  column: string
+  index: number
+
+shape Renamed
+  id: number
+  title: string
+
+shape Added
+  id: number
+  title: string
+
+shape Ack
+  id: number
+
+shape Toggled
+  id: number
+  done: bool
+
+shape Errors
+  move: string
+  add: string
+  archive: string
+  rename: string
+  item: string
+  restore: string
+
+fn columnName(c: string): string = c == "todo" ? "To do" : c == "doing" ? "Doing" : "Done"
+fn message(f: option<Failure>): string = match f { case some(x) => x.message, case none => "" }
+fn has(cards: Card[], id: number): bool = cards.filter(c => c.id == id and not c.adding).length > 0
+
+component Board
+  state page = "board"
+  state visit = 1
+
+  // the board page
+  state selected = 0
+  state pick = 0
+  state newCard = ""
+  state titleDraft = ""
+  state itemDraft = ""
+  state moves = 0
+  state adds = 0
+  state archives = 0
+  state renames = 0
+  state itemActions = 0
+  state restores = 0
+
+  derive onBoard = page == "board"
+  derive chosen = onBoard and selected != 0
+
+  resource todo = fetchCards("todo", visit) when onBoard as shape Card[] else empty()
+  resource doing = fetchCards("doing", visit) when onBoard as shape Card[] else empty()
+  resource done = fetchCards("done", visit) when onBoard as shape Card[] else empty()
+  resource checklist = fetchChecklist(selected, visit) when chosen as shape Item[] else empty()
+  resource archived = fetchArchived(visit) when page == "archive" as shape Archived[] else empty()
+  resource errors = writeErrors(visit, pick, moves, adds, archives, renames, itemActions, restores) as shape Errors else empty()
+
+  mutation moved as shape Moved parallel refreshes todo, doing, done, errors
+  mutation added as shape Added parallel refreshes todo, errors
+  mutation archivedCard as shape Ack parallel refreshes todo, doing, done, errors
+  mutation renamed as shape Renamed parallel refreshes todo, doing, done, errors
+  mutation toggled as shape Toggled parallel refreshes checklist, todo, doing, done, errors
+  mutation itemAdded as shape Item parallel refreshes checklist, todo, doing, done, errors
+  mutation restored as shape Ack parallel refreshes archived, errors
+
+  // the columns as shown: a column that has not loaded shows no cards
+  derive todoCards = current(todo) ? todo : []
+  derive doingCards = current(doing) ? doing : []
+  derive doneCards = current(done) ? done : []
+
+  // the selected card's checklist as shown, which its card on the board counts too
+  derive listShown = chosen and current(checklist)
+  derive itemsDone = checklist.filter(i => i.done and not i.adding).length
+  derive progress = `${itemsDone}/${checklist.length}`
+
+  // where the selected card shows on the board
+  derive selectedColumn = has(todoCards, selected) ? "todo" : has(doingCards, selected) ? "doing" : has(doneCards, selected) ? "done" : ""
+  derive selectedCard = first(todoCards.concat(doingCards).concat(doneCards).filter(c => c.id == selected and not c.adding))
+  derive selectedTitle = match selectedCard { case some(c) => c.title, case none => "" }
+
+  // Doing holds at most three cards, counting the ones moved there that the server hasn't answered yet
+  derive todoOpen = current(todo)
+  derive doingOpen = current(doing) and doingCards.length < 3
+  derive doneOpen = current(done)
+
+  action openBoard
+    if page != "board"
+      page = "board"
+      visit = visit + 1
+      selected = 0
+      pick = pick + 1
+      newCard = ""
+      titleDraft = ""
+      itemDraft = ""
+  action openArchive
+    if page != "archive"
+      page = "archive"
+      visit = visit + 1
+      selected = 0
+      pick = pick + 1
+
+  action retryTodo
+    refresh todo
+  action retryDoing
+    refresh doing
+  action retryDone
+    refresh done
+
+  action move(id: number, column: string, index: number, title: string, d: number, t: number)
+    let n = moves + 1
+    moves = n
+    send moved = moveCard(id, column, index, title, d, t, visit, n)
+
+  action setNewCard(v: string)
+    newCard = v
+  action addCard
+    if newCard != ""
+      let n = adds + 1
+      adds = n
+      send added = addCard("todo", newCard, visit, n)
+      newCard = ""
+
+  action select(id: number)
+    selected = id
+    pick = pick + 1
+    titleDraft = ""
+    itemDraft = ""
+
+  action setTitle(v: string)
+    titleDraft = v
+  action rename
+    if titleDraft != "" and selectedColumn != ""
+      let n = renames + 1
+      renames = n
+      send renamed = renameCard(selected, titleDraft, visit, pick, n)
+
+  action archive
+    if selectedColumn != ""
+      let n = archives + 1
+      archives = n
+      send archivedCard = archiveCard(selected, visit, n)
+      selected = 0
+      pick = pick + 1
+
+  action toggle(itemId: number, now: bool)
+    let n = itemActions + 1
+    itemActions = n
+    send toggled = toggleItem(selected, itemId, not now, visit, pick, n)
+  action setItem(v: string)
+    itemDraft = v
+  action addItem
+    if itemDraft != "" and listShown
+      let n = itemActions + 1
+      itemActions = n
+      send itemAdded = addItem(selected, itemDraft, visit, pick, n)
+      itemDraft = ""
+
+  action restore(id: number)
+    let n = restores + 1
+    restores = n
+    send restored = restoreCard(id, visit, n)
+
+  view
+    column gap=16 padding=16
+      nav
+        row gap=8 role="tablist"
+          button press=openBoard role="tab" aria-selected=onBoard testId="tab-board"
+            text "Board"
+          button press=openArchive role="tab" aria-selected=(page == "archive") testId="tab-archive"
+            text "Archive"
+      if onBoard
+        column gap=12
+          row gap=24 align-items="flex-start" flex-wrap="wrap"
+            column gap=8 min-width="14rem" testId="col-todo"
+              BoardColumn(column="todo", cards=todo, loaded=current(todo), error=message(failure(todo)), selected=selected, listShown=listShown, progress=progress, leftOpen=false, leftSize=0, rightOpen=doingOpen, rightSize=doingCards.length, select=select, move=move, retry=retryTodo)
+              row gap=8
+                input value=newCard input=setNewCard submit=addCard placeholder="New card" aria-label="New card" testId="new-card"
+                button press=addCard disabled=(not current(todo)) testId="add-card"
+                  text "add"
+              if errors.add != ""
+                text `add error: ${errors.add}` testId="add-error"
+            column gap=8 min-width="14rem" testId="col-doing"
+              BoardColumn(column="doing", cards=doing, loaded=current(doing), error=message(failure(doing)), selected=selected, listShown=listShown, progress=progress, leftOpen=todoOpen, leftSize=todoCards.length, rightOpen=doneOpen, rightSize=doneCards.length, select=select, move=move, retry=retryDoing)
+            column gap=8 min-width="14rem" testId="col-done"
+              BoardColumn(column="done", cards=done, loaded=current(done), error=message(failure(done)), selected=selected, listShown=listShown, progress=progress, leftOpen=doingOpen, leftSize=doingCards.length, rightOpen=false, rightSize=0, select=select, move=move, retry=retryDone)
+            column gap=8 min-width="16rem" testId="detail"
+              if selectedColumn == ""
+                text "select a card"
+              else
+                text `#${selected} ${selectedTitle}` role="heading" aria-level=2
+                text `in ${columnName(selectedColumn)}`
+                row gap=8
+                  input value=titleDraft input=setTitle submit=rename placeholder="New title" aria-label="New title" testId="title-input"
+                  button press=rename testId="rename"
+                    text "rename"
+                  button press=archive testId="archive"
+                    text "archive"
+                if errors.rename != ""
+                  text `rename error: ${errors.rename}`
+                column gap=4 testId="checklist"
+                  if listShown
+                    for i in checklist key=i.key
+                      row gap=8
+                        if i.adding
+                          text `[ ] ${i.text} (adding…)` testId="item"
+                        else
+                          text `[${i.done ? "x" : " "}] ${i.text}` testId="item"
+                          button press=toggle(i.id, i.done) testId="toggle"
+                            text "toggle"
+                    text `${progress} done` testId="progress"
+                  else if failed(checklist)
+                    text `checklist error: ${message(failure(checklist))}`
+                  else
+                    text "loading checklist"
+                row gap=8
+                  input value=itemDraft input=setItem submit=addItem placeholder="New item" aria-label="New item" testId="item-input"
+                  button press=addItem disabled=(not listShown) testId="add-item"
+                    text "add item"
+                if errors.item != ""
+                  text `item error: ${errors.item}`
+          if errors.move != ""
+            text `move error: ${errors.move}` testId="move-error"
+          if errors.archive != ""
+            text `archive error: ${errors.archive}` testId="archive-error"
+      if page == "archive"
+        column gap=8
+          column gap=4 testId="archived"
+            if current(archived)
+              for a in archived key=a.id
+                row gap=8
+                  text `#${a.id} ${a.title}` testId="archived-card"
+                  button press=restore(a.id) testId="restore"
+                    text "restore"
+            else if failed(archived)
+              text `archive error: ${message(failure(archived))}`
+            else
+              text "loading archive"
+          if errors.restore != ""
+            text `restore error: ${errors.restore}` testId="restore-error"
+
+// One column: its heading, its cards with their move buttons, or its loading or error line. A card moves left or right
+// to the bottom of the next column, which takes it only once it has loaded (and Doing only under its limit); up and
+// down swap it with its neighbour.
+component BoardColumn
+  props
+    column: string
+    cards: Card[]
+    loaded: bool
+    error: string
+    selected: number
+    listShown: bool
+    progress: string
+    leftOpen: bool
+    leftSize: number
+    rightOpen: bool
+    rightSize: number
+    select: action
+    move: action
+    retry: action
+  derive left = column == "todo" ? "" : column == "doing" ? "todo" : "doing"
+  derive right = column == "done" ? "" : column == "todo" ? "doing" : "done"
+  view
+    column gap=8
+      text (loaded ? `${columnName(column)} (${cards.length})` : columnName(column)) role="heading" aria-level=2 testId=`head-${column}`
+      if loaded
+        for c, i in cards key=c.key
+          row gap=6 align-items="center"
+            if c.adding
+              text `${c.title} (adding…)` testId="card"
+            else
+              button press=select(c.id) aria-pressed=(c.id == selected) testId="card"
+                text `#${c.id} ${c.title} · ${c.id == selected and listShown ? progress : `${c.done}/${c.total}`}`
+              if left != ""
+                button press=move(c.id, left, leftSize, c.title, c.done, c.total) disabled=(not leftOpen) testId="left"
+                  text "left"
+              if right != ""
+                button press=move(c.id, right, rightSize, c.title, c.done, c.total) disabled=(not rightOpen) testId="right"
+                  text "right"
+              if i > 0
+                button press=move(c.id, column, i - 1, c.title, c.done, c.total) testId="up"
+                  text "up"
+              if i < cards.length - 1
+                button press=move(c.id, column, i + 1, c.title, c.done, c.total) testId="down"
+                  text "down"
+      else if error != ""
+        text `error: ${error}`
+        button press=retry testId=`retry-${column}`
+          text "retry"
+      else
+        text "loading"
