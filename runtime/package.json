@@ -38,6 +38,10 @@
     "./server": {
       "types": "./dist/server.d.ts",
       "default": "./dist/server.js"
+    },
+    "./hot": {
+      "types": "./dist/hot.d.ts",
+      "default": "./dist/hot.js"
     }
   },
   "files": [

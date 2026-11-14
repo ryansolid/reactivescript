@@ -88,8 +88,14 @@ What happens to a `.rx` module in Vite:
 The app mounts a program with `createApp` from `@reactivescript/runtime`
 (`../runtime`, CP-4a), as the examples do.
 
-Not yet: hot updates of `.rx` modules are untested; server rendering in Vite
-needs a request-scoped app for server functions to run in.
+Hot updates: with a Solid plugin that has the front end's `hotUpdate` hook,
+an edit inside a dependency's components (markup, logic, `<style>`) swaps
+them in place through `@reactivescript/runtime/hot`, keeping the module's
+sources and every other component's state. An edit to a module's top level,
+or to an entry, reloads the page.
+
+Not yet: server rendering in Vite needs a request-scoped app for server
+functions to run in.
 
 ### Releasing
 
