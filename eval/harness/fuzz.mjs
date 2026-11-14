@@ -166,7 +166,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     if (listShown && detail && ui.selected != null) {
       const p = parsed.find(x => x.id === ui.selected);
       const m = detail.match(/^#(\d+) /);
-      if (p && m && Number(m[1]) === p.id && !detail.startsWith(`#${p.id} ${p.title}`)) return note("two views", `row "#${p.id} ${p.title}", detail "${detail.slice(0, 40)}"`);
+      if (p && m && Number(m[1]) === p.id && !stale.some(t => t.issue === p.id && t.field === "title") && !detail.startsWith(`#${p.id} ${p.title}`)) return note("two views", `row "#${p.id} ${p.title}", detail "${detail.slice(0, 40)}"`);
     }
     const cm = tab && tab.match(/\((\d+)\)/);
     if (listShown && ui.filter === "open" && cm && Number(cm[1]) !== parsed.length) note("count", `tab ${tab}, ${parsed.length} open rows shown`);
@@ -205,6 +205,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     const parsed = (await texts("issue")).map(t => t.match(/^#(\d+) (.*) \((.*)\)$/)).filter(Boolean).map(m => ({ id: Number(m[1]), title: m[2], assignee: m[3] === "unassigned" ? null : m[3] }));
     const want = srv.issues.filter(i => i.open === (ui.filter === "open") || (ui.filter === "open" && stale.some(t => t.issue === i.id && t.field === "open") && parsed.some(p => p.id === i.id)));
     const newest = (id, field) => { const ws = started.filter(w => w.issue === id && w.field === field && w.accepted); return ws.length ? ws.at(-1).value : undefined; };
+    const late = (id, ...fields) => stale.some(t => t.issue === id && fields.includes(t.field));   // A4: not judged on the new page
     const ok = (id, field, v) => { const x = srv.issues.find(i => i.id === id); return v === x[field] || v === newest(id, field) || stale.some(t => t.issue === id && t.field === field && t.before === v); };   // A2, A4
     const ids = parsed.map(p => p.id).join(",");
     // the closed list need not gain an issue closed after it loaded (no brief asks for it): it must hold no open issue
@@ -221,13 +222,13 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     if (ui.selected != null) {
       const detail = await text("detail");
       const x = srv.issues.find(i => i.id === ui.selected);
-      if (detail && !/detail error/.test(detail) && !detail.includes(`#${x.id} ${x.title}`) && !(newest(x.id, "title") && detail.includes(`#${x.id} ${newest(x.id, "title")}`))) note("at rest: detail", `"${detail.slice(0, 60)}", server "#${x.id} ${x.title}"`);
-      if (await exists("label")) {
+      if (detail && !late(x.id, "title") && !/detail error/.test(detail) && !detail.includes(`#${x.id} ${x.title}`) && !(newest(x.id, "title") && detail.includes(`#${x.id} ${newest(x.id, "title")}`))) note("at rest: detail", `"${detail.slice(0, 60)}", server "#${x.id} ${x.title}"`);
+      if (!late(x.id, "addLabel", "removeLabel") && await exists("label")) {
         const labelsText = await text("labels");
         if (labelsText && !/error/.test(labelsText)) { const ls = (await texts("label")).join(","); if (ls !== (srv.labels[x.id] ?? []).join(",")) note("at rest: labels", `#${x.id} shows [${ls}], server [${srv.labels[x.id]}]`); }
       }
       const commentsText = await text("comments");
-      if (commentsText && !/error|loading/.test(commentsText)) {
+      if (commentsText && !late(x.id, "addComment") && !/error|loading/.test(commentsText)) {
         const cs = (await texts("comment")).join(" | "); const want2 = (srv.comments[x.id] ?? []).map(c => `${c.author}: ${c.text}`).join(" | ");
         if (cs !== want2) note("at rest: comments", `#${x.id} shows [${cs}], server [${want2}]`);
       }
@@ -244,7 +245,7 @@ async function session(browser, url, seed, steps, log, r9 = false) {
     const times = Math.max(1, (await page.evaluate(k => globalThis.__flights.asked().filter(x => x === k).length, key)) - (settledCount.get(key) ?? 0));
     settledCount.set(key, (settledCount.get(key) ?? 0) + times);
     let a; for (let t = 0; t < times; t++) a = answer(srv, key, fail);
-    if (w && !fail && w.gen !== gen && target) stale.push({ issue: w.issue, field: w.field, before });   // A4
+    if (w && !fail && w.gen !== gen && target) stale.push({ issue: w.issue, field: w.field, before });   // A4: a write from a page since left
     trail.push(`${fail ? "fail" : "land"} ${key}`);
     if (w) { writes.delete(key); if (fail) declined.push(w); else w.accepted = true; }
     await page.evaluate(([k, a]) => a.fail ? globalThis.__flights.fail(k, "declined") : globalThis.__flights.land(k, a.value), [key, a]);
