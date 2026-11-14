@@ -105,7 +105,8 @@ function rowWords(s: string): { rows: string[]; fails: string[]; rest: string } 
   for (; i < words.length; i++) { const m = ROW.exec(words[i]); if (!m) break; if (m[2] !== undefined) fails = classesOf(m[2]); else rows.push(m[1]); }
   return { rows, fails, rest: words.slice(i).join(" ") };
 }
-function shapeOf(s: string | undefined): Shape {
+/** SV-7d's words, `roots p div; closes-p; children-at div` (MO-9b; a JS component's, MO-11a). */
+export function contentShapeOf(s: string | undefined): Shape {
   if (!s) return { ...EMPTY_SHAPE, roots: [], childrenAt: [] };
   const sh: Shape = { roots: [], closesP: false, a: false, form: false, childrenAt: [] };
   for (const p of s.split(";").map(x => x.trim()).filter(Boolean)) {
@@ -158,7 +159,7 @@ export function parseSignature(src: string, file: string): ModSig {
       const fl = /\bfails\(([^)]*)\)/.exec(tail); if (fl) sig.own = classesOf(fl[1]).map(c => ({ cls: c, what: `${m![1]}'s root`, at: file.split("/").pop() }));
       const us = /\buses\(([^)]*)\)/.exec(tail); if (us) sig.requires = us[1].split(",").map(k => absKey(file, k.trim()));
       const so = /\bretains\(([^)]*)\)/.exec(tail); if (so) { sig.stored = {}; for (const x of split(so[1], ",")) { const i = x.indexOf(":"); const f0 = x.slice(0, i).trim(); const f = f0 === "...props" ? "*" : f0; const t = x.slice(i + 1).trim(); (sig.stored[f] ??= []).push(t === "module" ? t : absKey(file, t)); } }   // O-3
-      sig.shape = shapeOf(/\bshape\(([^)]*)\)/.exec(tail)?.[1]);
+      sig.shape = contentShapeOf(/\bshape\(([^)]*)\)/.exec(tail)?.[1]);
       exports.set(m[1], { kind: "comp", sig }); return;
     }
     if ((m = /^([A-Za-z_$][\w$]*)\s*(?::\s*(.*))?$/.exec(s))) { const r = rowWords(m[2] ?? ""); if (r.rest) fail("an equation's rows"); exports.set(m[1], { kind: "eq", rows: r.rows.filter(x => x !== "io"), fails: r.fails, io: r.rows.includes("io") }); return; }

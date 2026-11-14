@@ -48,6 +48,8 @@ pub struct PropSig {
     pub p: Catch,
     pub rendered: bool,
     pub action: Option<(Catch, String)>,
+    /// MO-11c: a JS component's prop that takes a component value
+    pub component: bool,
 }
 #[derive(Debug, Clone)]
 pub struct Own {
@@ -360,7 +362,8 @@ fn row_words(s: &str) -> RowWords {
     }
     RowWords { rows, fails, rest: words[i..].join(" ") }
 }
-fn shape_of(s: Option<&str>) -> Result<Shape, String> {
+/// SV-7d's words (MO-9b; a JS component's, MO-11a).
+pub fn content_shape_of(s: Option<&str>) -> Result<Shape, String> {
     let mut sh = Shape::default();
     let Some(s) = s else { return Ok(sh) };
     for p in s.split(';').map(crate::parse::js_trim).filter(|x| !x.is_empty()) {
@@ -461,7 +464,7 @@ pub fn parse_signature(src: &str, file: &str) -> Result<ModSig, SignatureError> 
                     None => (crate::parse::js_trim(&f).to_string(), String::new()),
                 };
                 let fname = if fname0 == "...props" { "*".to_string() } else { fname0 };
-                let mut v = PropSig { f: Catch::Set(IndexSet::new()), p: Catch::Set(IndexSet::new()), rendered: true, action: None };
+                let mut v = PropSig { f: Catch::Set(IndexSet::new()), p: Catch::Set(IndexSet::new()), rendered: true, action: None, component: false };
                 let a = P_ACTION.captures(&spec);
                 let rest = match &a {
                     Some(a) => {
@@ -507,7 +510,7 @@ pub fn parse_signature(src: &str, file: &str) -> Result<ModSig, SignatureError> 
                     sig.stored.entry(f).or_default().push(if t == "module" { t } else { abs_key(file, &t) });
                 }
             }
-            sig.shape = Some(shape_of(C_SHAPE.captures(tail).map(|x| x.get(2).unwrap().as_str())).map_err(|e| fail(&e))?);
+            sig.shape = Some(content_shape_of(C_SHAPE.captures(tail).map(|x| x.get(2).unwrap().as_str())).map_err(|e| fail(&e))?);
             exports.insert(m[1].to_string(), ExportSig::Comp { sig });
             continue;
         }

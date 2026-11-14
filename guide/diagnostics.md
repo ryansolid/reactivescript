@@ -925,7 +925,8 @@ export default component App() {
 
 ### UNKNOWN_COMPONENT
 
-A capitalised tag names a component declared or imported in this module (RG-4a).
+A capitalised tag names a component declared or imported in this module (RG-4a). A JS import is a component only
+when its `.d.rx` declares one: `export component X(props: { … })` (MO-11a).
 
 ```rx before
 export default component App() {
@@ -942,7 +943,9 @@ export default component App() {
 
 ### COMPONENT_AS_VALUE
 
-A component is applied in markup, `<Greeting name="x" />`, not stored or called as a function (RG-4a).
+A component is applied in markup, `<Greeting name="x" />`, not stored or called as a function (RG-4a). The one
+exception is JS that takes a component: a factory's arguments (`createRouter({ routes: [{ path: "/", component: Home }] })`)
+or a JS component's prop typed `Component` (MO-11c, MO-11f).
 
 ```rx before
 component Greeting(props) { <p>{props.name}</p> }

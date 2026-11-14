@@ -1,0 +1,9 @@
+// A routed app on @solidjs/router 2.0: the route table names .rx components, and the router it makes is applied here (09 MO-11f).
+import { createRouter } from "./router.js"
+import { Layout, Home, Person } from "./pages.rx"
+
+Router = createRouter({ routes: [{ path: "/", component: Layout, children: [{ path: "/", component: Home }, { path: "/people/:id", component: Person }] }] })
+
+export default component App() {
+  <Router />
+}

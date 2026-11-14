@@ -76,4 +76,51 @@ What the compiler catches:
   unchecked: the call is then an equation, re-run (and the primitive rebuilt) whenever an argument changes. Declare
   primitives instead.
 
-Rules: `spec/09-modules.md` MO-10 (and MO-8 for declaration files).
+## Components and routers
+
+A Solid component from JS is declared the same way, with its props as TypeScript types. A function that hands back a
+component (a router's `createRouter`) is declared with `Component` as its result:
+
+```rx
+// router.d.rx, beside router.js: export { createRouter, useParams, useNavigate } from "@solidjs/router"
+export type RouteDefinition = { path?: string; component?: Component; children?: RouteDefinition[] }
+export pure fn createRouter(config: { routes: RouteDefinition[] }): Component
+export pure fn useParams(): Record<string, string> instantiates
+export pure fn useNavigate(): (to: string) => void instantiates
+
+// ui.d.rx, beside ui.js
+export component Shell(props: { header?: Component; children?: View })
+```
+
+```rx
+import { createRouter, useParams } from "./router.js"
+import { fetchUser } from "./users.js"
+
+component Home() { <h1>Home</h1> }
+component User() {
+  params = useParams()                 // the router's store: params.id follows the URL
+  user = await fetchUser(params.id)    // asked again when the param changes
+  loading fallback { <p>Loading…</p> } { <h1>{user.name}</h1> }
+}
+Router = createRouter({ routes: [{ path: "/", component: Home }, { path: "/users/:id", component: User }] })
+
+export default component App() {
+  errored fallback(e) { <p>{e.message}</p> } {
+    <nav><a href="/">Home</a> <a href="/users/1">Ada</a></nav>   // plain links: the router handles their clicks
+    <Router />
+  }
+}
+```
+
+- **A component is a value only where JS takes one:** in a factory's arguments (`component: Home`), or on a JS
+  component's prop typed `Component` (`<Shell header={Title} />`). Anywhere else it is `COMPONENT_AS_VALUE`.
+- **Each component you hand over is checked as if it were applied there:** its failures need an `errored` above
+  `<Router />` (or inside the page), the contexts it uses need a `provide` above `<Router />`, and in a client-only
+  app its first load needs a `loading` above it. A `provide` or `errored` inside a layout route is not counted for
+  the routes it wraps; put it above `<Router />`.
+- **Apply the router in the module that makes it.** `export Router = createRouter(…)` is refused: export the pages
+  and make the router where you use it.
+- **A JS import you apply must be declared.** Without `export component X(…)` in its `.d.rx`, `<X />` is
+  `UNKNOWN_COMPONENT`.
+
+Rules: `spec/09-modules.md` MO-10 and MO-11 (and MO-8 for declaration files).

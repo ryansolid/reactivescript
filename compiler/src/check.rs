@@ -241,6 +241,8 @@ struct Sym<'a> {
     decl_env: Option<EId>,
     /// MO-10: a declared JS primitive (a fn) or an instance of one, or a part of it (an equation): what its result is
     foreign: Option<FShape>,
+    /// MO-11f: a component a JS factory made — the call's arguments and the scope they name from
+    factory: Option<(&'a [Expr], EId)>,
     /// MO-10d: bound from a foreign accessor — it may hold, as a question's reader does
     reader: bool,
 }
@@ -277,6 +279,7 @@ impl<'a> Sym<'a> {
             fn_decl: None,
             decl_env: None,
             foreign: None,
+            factory: None,
             reader: false,
         }
     }
@@ -851,6 +854,11 @@ pub struct Opts<'a> {
 }
 
 pub struct Checker<'a> {
+    /// MO-11f: the components in a factory call's arguments (values there, not reads), and each factory's, by its symbol
+    value_ids: HashSet<*const Expr>,
+    factory_values: HashMap<SId, Vec<String>>,
+    /// MO-11f: the factories being expanded, per walk (markup, content, shape); a factory may be given itself (C-1 reports it)
+    expanding: [HashSet<SId>; 3],
     /// MO-10d: CN-3e asks what may hold, where a foreign reader counts (R-8 asks what may be absent, where it does not)
     holds_mode: Cell<bool>,
     pub diags: Vec<Diagnostic>,
@@ -933,6 +941,9 @@ impl<'a> Checker<'a> {
     pub fn new(opts: Opts<'a>) -> Self {
         Checker {
             holds_mode: Cell::new(false),
+            value_ids: HashSet::new(),
+            factory_values: HashMap::new(),
+            expanding: Default::default(),
             diags: vec![],
             model: ModelBuilder::default(),
             opts,
@@ -1222,6 +1233,18 @@ impl<'a> Checker<'a> {
                         }
                     }
                     self.foreign_part(&mut sym, e, env);
+                    if sym.foreign == Some(FShape::Comp) {
+                        if let ExprKind::Call { args, .. } = &e.k {
+                            // MO-11f: the bound name is a component
+                            let r = self.region(None, "imported", true, Some(sym.name.clone()));
+                            let mut props = IndexMap::new();
+                            props.insert("*".to_string(), PropSig { f: Catch::Set(IndexSet::new()), p: Catch::Set(IndexSet::new()), rendered: true, action: None, component: false });
+                            self.regions[r].sig = Some(CompSig { own: vec![], requires: vec![], props, shape: Some(crate::content::Shape { children_at: vec![vec![]], ..Default::default() }), stored: IndexMap::new() });
+                            sym.kind = SymKind::Comp;
+                            sym.comp_region = Some(r);
+                            sym.factory = Some((args.as_slice(), env));
+                        }
+                    }
                     if let Some(sf) = unwrap_server(e) {
                         sym.kind = SymKind::Server;
                         if let ExprKind::ServerFn { params, .. } = &sf.k {
@@ -1232,7 +1255,7 @@ impl<'a> Checker<'a> {
                 }
                 _ => {}
             }
-            let comp_region = sym.comp_region;
+            let comp_region = if sym.factory.is_some() { None } else { sym.comp_region };
             let s = self.bind(env, name, sym);
             if let Some(r) = comp_region {
                 self.comp_syms.insert(r, s);
@@ -1436,6 +1459,26 @@ impl<'a> Checker<'a> {
                 JsDecl::Type { .. } => continue,
                 JsDecl::Error { .. } => {
                     self.bind(env, alias, Sym::new(SymKind::ErrClass, alias, region, line));
+                    continue;
+                }
+                JsDecl::Comp { props: xprops, fails: xfails, content, .. } => {
+                    // MO-11a: a Solid component — its declaration is its summary; MO-11b: an undeclared prop is read too
+                    let empty = || Catch::Set(IndexSet::new());
+                    let mut props = IndexMap::new();
+                    props.insert("*".to_string(), PropSig { f: empty(), p: empty(), rendered: true, action: None, component: false });
+                    for p in xprops {
+                        let f = match &p.catches {
+                            Some(c) => Catch::of(c),
+                            None => empty(),
+                        };
+                        props.insert(p.name.clone(), PropSig { f, p: empty(), rendered: true, action: None, component: p.component });
+                    }
+                    let own = xfails.iter().map(|c| Own { cls: c.clone(), what: format!("{}'s root", alias), at: Some(file.clone()) }).collect();
+                    let r = self.region(None, "imported", true, Some(alias.clone()));
+                    self.regions[r].sig = Some(CompSig { own, requires: vec![], props, shape: content.clone(), stored: IndexMap::new() });
+                    let mut s = Sym::new(SymKind::Comp, alias, region, line);
+                    s.comp_region = Some(r);
+                    self.bind(env, alias, s);
                     continue;
                 }
                 JsDecl::Fn { pure: xpure, side: xside, rejects, params: xparams, refs, shape, instantiates, .. } => {
@@ -1750,6 +1793,16 @@ impl<'a> Checker<'a> {
                 });
             }
             Decl::Eq { name, e, deferred, key, ty, .. } => {
+                if let Some(&made) = self.envs[env].vars.get(name.as_str()) {
+                    if self.syms[made].factory.is_some() {
+                        self.factory_values(made);
+                        // the call runs once, here: its failures and holds are a reader's
+                        self.readers.push(ReaderRec { region: self.reg(env), e, env, line: self.line });
+                        if d.exported() {
+                            self.err("COMPONENT_AS_VALUE", "MO-11f", format!("{} is a component made by a JS factory: apply it in this module (export the components it takes instead)", name));
+                        }
+                    }
+                }
                 let kind = if *deferred {
                     "deferred"
                 } else if key.is_some() {
@@ -2094,12 +2147,13 @@ impl<'a> Checker<'a> {
     fn expr(&mut self, e: &'a Expr, env: EId, ctx: Ctx, field: Option<&str>) {
         match &e.k {
             ExprKind::Lit(_) => {}
+            ExprKind::Id(_) if self.value_ids.contains(&(e as *const Expr)) => {}
             ExprKind::Id(name) => {
                 let s = self.resolve(name, env, ctx);
                 if let Some(s) = s {
                     self.read(s, ctx, false, field);
                     match self.syms[s].kind {
-                        SymKind::Comp => self.err("COMPONENT_AS_VALUE", "RG-4a", format!("component {} used as a value: apply it in a view", name)),
+                        SymKind::Comp => self.err("COMPONENT_AS_VALUE", "RG-4a", format!("component {} used as a value: apply it in a view, or pass it where JS takes a `Component`: a JS component's prop, or a JS factory's arguments (MO-11c, MO-11f)", name)),
                         SymKind::Context => self.err("CONTEXT_AS_VALUE", "RG-7", format!("context {} used as a value: read the nearest provision with `use {}`", name, name)),
                         _ => {}
                     }
@@ -2831,20 +2885,30 @@ impl<'a> Checker<'a> {
                         let s = self.lookup(env, tag);
                         let is_comp = s.is_some_and(|s| self.syms[s].kind == SymKind::Comp);
                         if !is_comp {
-                            self.err("UNKNOWN_COMPONENT", "RG-4a", format!("<{}> is not a component declared here", tag));
+                            if s.is_some_and(|s| self.syms[s].kind == SymKind::Import) {
+                                self.err("UNKNOWN_COMPONENT", "RG-4a", format!("<{}> is imported from JS, which declares no component {}: declare it beside the module, `export component {}(props: {{ … }})` (MO-11a)", tag, tag, tag));
+                            } else {
+                                self.err("UNKNOWN_COMPONENT", "RG-4a", format!("<{}> is not a component declared here", tag));
+                            }
                         }
-                        for a in attrs {
+                        let values = self.component_values(tag, attrs, env);
+                        let args: Vec<&'a Attr> = attrs.iter().enumerate().filter(|(i, _)| !values.iter().any(|(j, _)| j == i)).map(|(_, a)| a).collect();
+                        for a in &args {
                             let h = is_handler(&a.name);
                             let c2 = if h { Ctx::imperative() } else { Ctx::reactive() };
                             self.comp(if h { "handler" } else { "prop" }, env, None, Some(format!("{} {}", tag, a.name)), |c| c.expr(&a.e, env, c2, None));
                         }
                         if is_comp {
                             let cr = self.syms[s.unwrap()].comp_region.unwrap();
-                            self.apps.push(AppRec { comp: cr, site: region, line: self.line, tag: tag.clone(), args: attrs.iter().filter(|a| !is_handler(&a.name)).map(|a| (field_of(&a.name), &a.e, env)).collect(), passed: attrs.iter().map(|a| (field_of(&a.name), &a.e, env)).collect() });
+                            self.apps.push(AppRec { comp: cr, site: region, line: self.line, tag: tag.clone(), args: args.iter().filter(|a| !is_handler(&a.name)).map(|a| (field_of(&a.name), &a.e, env)).collect(), passed: args.iter().map(|a| (field_of(&a.name), &a.e, env)).collect() });
                             let kids = self.region(Some(region), "children", false, Some(tag.clone()));
                             self.regions[kids].kids = Some((cr, region));
                             let kenv = self.env(Some(env), kids);
                             self.markup(children, kenv, false);
+                            for (_, v) in &values {
+                                self.apply_value(v, m.line, kenv);
+                            }
+                            self.apply_factory(s.unwrap(), kids, m.line);
                         } else {
                             self.markup(children, env, false);
                         }
@@ -2964,37 +3028,13 @@ impl<'a> Checker<'a> {
                         sh.children_at.push(anc.to_vec());
                     }
                 }
-                MarkupKind::El { tag, children, .. } => {
+                MarkupKind::El { tag, attrs, children } => {
                     if tag.is_empty() {
                         self.shape_walk(children, anc, scoped, env, sh, roots);
                         continue;
                     }
                     if is_upper_tag(tag) {
-                        let Some(s) = self.lookup(env, tag) else { continue };
-                        if self.syms[s].kind != SymKind::Comp {
-                            continue;
-                        }
-                        let ss = self.shape(s);
-                        if anc.is_empty() {
-                            for r in &ss.roots {
-                                roots.insert(r.clone());
-                            }
-                        }
-                        if ss.closes_p && !scoped {
-                            sh.closes_p = true;
-                        }
-                        if ss.a {
-                            sh.a = true;
-                        }
-                        if ss.form {
-                            sh.form = true;
-                        }
-                        for ch in &ss.children_at {
-                            let mut a2 = anc.to_vec();
-                            a2.extend(ch.iter().cloned());
-                            let sc = scoped || ch.iter().any(|t| P_SCOPE.contains(t.as_str()));
-                            self.shape_walk(children, &a2, sc, env, sh, roots);
-                        }
+                        self.shape_app(tag, attrs, children, env, anc, scoped, sh, roots);
                         continue;
                     }
                     if anc.is_empty() {
@@ -3036,6 +3076,164 @@ impl<'a> Checker<'a> {
         }
     }
     /// SV-7d: every element, text and component root of a view against the elements open above it.
+    /// MO-11c: the components passed to a JS component's `Component` props (by attribute index) — each checked as applied,
+    /// with no arguments, among the application's children (DV-24).
+    fn component_values(&self, tag: &str, attrs: &'a [Attr], env: EId) -> Vec<(usize, String)> {
+        let Some(sig) = self.lookup(env, tag).and_then(|s| self.syms[s].comp_region).and_then(|r| self.regions[r].sig.as_ref()) else { return vec![] };
+        let mut out = vec![];
+        for (i, a) in attrs.iter().enumerate() {
+            if !sig.props.get(&a.name).is_some_and(|p| p.component) {
+                continue;
+            }
+            if let ExprKind::Id(n) = &a.e.k {
+                if is_upper_tag(n) && self.lookup(env, n).is_some_and(|s| self.syms[s].kind == SymKind::Comp) {
+                    out.push((i, n.clone()));
+                }
+            }
+        }
+        out
+    }
+    /// MO-11f: the components in a factory call's arguments — anywhere inside its record and array literals.
+    fn factory_values(&mut self, s: SId) -> Vec<String> {
+        if let Some(v) = self.factory_values.get(&s) {
+            return v.clone();
+        }
+        let (args, fenv) = self.syms[s].factory.unwrap();
+        let mut out = vec![];
+        fn walk<'a>(c: &mut Checker<'a>, e: &'a Expr, fenv: EId, out: &mut Vec<String>) {
+            match &e.k {
+                ExprKind::Id(n) => {
+                    // a value is applied by its tag, so it is capitalised as one
+                    if is_upper_tag(n) && c.lookup(fenv, n).is_some_and(|t| c.syms[t].kind == SymKind::Comp) {
+                        c.value_ids.insert(e as *const Expr);
+                        out.push(n.clone());
+                    }
+                }
+                ExprKind::Rec(fields) => {
+                    for f in fields {
+                        if let Field::Kv { v, .. } = f {
+                            walk(c, v, fenv, out);
+                        }
+                    }
+                }
+                ExprKind::Arr(items) => {
+                    for x in items {
+                        if !matches!(x.k, ExprKind::Spread(_)) {
+                            walk(c, x, fenv, out);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        for a in args {
+            walk(self, a, fenv, &mut out);
+        }
+        self.factory_values.insert(s, out.clone());
+        out
+    }
+    /// MO-11c: `<C />` for a component value, as `markup` applies a component with no attributes and no children.
+    fn apply_value(&mut self, tag: &str, line: Option<usize>, env: EId) {
+        if let Some(l) = line {
+            self.line = l as i64;
+        }
+        let region = self.reg(env);
+        let Some(s) = self.lookup(env, tag) else { return };
+        let Some(cr) = self.syms[s].comp_region else { return };
+        self.apps.push(AppRec { comp: cr, site: region, line: self.line, tag: tag.to_string(), args: vec![], passed: vec![] });
+        let kids = self.region(Some(region), "children", false, Some(tag.to_string()));
+        self.regions[kids].kids = Some((cr, region));
+        self.apply_factory(s, kids, line);
+    }
+    /// MO-11f: what a factory was given, applied among the children of its component's application, named where it was called.
+    fn apply_factory(&mut self, s: SId, kids: RId, line: Option<usize>) {
+        let Some((_, fenv)) = self.syms[s].factory else { return };
+        if !self.expanding[0].insert(s) {
+            return;
+        }
+        let fvs = self.factory_values(s);
+        let fe = self.env(Some(fenv), kids);
+        for v in &fvs {
+            self.apply_value(v, line, fe);
+        }
+        self.expanding[0].remove(&s);
+    }
+    /// SV-7d at a component's application: its roots against the elements open above it, then the children it is given (and
+    /// its component values, MO-11c/f) where it places them.
+    fn content_app(&mut self, tag: &str, attrs: &'a [Attr], children: &'a [Markup], line: Option<usize>, env: EId, anc: &[String]) {
+        if let Some(l) = line {
+            self.line = l as i64;
+        }
+        let Some(s) = self.lookup(env, tag) else { return };
+        if self.syms[s].kind != SymKind::Comp {
+            return;
+        }
+        let ss = self.shape(s);
+        for r in &ss.roots {
+            let what = if r == "#text" { format!("<{}>'s text", tag) } else { format!("<{}>, the root of <{}>,", r, tag) };
+            let why = misnested(anc, r);
+            self.report_content(anc, what, why);
+        }
+        let why = misnested_inside(anc, &ss);
+        self.report_content(anc, format!("<{}>", tag), why);
+        for ch in &ss.children_at {
+            let mut a2 = anc.to_vec();
+            a2.extend(ch.iter().cloned());
+            self.content_check(children, env, &a2);
+            for (_, v) in self.component_values(tag, attrs, env) {
+                self.content_app(&v, &[], &[], line, env, &a2);
+            }
+            if let Some((_, fenv)) = self.syms[s].factory {
+                if self.expanding[1].insert(s) {
+                    for v in self.factory_values(s) {
+                        self.content_app(&v, &[], &[], line, fenv, &a2);
+                    }
+                    self.expanding[1].remove(&s);
+                }
+            }
+        }
+    }
+    /// SV-7d's summary of a component application inside a view (`shape`): its roots and flags, then its children and
+    /// component values where it places them.
+    #[allow(clippy::too_many_arguments)]
+    fn shape_app(&mut self, tag: &str, attrs: &'a [Attr], children: &'a [Markup], env: EId, anc: &[String], scoped: bool, sh: &mut Shape, roots: &mut IndexSet<String>) {
+        let Some(s) = self.lookup(env, tag) else { return };
+        if self.syms[s].kind != SymKind::Comp {
+            return;
+        }
+        let ss = self.shape(s);
+        if anc.is_empty() {
+            for r in &ss.roots {
+                roots.insert(r.clone());
+            }
+        }
+        if ss.closes_p && !scoped {
+            sh.closes_p = true;
+        }
+        if ss.a {
+            sh.a = true;
+        }
+        if ss.form {
+            sh.form = true;
+        }
+        for ch in &ss.children_at {
+            let mut a2 = anc.to_vec();
+            a2.extend(ch.iter().cloned());
+            let sc = scoped || ch.iter().any(|t| P_SCOPE.contains(t.as_str()));
+            self.shape_walk(children, &a2, sc, env, sh, roots);
+            for (_, v) in self.component_values(tag, attrs, env) {
+                self.shape_app(&v, &[], &[], env, &a2, sc, sh, roots);
+            }
+            if let Some((_, fenv)) = self.syms[s].factory {
+                if self.expanding[2].insert(s) {
+                    for v in self.factory_values(s) {
+                        self.shape_app(&v, &[], &[], fenv, &a2, sc, sh, roots);
+                    }
+                    self.expanding[2].remove(&s);
+                }
+            }
+        }
+    }
     fn content_check(&mut self, ms: &'a [Markup], env: EId, anc: &[String]) {
         for m in ms {
             if let Some(l) = m.line {
@@ -3048,29 +3246,13 @@ impl<'a> Checker<'a> {
                         self.report_content(anc, "text".into(), why);
                     }
                 }
-                MarkupKind::El { tag, children, .. } => {
+                MarkupKind::El { tag, attrs, children } => {
                     if tag.is_empty() {
                         self.content_check(children, env, anc);
                         continue;
                     }
                     if is_upper_tag(tag) {
-                        let Some(s) = self.lookup(env, tag) else { continue };
-                        if self.syms[s].kind != SymKind::Comp {
-                            continue;
-                        }
-                        let ss = self.shape(s);
-                        for r in &ss.roots {
-                            let what = if r == "#text" { format!("<{}>'s text", tag) } else { format!("<{}>, the root of <{}>,", r, tag) };
-                            let why = misnested(anc, r);
-                            self.report_content(anc, what, why);
-                        }
-                        let why = misnested_inside(anc, &ss);
-                        self.report_content(anc, format!("<{}>", tag), why);
-                        for ch in &ss.children_at {
-                            let mut a2 = anc.to_vec();
-                            a2.extend(ch.iter().cloned());
-                            self.content_check(children, env, &a2);
-                        }
+                        self.content_app(tag, attrs, children, m.line, env, anc);
                         continue;
                     }
                     let why = misnested(anc, tag);
@@ -4305,7 +4487,7 @@ impl<'a> Checker<'a> {
                     dp = meet(dp, &along(&e.chain, false));
                 }
             }
-            props.insert(f, PropSig { f: df, p: dp, rendered, action: da.map(|d| (d, an)) });
+            props.insert(f, PropSig { f: df, p: dp, rendered, action: da.map(|d| (d, an)), component: false });
         }
         let e = self.esc(Some(g));
         let file = self.opts.file.clone().unwrap_or_else(|| "main.rx".into()).split('/').last().unwrap_or("").to_string();

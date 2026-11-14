@@ -412,6 +412,8 @@ pub enum Shape {
     Part(Part),
     Items(Vec<Part>),
     Fields(Vec<(String, Part)>),
+    /// MO-11f: the whole result is a component
+    Comp,
 }
 impl Shape {
     pub fn has_ref(&self) -> bool {
@@ -419,6 +421,7 @@ impl Shape {
             Shape::Part(p) => *p == Part::Ref,
             Shape::Items(xs) => xs.contains(&Part::Ref),
             Shape::Fields(fs) => fs.iter().any(|f| f.1 == Part::Ref),
+            Shape::Comp => false,
         }
     }
 }
@@ -473,6 +476,9 @@ fn shape_of(t: &str) -> Shape {
                 .collect(),
         );
     }
+    if is_component_type(t) {
+        return Shape::Comp;
+    }
     Shape::Part(part_of(t))
 }
 
@@ -484,13 +490,165 @@ pub enum JsDecl {
     Fn { name: String, pure: bool, params: Vec<String>, rejects: Option<Vec<String>>, line: usize, side: Option<Side>, ptypes: Vec<Option<String>>, ret: Option<String>, refs: Vec<bool>, shape: Shape, instantiates: bool },
     Error { name: String, line: usize },
     Type { name: String, line: usize, text: String },
+    /// MO-11a: a Solid component
+    Comp { name: String, line: usize, props: Vec<JsProp>, fails: Vec<String>, content: Option<crate::content::Shape> },
+}
+/// MO-11a: a declared JS component's prop — its TypeScript type, what the component discharges for it (`None` in the list:
+/// every class), and whether it takes a component value (MO-11c: its type is `Component`).
+#[derive(Debug, Clone)]
+pub struct JsProp {
+    pub name: String,
+    pub optional: bool,
+    pub ty: Option<String>,
+    pub catches: Option<Option<Vec<String>>>,
+    pub component: bool,
 }
 impl JsDecl {
     pub fn name(&self) -> &str {
         match self {
-            JsDecl::Fn { name, .. } | JsDecl::Error { name, .. } | JsDecl::Type { name, .. } => name,
+            JsDecl::Fn { name, .. } | JsDecl::Error { name, .. } | JsDecl::Type { name, .. } | JsDecl::Comp { name, .. } => name,
         }
     }
+}
+
+/// MO-11: `Component` or `Component<P>`, and nothing that only contains one (`Component[]`).
+fn is_component_type(t: &str) -> bool {
+    match t.strip_prefix("Component") {
+        Some(r) => {
+            let r = r.trim_start();
+            if r.is_empty() {
+                return true;
+            }
+            if !r.starts_with('<') {
+                return false;
+            }
+            // the `>` that closes the first `<` ends the type
+            let b = r.as_bytes();
+            let mut depth = 0;
+            for i in 0..b.len() {
+                if b[i] == b'<' {
+                    depth += 1;
+                } else if b[i] == b'>' && (i == 0 || b[i - 1] != b'=') {
+                    depth -= 1;
+                    if depth == 0 {
+                        return i == b.len() - 1;
+                    }
+                }
+            }
+            false
+        }
+        None => false,
+    }
+}
+/// MO-11a: `component A(props: { href: string; children?: View }) fails(…) shape(…)`.
+fn parse_js_component(c: &mut Cursor, line: usize) -> R<JsDecl> {
+    c.ws(true);
+    let name = c.ident_or("component name")?;
+    c.ws(true);
+    c.expect("(")?;
+    c.ws(true);
+    let mut props = vec![];
+    if !c.starts_with(")") {
+        if c.ident().as_deref() != Some("props") {
+            return c.fail("a component's props: `(props: { … })`");
+        }
+        c.ws(true);
+        c.expect(":")?;
+        c.ws(true);
+        c.expect("{")?;
+        loop {
+            c.ws(true);
+            if c.eat("}") {
+                break;
+            }
+            let fname = c.ident_or("a prop name")?;
+            c.ws(false);
+            let optional = c.eat("?");
+            c.ws(false);
+            let (mut ty, mut catches) = (None, None);
+            if c.eat(":") {
+                c.ws(false);
+                if c.keyword("catches") {
+                    c.ws(false);
+                    c.expect("(")?;
+                    c.ws(true);
+                    catches = Some(if c.eat("*") { None } else { parse_classes(c)? });
+                    c.ws(true);
+                    c.expect(")")?;
+                    c.ws(false);
+                }
+                let t0 = c.i;
+                let mut depth = 0i32;
+                while !c.eof() {
+                    let ch = c.peek();
+                    if depth == 0 && (matches!(ch, ';' | ',' | '}' | '\n') || c.starts_with("//")) {
+                        break;
+                    }
+                    // a string literal type
+                    if ch == '"' || ch == '\'' || ch == '`' {
+                        c.bump();
+                        while !c.eof() && c.peek() != ch {
+                            if c.peek() == '\\' {
+                                c.bump();
+                            }
+                            c.bump();
+                        }
+                        c.bump();
+                        continue;
+                    }
+                    if "([{<".contains(ch) {
+                        depth += 1;
+                    } else if ")]}".contains(ch) || (ch == '>' && c.i > 0 && c.src.as_bytes()[c.i - 1] != b'=') {
+                        depth -= 1;
+                    }
+                    c.bump();
+                }
+                let t = js_trim(&c.src[t0..c.i]);
+                ty = (!t.is_empty()).then(|| t.to_string());
+            }
+            let component = ty.as_deref().is_some_and(is_component_type);
+            props.push(JsProp { name: fname, optional, ty, catches, component });
+            // a newline separates fields too, as in TypeScript
+            c.ws(false);
+            if !c.eat(";") && !c.eat(",") && c.peek() != '\n' {
+                c.ws(true);
+                c.expect("}")?;
+                break;
+            }
+        }
+        c.ws(true);
+    }
+    c.expect(")")?;
+    let mut fails = vec![];
+    let mut content = None;
+    loop {
+        c.ws(false);
+        if c.keyword("fails") {
+            c.ws(false);
+            c.expect("(")?;
+            fails = parse_classes(c)?.unwrap_or_else(|| vec!["Error".to_string()]);
+            c.ws(true);
+            c.expect(")")?;
+            continue;
+        }
+        if c.keyword("shape") {
+            c.ws(false);
+            c.expect("(")?;
+            let t0 = c.i;
+            while !c.eof() && c.peek() != ')' {
+                c.bump();
+            }
+            let t = c.src[t0..c.i].to_string();
+            c.expect(")")?;
+            match crate::signature::content_shape_of(Some(&t)) {
+                Ok(sh) => content = Some(sh),
+                Err(e) => return c.fail(&e),
+            }
+            continue;
+        }
+        break;
+    }
+    Ok(JsDecl::Comp { name, line, props, fails, content })
 }
 pub fn parse_declarations(src: &str) -> R<Vec<JsDecl>> {
     let mut c = Cursor::new(src);
@@ -502,7 +660,7 @@ pub fn parse_declarations(src: &str) -> R<Vec<JsDecl>> {
         }
         let line = c.line();
         if !c.keyword("export") {
-            return c.fail("a declaration file declares exports: `export pure fn …`, `export fn …`, `export error …`, `export type …`");
+            return c.fail("a declaration file declares exports: `export pure fn …`, `export fn …`, `export component …`, `export error …`, `export type …`");
         }
         c.ws(true);
         if c.starts_with("type") || c.starts_with("interface") {
@@ -536,6 +694,10 @@ pub fn parse_declarations(src: &str) -> R<Vec<JsDecl>> {
             c.ws(true);
             let name = c.ident_or("error class name")?;
             out.push(JsDecl::Error { name, line });
+            continue;
+        }
+        if c.keyword("component") {
+            out.push(parse_js_component(&mut c, line)?);
             continue;
         }
         let side = if c.keyword("server") {
@@ -621,7 +783,7 @@ pub fn parse_declarations(src: &str) -> R<Vec<JsDecl>> {
         }
         c.ws(false);
         let written = c.keyword("instantiates");
-        let instantiates = written || refs.iter().any(|x| *x) || shape.as_ref().is_some_and(|s| s.has_ref()); // MO-10a
+        let instantiates = written || refs.iter().any(|x| *x) || shape.as_ref().is_some_and(|s| s.has_ref() || *s == Shape::Comp); // MO-10a; MO-11f: a component handed back
         let shape = shape.unwrap_or(Shape::Part(Part::Value));
         out.push(JsDecl::Fn { name, pure, params, rejects, line, side, ptypes, ret, refs, shape, instantiates });
     }
