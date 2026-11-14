@@ -9,7 +9,7 @@ export declare function eq<T>(v: T, ok: Async<T> extends true ? "MISSING_AWAIT: 
 export declare function first<T, I>(v: T, init: I): T | I;
 export declare function pre<T>(init?: T): T;
 export declare function pending(v: unknown): boolean;
-/** RG-4b: an object rest, \`{ a, ...rest } = e\` (Solid's \`omit\`). */
+/** RG-4b: an object rest, `{ a, ...rest } = e` (Solid's `omit`). */
 export declare function omit<T, K extends string>(v: T, ...keys: K[]): Omit<T, K>;
 export declare function caught<T, R>(v: T, alt: (e: any) => R): T | R;
 export declare function raise(e: unknown): never;
@@ -30,6 +30,8 @@ export declare function wire<A extends unknown[], R>(f: (...a: A) => Promise<R>,
 /** 07 §6: a view (`props.children: View`); R-f-10: the class a panic is. */
 export type View = JSX.Element;
 export type Panic = Error;
+/** CP-4a: an entry's default export, a function of the app (`createApp`'s, either build) giving the view `app.mount` takes. */
+export type Main = (app: object) => () => View;
 export interface Ctx<T> { readonly __ctx: T }
 export declare function ctx<T>(d?: T): Ctx<T>;
 export declare function use<T>(c: Ctx<T>): T;

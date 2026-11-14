@@ -13,6 +13,8 @@ const COARSE = { verification: true };
 
 /** A module: `.rx`, not a declaration file (`.d.rx`, MO-8/MO-9), which the crate reads beside the modules that import it. */
 const isModule = f => f.endsWith(".rx") && !f.endsWith(".d.rx");
+/** `include` globs take `.d.rx` too; Volar's tsc stops on a program file with no script, so it is an empty module. */
+const isDeclaration = f => f.endsWith(".d.rx");
 
 const snapshotOf = text => ({ getText: (s, e) => text.slice(s, e), getLength: () => text.length, getChangeRange: () => undefined });
 
@@ -47,11 +49,19 @@ function virtualCode(file, snapshot) {
   };
 }
 
+function declarationCode(snapshot) {
+  return { id: "root", languageId: "reactivescript-declaration", snapshot, mappings: [], embeddedCodes: [{ id: "ts", languageId: "typescript", snapshot: snapshotOf("export {};\n"), mappings: [] }] };
+}
+
 /** @param {typeof import("typescript")} ts */
 function rxLanguagePlugin(ts, asFileName = uri => uri.fsPath ?? String(uri)) {
   return {
-    getLanguageId(id) { return isModule(String(id.path ?? id)) ? "reactivescript" : undefined; },
+    getLanguageId(id) {
+      const f = String(id.path ?? id);
+      return isModule(f) ? "reactivescript" : isDeclaration(f) ? "reactivescript-declaration" : undefined;
+    },
     createVirtualCode(id, languageId, snapshot) {
+      if (languageId === "reactivescript-declaration" || isDeclaration(asFileName(id))) return declarationCode(snapshot);
       if (languageId !== "reactivescript" || !isModule(asFileName(id))) return undefined;
       return virtualCode(asFileName(id), snapshot);
     },
@@ -59,7 +69,9 @@ function rxLanguagePlugin(ts, asFileName = uri => uri.fsPath ?? String(uri)) {
       extraFileExtensions: [{ extension: "rx", isMixedContent: true, scriptKind: ts.ScriptKind.Deferred }],
       getServiceScript(root) {
         const tsx = root.embeddedCodes?.find(c => c.id === "tsx");
-        return tsx ? { code: tsx, extension: ".tsx", scriptKind: ts.ScriptKind.TSX } : undefined;
+        if (tsx) return { code: tsx, extension: ".tsx", scriptKind: ts.ScriptKind.TSX };
+        const decl = root.embeddedCodes?.find(c => c.id === "ts");
+        return decl ? { code: decl, extension: ".ts", scriptKind: ts.ScriptKind.TS } : undefined;
       },
     },
   };

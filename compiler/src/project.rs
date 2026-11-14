@@ -349,6 +349,10 @@ impl Proj<'_> {
             self.markup(&p.view, "  ");
             self.w.emit(Code::of(");"), p.view[p.view.len() - 1].line.unwrap_or(1));
         }
+        if let Some(Decl::Component { line, .. }) = p.decls.iter().find(|d| matches!(d, Decl::Component { is_default: true, .. })) {
+            // CP-4a: what JS imports from an entry
+            self.w.emit(Code::of("declare const __main: __.Main; export default __main;"), *line);
+        }
         let body = std::mem::replace(&mut self.w, saved);
         let prelude: Vec<String> = self.used.iter().filter(|n| !self.declared.contains(*n)).cloned().collect();
         let types: Vec<&str> = ["View", "Panic"].into_iter().filter(|n| !self.declared.contains(*n)).collect();
@@ -1001,4 +1005,33 @@ fn class_map(css: &str) -> String {
     }
     let fields: Vec<String> = r.class_map.into_iter().map(|c| format!("{}: \"\" as string", js_str(&c.class_name))).collect();
     format!("({{ {} }} as const)", fields.join(", "))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::modules::load_modules;
+    use std::collections::HashMap;
+
+    #[test]
+    fn an_entry_default_is_the_apps_main_and_its_component_keeps_its_mappings() {
+        let files: HashMap<&str, &str> = [
+            ("app/main.rx", "import { Badge } from \"./badge.rx\"\nexport default component App() {\n  source n := 0\n  <Badge n={n} />\n}\n"),
+            ("app/badge.rx", "export component Badge(props: { n: number }) {\n  <b>{props.n}</b>\n}\n"),
+        ]
+        .into_iter()
+        .collect();
+        let set = load_modules("app/main.rx", &|p| files.get(p).map(|s| s.to_string())).expect("loads");
+        let out = project_modules(&set);
+        let main = out.iter().find(|p| p.rx == "app/main.rx").unwrap();
+        assert!(main.code.ends_with("\ndeclare const __main: __.Main; export default __main;"), "{}", main.code);
+        assert_eq!(main.code.matches("export default").count(), 1);
+        assert_eq!(main.lines.len(), main.code.lines().count());
+        let at = main.code.find("export function App(").unwrap() + "export function ".len();
+        let src = files["app/main.rx"].find("App").unwrap();
+        assert!(main.mappings.iter().any(|m| m.gen as usize == at && m.src as usize == src && m.len == 3));
+        let dep = out.iter().find(|p| p.rx == "app/badge.rx").unwrap();
+        assert!(!dep.code.contains("export default"), "{}", dep.code);
+        assert!(PRELUDE.contains("export type Main = (app: object) => () => View;"));
+    }
 }
