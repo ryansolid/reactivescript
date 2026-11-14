@@ -49,7 +49,7 @@ pub fn app(entry: &str, target: Target, module_name: &str, spa: bool) -> Value {
             let path = &out.paths[name];
             let text = read_disk(path).unwrap_or_default();
             let l = lower_view(module, path, target, module_name, Some((path, &text))).map_err(|e| json!({ "error": e }))?;
-            modules.insert(path.clone(), json!({ "code": l.code, "map": l.map, "css": out.module_css[name] }));
+            modules.insert(path.clone(), json!({ "code": l.code, "map": l.map, "css": out.module_css[name], "hot": out.module_hot.get(name).map(|(c, top)| json!({ "components": c, "top": top })) }));
         }
         Ok(json!({ "entry": set.entry, "css": out.css, "modules": modules }))
     })()

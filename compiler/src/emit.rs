@@ -182,6 +182,9 @@ pub struct Compiled {
     pub css: String,
     /// CSS-4: each module's own stylesheet, by its output name
     pub module_css: IndexMap<String, String>,
+    /// a dependency's exported components and a fingerprint of the rest of its text, by output name: a dev server swaps the
+    /// components when the fingerprint holds
+    pub module_hot: IndexMap<String, (Vec<String>, String)>,
 }
 
 /// 09 MO-1: one ES module per `.rx` module. A dependency's module is a factory over the app (`__rt.module` runs it once per
@@ -200,6 +203,7 @@ pub fn compile_linked(set: &ModuleSet, extra: &[Vec<Stmt>], by_source: bool) -> 
     let mut files = IndexMap::new();
     let mut paths = IndexMap::new();
     let mut module_css = IndexMap::new();
+    let mut module_hot = IndexMap::new();
     for path in &set.order {
         let p = &set.programs[path];
         let css0 = g.css.len();
@@ -234,13 +238,57 @@ pub fn compile_linked(set: &ModuleSet, extra: &[Vec<Stmt>], by_source: bool) -> 
             body.append(&mut g.top);
             let mut fbody = vec![konst("__B", dot(id("__rt"), "B"))];
             fbody.append(&mut inner);
+            if let Some(shape) = hot_shape(p, set.sources.get(path).map(String::as_str).unwrap_or("")) {
+                module_hot.insert(g.out(path), shape);
+            }
             body.push(S::ExportDefault(Func { name: Some("module".into()), params: vec![P::Id("__rt".into())], directives: vec![], body: fbody, is_async: false, generator: false }));
         }
         module_css.insert(g.out(path), g.css[css0..].join("\n"));
         files.insert(g.out(path), body);
         paths.insert(g.out(path), path.clone());
     }
-    Ok(Compiled { files, paths, entry: g.out(&set.entry), css: g.css.join("\n"), module_css })
+    Ok(Compiled { files, paths, entry: g.out(&set.entry), css: g.css.join("\n"), module_css, module_hot })
+}
+
+/// A dependency's exported components, and a hash of its text outside their bodies (each component's header stays in it);
+/// `None` when that text names a JS import or calls an `.rx` one, which a replay would call again outside its record.
+fn hot_shape(p: &Program, text: &str) -> Option<(Vec<String>, String)> {
+    use std::hash::{Hash, Hasher};
+    let names = |js: bool| -> Vec<String> {
+        p.decls.iter().filter_map(|d| match d { Decl::Import { resolved, names, .. } if resolved.is_none() == js => Some(names), _ => None }).flatten().map(|n| regex::escape(&n.alias)).collect()
+    };
+    let (js, rx) = (names(true), names(false));
+    let mut alts = vec![];
+    if !js.is_empty() {
+        alts.push(format!(r"\b(?:{})\b", js.join("|")));
+    }
+    if !rx.is_empty() {
+        alts.push(format!(r"\b(?:{})\s*\(", rx.join("|")));
+    }
+    let word = (!alts.is_empty()).then(|| regex::Regex::new(&alts.join("|")).ok()).flatten();
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    let mut components = vec![];
+    for d in &p.decls {
+        let span = d.span();
+        let (start, end) = (span.start as usize, span.end as usize);
+        let own = text.get(start..end).unwrap_or("");
+        match d {
+            Decl::Component { name, props, props_type, exported, is_default, .. } => {
+                (name, props, props_type, exported, is_default).hash(&mut h);
+                if *exported {
+                    components.push(name.clone());
+                }
+            }
+            Decl::Import { .. } => own.hash(&mut h),
+            _ => {
+                if word.as_ref().is_some_and(|w| w.is_match(own)) {
+                    return None;
+                }
+                own.hash(&mut h);
+            }
+        }
+    }
+    Some((components, format!("{:016x}", h.finish())))
 }
 
 struct Gen<'p> {
