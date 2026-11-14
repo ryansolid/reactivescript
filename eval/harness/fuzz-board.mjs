@@ -20,6 +20,9 @@
 // - B2 (brief: "if the server accepts, the card stays where it was moved"): after two moves overlapped in the air, a
 //   column's order is not checked settled for the rest of the visit, only which cards it holds. An app asked to keep a
 //   card where it showed it cannot know an order the server made from answers it applied in another order.
+// - B3 (H-11, as desk9's A5: a switch made while work is in flight may hold): while anything is in the air, the
+//   detail may still show a card selected earlier in that busy period, checked against that card; and an add's
+//   "(adding…)" row may stay after its answer (accepted or declined) while other work is in the air. At rest neither.
 // - Two accepted writes to one field: settled, the field must show the server's last answer (Ryan, 2026-11-14).
 // Usage: node harness/fuzz-board.mjs <dir> [--seeds N] [--steps N] [--from S] [--json out.json] [--log]
 // (--r9 and --r15 are accepted and ignored, so harness/grade.sh can pass its round flag.)
@@ -103,6 +106,7 @@ async function session(browser, url, seed, steps, log) {
   const settledCount = new Map();
   let lateVisit = false;                 // B1
   let looseOrder = false;                // B2
+  const heldSel = new Set();             // B3: selections made while something was in the air
   const trail = []; const found = [];
   let made = 0;   // added cards and items get distinct texts: two adds of one text would be one flight to the harness
   const pending = () => page.evaluate(() => globalThis.__flights.pending());
@@ -145,12 +149,14 @@ async function session(browser, url, seed, steps, log) {
       if (c.n !== c.rows.length) note("heading", `head-${col} counts ${c.n}, the column shows ${c.rows.length} cards`);
       for (const x of c.rows) if (!x.adding) { if (seen.has(x.id) && !lateVisit) note("duplicate card", `#${x.id} shows in ${seen.get(x.id)} and ${col}`); seen.set(x.id, col); }
     }
+    const busy = (await pending()).length > 0;
+    if (!busy) heldSel.clear();
     const placeholders = COLS.flatMap(col => (b[col]?.rows ?? []).filter(x => x.adding).map(x => x.title));
     const addsOut = (await pending()).filter(k => k.startsWith("addCard:")).map(k => k.slice(k.indexOf(",") + 1));
     for (const t of new Set(placeholders)) {
       const shownReal = COLS.flatMap(col => (b[col]?.rows ?? []).filter(x => !x.adding && x.title === t && x.id >= 10)).length;
       const n = placeholders.filter(p => p === t).length, out = addsOut.filter(a => a === t).length;
-      if (n > out) note("duplicate card", `"${t} (adding…)" shows ${n} time(s) with ${out} add(s) of it in the air${shownReal ? ", beside its added card" : ""}`);
+      if (n > out && !(shownReal === 0 && busy)) note("duplicate card", `"${t} (adding…)" shows ${n} time(s) with ${out} add(s) of it in the air${shownReal ? ", beside its added card" : ""}`);
     }
     // every card's count: the server's, give or take that card's own toggles and item adds still in the air
     if (!lateVisit) {
@@ -171,9 +177,12 @@ async function session(browser, url, seed, steps, log) {
     }
     // the detail against the card it shows
     const detail = await text("detail");
-    if (ui.selected != null && detail && !/select a card/.test(detail)) {
-      const col = COLS.find(cl => b[cl]?.rows.some(x => x.id === ui.selected));
-      const x = col && b[col].rows.find(y => y.id === ui.selected);
+    const shownId = Number((detail ?? "").match(/#(\d+) /)?.[1]);
+    // B3 (H-11, as desk9's A5): while anything is in the air, the detail may still show a card selected before
+    const target = busy && shownId !== ui.selected && heldSel.has(shownId) ? shownId : ui.selected;
+    if (target != null && detail && !/select a card/.test(detail)) {
+      const col = COLS.find(cl => b[cl]?.rows.some(x => x.id === target));
+      const x = col && b[col].rows.find(y => y.id === target);
       if (x) {
         if (!detail.includes(`in ${NAME[col]}`)) note("detail column", `#${x.id} shows in ${NAME[col]}, the detail says "${detail.slice(0, 80)}"`);
         if (!detail.includes(`#${x.id} ${x.title}`)) note("two views", `card "${x.text}", detail "${detail.slice(0, 80)}"`);
@@ -237,7 +246,7 @@ async function session(browser, url, seed, steps, log) {
       case "select": {
         const ids = (await page.locator(sel("card")).allTextContents()).map(norm).map(t => t.match(CARD)).filter(Boolean).map(m => Number(m[1]));
         if (!ids.length) return; const id = pick(ids); trail.push(`select #${id}`);
-        await page.locator(sel("card"), { hasText: new RegExp(`^\\s*#${id} `) }).first().click({ timeout: 2000 }); ui.selected = id; break;
+        await page.locator(sel("card"), { hasText: new RegExp(`^\\s*#${id} `) }).first().click({ timeout: 2000 }); if ((await pending()).length) { if (ui.selected != null) heldSel.add(ui.selected); } ui.selected = id; break;
       }
       case "move": {
         const btns = [];
