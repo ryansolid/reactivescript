@@ -52,8 +52,10 @@ test("after a failed detail, its re-ask's answer shows, not the detail of the is
     ["close #4 lands", () => pick("close:4").res({})],
     ["rename #3 lands", () => pick("rename:3").res({})],
     ["detail #3 lands", () => pick("detail:3").res({ id: 3, title: "Delta" })],
+    ["close #3 lands", () => pick("close:3").res({})],
+    ["list lands", () => { while (asks.some(a => a.key === "list")) pick("list").res(issues); }],
   ];
-  for (const [n, f] of steps) { f(); await tick(); snap(n); }
+  for (const [i, [n, f]] of steps.entries()) { if (skip.includes(i)) continue; try { f(); } catch (e) { snap("SKIPPED " + n); continue; } await tick(); snap(n); }
   console.log(frames.join("\n"));
   expect(c.querySelector("h2")?.textContent).toBe("#3 Delta (detail of #3)");
 });

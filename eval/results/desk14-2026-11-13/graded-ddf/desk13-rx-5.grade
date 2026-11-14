@@ -1,0 +1,9 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: tabs: a save that answers after the page was left shows the reloaded settings
+37/38 passed
+== fuzz
+desk13-rx-5: 1/20 seeds found a hole
+  seed 17 step 8: count: tab Issues (2), 1 open rows shown
+    user bob ; land fetchIssues:open ; row-assign 1 ; land assign:3,bob ; land fetchIssues:open ; row-close 2 ; land closeIssue:4 ; row-close 1

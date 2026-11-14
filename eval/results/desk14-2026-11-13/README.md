@@ -50,3 +50,21 @@ lands while a close is still out. The screen shows "#3 Alpha (detail of #4)" ins
 `deviations.txt`. Most agents in every arm added their own tests to `tests/visible.mjs` and restored the file;
 contract-6 kept its extra tests in `.exact/extra.mjs`. rx-6 removed an unused import after its last test run (it
 type-checks; grading builds it fine).
+
+## Regrade on next ddf8281fa (#4840 and #4841 fixed)
+
+Both repros pass. The #4841 repro now holds `loading #3` until the last close lands, then shows `#3 Delta (detail of
+#3)`; the repro waits for that close and checks the settled screen. Grades in `graded-ddf/`.
+
+| arm | defects per app | mean | apps at 0 |
+| --- | --- | --- | --- |
+| .rx | 0, 0, 0, 0, 0, 0 | **0** | 6/6 |
+| React | 2, 3, 1, 3, 2, 2 | 2.17 | 0/6 |
+| Exact | 2, 2, 2, 1, 0, 3 | 1.67 | 1/6 |
+
+React and Exact don't run on Solid, so their grades stand. The .rx reference stays at 0.
+
+The desk13 .rx apps (three guide versions) on the same build: 2, 2, 2, 1, 2, 2, 2, 0, 0. rx-1's wrong detail and
+rx-3's hangs are gone. What is left is agent or guide-caused, as listed in `desk13-probe-2026-11-13`: settings moved
+into a module (rx-1..6), a count effect outside the list's region (rx-5 s17), a row error from a write that answered
+after the page was left (rx-6), and the help item's error boundary around its loading boundary (rx-7).

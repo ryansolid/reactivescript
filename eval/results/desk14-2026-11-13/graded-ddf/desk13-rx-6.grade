@@ -1,0 +1,8 @@
+== hidden
+77/77 passed
+== overlap
+✗ base: tabs: a save that answers after the page was left shows the reloaded settings
+✗ rows: a row action that answers after the issues page was left changes nothing on its return
+36/38 passed
+== fuzz
+desk13-rx-6: 0/20 seeds found a hole
