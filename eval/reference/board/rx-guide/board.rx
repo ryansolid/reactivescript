@@ -1,0 +1,206 @@
+// The board page: three columns, the add form, and the selected card's detail. The data and the writes are in
+// store.rx; this page holds only its inputs, which go when it closes.
+
+import { Card } from "./api"
+import { Row, selected, todoAns, doingAns, doneAns, todoRows, doingRows, doneRows, checklist, items } from "./store.rx"
+import { select, retry, move, add, rename, archive, toggle, addOneItem } from "./store.rx"
+
+fn colName(c: string): string => c == "todo" ? "To do" : c == "doing" ? "Doing" : "Done"
+fn real(rows: Row[] | null): number => rows == null ? 0 : rows.filter(r => !r.adding).length
+fn count(rows: Row[] | null): string => rows == null ? "" : ` (${rows.length})`
+fn findIn(rows: Row[] | null, id: number | null): Row | null => rows == null || id == null ? null : rows.find(r => !r.adding && r.id == id) ?? null
+
+component Column(props: {
+  col: string; rows: Row[] | null; retrying: boolean; left: string; right: string; leftOk: boolean; rightOk: boolean;
+  leftSize: number; rightSize: number; onSelect: (id: number) => void; onMove: (card: Card, col: string, index: number) => void;
+}) {
+  // the heading and the cards show in one region, so the count always counts the cards on screen
+  <section data-testid={`col-${props.col}`} style="min-width: 14rem">
+    {loading fallback { <h2 data-testid={`head-${props.col}`}>{colName(props.col)}</h2><p>loading</p> } {
+      <h2 data-testid={`head-${props.col}`}>{colName(props.col)}{count(props.rows catch (e) => null)}</h2>
+      {errored fallback(e) {
+        {if props.retrying {
+          <p>loading</p>
+        } else {
+          <p>error: {e.message}{" "}<button data-testid={`retry-${props.col}`} onClick={() => { retry(props.col) }}>retry</button></p>
+        }}
+      } {
+        {if props.rows == null {
+          <p>loading</p>
+        } else {
+          <ul>
+            {for r in props.rows {
+              <li>
+                {if r.adding {
+                  <span data-testid="card">{r.title} (adding…)</span>
+                } else {
+                  <button data-testid="card" onClick={() => { props.onSelect(r.id) }}>#{r.id} {r.title} · {r.done}/{r.total}</button>
+                  {if props.left != "" {
+                    {" "}<button data-testid="left" disabled={!props.leftOk} onClick={() => { props.onMove(r.card, props.left, props.leftSize) }}>left</button>
+                  }}
+                  {if props.right != "" {
+                    {" "}<button data-testid="right" disabled={!props.rightOk} onClick={() => { props.onMove(r.card, props.right, props.rightSize) }}>right</button>
+                  }}
+                  {if r.pos > 0 {
+                    {" "}<button data-testid="up" onClick={() => { props.onMove(r.card, props.col, r.pos - 1) }}>up</button>
+                  }}
+                  {if !r.last {
+                    {" "}<button data-testid="down" onClick={() => { props.onMove(r.card, props.col, r.pos + 1) }}>down</button>
+                  }}
+                }}
+              </li>
+            }}
+          </ul>
+        }}
+      }}
+    }}
+  </section>
+}
+
+export component BoardPage() {
+  source newCard: string := ""
+  source titleInput: string := ""
+  source itemInput: string := ""
+  // failures belong to this visit: a write that is declined after the page closed shows nothing on the next one
+  source moveError: string := ""
+  source addError: string := ""
+  source archiveError: string := ""
+  source renameError: string := ""
+  source itemError: string := ""
+
+  // each column as the other panes see it: null while it loads (the probe reads ahead, so a column that loads never
+  // holds another column or the detail) or after it failed; nothing moves into a column that isn't shown
+  todoShown = pending? todoAns ? null : todoRows catch (e) => null
+  doingShown = pending? doingAns ? null : doingRows catch (e) => null
+  doneShown = pending? doneAns ? null : doneRows catch (e) => null
+  todoN = real(todoShown)
+  doingN = real(doingShown)
+  doneN = real(doneShown)
+  todoUp = todoShown != null
+  doingUp = doingShown != null
+  doneUp = doneShown != null
+  intoDoing = doingUp && doingN < 3
+
+  // the detail reads the card where the board shows it
+  selTodo = findIn(todoShown, selected)
+  selDoing = findIn(doingShown, selected)
+  selDone = findIn(doneShown, selected)
+  sel = selTodo ?? selDoing ?? selDone
+  selCol = selTodo != null ? "todo" : selDoing != null ? "doing" : "done"
+
+  action pick(id: number) {
+    titleInput := ""
+    itemInput := ""
+    onFlush(() => {
+      renameError := ""
+      itemError := ""
+    })
+    select(id)
+  }
+
+  action moveTo(c: Card, to: string, i: number) {
+    onFlush(() => { moveError := "" })
+    move(c, to, i, m => { moveError := m })
+  }
+
+  <div>
+    <div style="display: flex; gap: 1.5rem; align-items: flex-start">
+      <div>
+        <Column col="todo" rows={todoRows} retrying={pending? todoAns} left="" right="doing" leftOk={false} rightOk={intoDoing}
+          leftSize={0} rightSize={doingN} onSelect={id => { pick(id) }} onMove={(c, to, i) => { moveTo(c, to, i) }} />
+        <div>
+          <input data-testid="new-card" value={newCard} onInput={e => { newCard := e.target.value }} placeholder="new card" />{" "}
+          {loading fallback { <button data-testid="add-card" disabled>add</button> } {
+            <button data-testid="add-card" disabled={!todoUp} onClick={() => {
+              if (newCard != "") {
+                let t = newCard
+                onFlush(() => {
+                  newCard := ""
+                  addError := ""
+                })
+                add(t, m => { addError := m })
+              }
+            }}>add</button>
+          }}
+          {if addError != "" {
+            <p data-testid="add-error">add error: {addError}</p>
+          }}
+        </div>
+      </div>
+      <Column col="doing" rows={doingRows} retrying={pending? doingAns} left="todo" right="done" leftOk={todoUp} rightOk={doneUp}
+        leftSize={todoN} rightSize={doneN} onSelect={id => { pick(id) }} onMove={(c, to, i) => { moveTo(c, to, i) }} />
+      <Column col="done" rows={doneRows} retrying={pending? doneAns} left="doing" right="" leftOk={intoDoing} rightOk={false}
+        leftSize={doingN} rightSize={0} onSelect={id => { pick(id) }} onMove={(c, to, i) => { moveTo(c, to, i) }} />
+      <section data-testid="detail" style="min-width: 16rem">
+        {if selected == null || sel == null {
+          <p>select a card</p>
+        } else {
+          <h2>#{sel.id} {sel.title}</h2>
+          <p>in {colName(selCol)}</p>
+          <div>
+            <input data-testid="title-input" value={titleInput} onInput={e => { titleInput := e.target.value }} placeholder="new title" />{" "}
+            <button data-testid="rename" onClick={() => {
+              if (titleInput != "") {
+                let t = titleInput
+                onFlush(() => {
+                  titleInput := ""
+                  renameError := ""
+                })
+                rename(sel.id, t, m => { renameError := m })
+              }
+            }}>rename</button>{" "}
+            <button data-testid="archive" onClick={() => {
+              onFlush(() => { archiveError := "" })
+              archive(sel.id, m => { archiveError := m })
+            }}>archive</button>
+          </div>
+          {if renameError != "" {
+            <p>rename error: {renameError}</p>
+          }}
+          <div data-testid="checklist">
+            {loading on(selected) fallback { <p>loading checklist</p> } {
+              {errored fallback(e) { <p>checklist error: {e.message}</p> } {
+                <ul>
+                  {for it in items {
+                    {if it.adding {
+                      <li><span data-testid="item">[ ] {it.text} (adding…)</span></li>
+                    } else {
+                      <li>
+                        <span data-testid="item">[{it.done ? "x" : " "}] {it.text}</span>{" "}
+                        <button data-testid="toggle" onClick={() => {
+                          onFlush(() => { itemError := "" })
+                          toggle(sel.id, it.id, !it.done, m => { itemError := m })
+                        }}>toggle</button>
+                      </li>
+                    }}
+                  }}
+                </ul>
+                <p data-testid="progress">{items.filter(it => it.done).length}/{items.length} done</p>
+                <input data-testid="item-input" value={itemInput} onInput={e => { itemInput := e.target.value }} placeholder="new item" />{" "}
+                <button data-testid="add-item" onClick={() => {
+                  if (itemInput != "") {
+                    let t = itemInput
+                    onFlush(() => {
+                      itemInput := ""
+                      itemError := ""
+                    })
+                    addOneItem(sel.id, t, m => { itemError := m })
+                  }
+                }}>add item</button>
+              }}
+            }}
+          </div>
+          {if itemError != "" {
+            <p>item error: {itemError}</p>
+          }}
+        }}
+      </section>
+    </div>
+    {if moveError != "" {
+      <p data-testid="move-error">move error: {moveError}</p>
+    }}
+    {if archiveError != "" {
+      <p data-testid="archive-error">archive error: {archiveError}</p>
+    }}
+  </div>
+}

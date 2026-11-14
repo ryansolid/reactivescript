@@ -1,0 +1,55 @@
+// The archive page's data and its one write. Restores in flight are a guess list laid over the server's answer; an
+// accepted one ends with the list asked again.
+
+import pure { fetchArchived } from "./api"
+import { restoreCard } from "./api"
+
+// opening the archive page asks for it again; the app opens on the board, so the first open asks
+source visit: number := -1
+archived = visit >= 0 ? await fetchArchived() : []
+source restoring: number[] = []
+shown = archived.filter(a => !restoring.includes(a.id))
+type Fail = (m: string) => void
+
+export action openArchive() {
+  visit := visit + 1
+}
+
+// a decline goes to `fail`, which the page that made the restore owns (its failure lives with that visit)
+action restore(id: number, fail: Fail) {
+  try {
+    guess restoring := xs => [...xs, id]
+    await restoreCard(id)
+    refresh archived
+  } catch (e) {
+    fail(e.message)
+    onFlush(() => { fail(e.message) })
+  }
+}
+
+export component ArchivePage() {
+  source restoreError: string := ""
+
+  <section>
+    <div data-testid="archived">
+      {loading fallback { <p>loading archive</p> } {
+        {errored fallback(e) { <p>archive error: {e.message}</p> } {
+          <ul>
+            {for a in shown {
+              <li>
+                <span data-testid="archived-card">#{a.id} {a.title}</span>{" "}
+                <button data-testid="restore" onClick={() => {
+                  onFlush(() => { restoreError := "" })
+                  restore(a.id, m => { restoreError := m })
+                }}>restore</button>
+              </li>
+            }}
+          </ul>
+        }}
+      }}
+    </div>
+    {if restoreError != "" {
+      <p data-testid="restore-error">restore error: {restoreError}</p>
+    }}
+  </section>
+}

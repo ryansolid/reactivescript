@@ -1,0 +1,21 @@
+// The sprint board: two pages behind tabs. Only the open page is mounted, so leaving one discards everything it
+// holds (its loads, its guesses, its inputs and errors), and opening it again starts it as the app starts.
+
+import { BoardPage } from "./board.rx"
+import { ArchivePage } from "./archive.rx"
+
+export default component App() {
+  source page: string := "board"
+
+  <div>
+    <nav>
+      <button data-testid="tab-board" onClick={() => { page := "board" }}>Board</button>{" "}
+      <button data-testid="tab-archive" onClick={() => { page := "archive" }}>Archive</button>
+    </nav>
+    {if page == "board" {
+      <BoardPage />
+    } else {
+      <ArchivePage />
+    }}
+  </div>
+}

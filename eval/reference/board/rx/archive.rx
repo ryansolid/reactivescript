@@ -1,0 +1,44 @@
+// The archive page: the archived cards, and restoring them. Restores in flight are a guess list laid over the
+// server's answer; an accepted one ends with the list asked again.
+
+import pure { fetchArchived } from "./api"
+import { restoreCard } from "./api"
+
+export component ArchivePage() {
+  archived = await fetchArchived()
+  source restoring: number[] = []
+  shown = archived.filter(a => !restoring.includes(a.id))
+  source restoreError: string := ""
+
+  action restore(id: number) {
+    onFlush(() => { restoreError := "" })
+    try {
+      guess restoring := xs => [...xs, id]
+      await restoreCard(id)
+      refresh archived
+    } catch (e) {
+      restoreError := e.message
+      onFlush(() => { restoreError := e.message })
+    }
+  }
+
+  <section>
+    <div data-testid="archived">
+      {loading fallback { <p>loading archive</p> } {
+        {errored fallback(e) { <p>archive error: {e.message}</p> } {
+          <ul>
+            {for a in shown {
+              <li>
+                <span data-testid="archived-card">#{a.id} {a.title}</span>{" "}
+                <button data-testid="restore" onClick={() => { restore(a.id) }}>restore</button>
+              </li>
+            }}
+          </ul>
+        }}
+      }}
+    </div>
+    {if restoreError != "" {
+      <p data-testid="restore-error">restore error: {restoreError}</p>
+    }}
+  </section>
+}

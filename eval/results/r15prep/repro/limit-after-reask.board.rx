@@ -1,0 +1,20 @@
+import { Row, doingAns, todoRows, doingRows, move } from "./store.rx"
+
+export component BoardPage() {
+  intoDoing = (doingRows catch (e) => null) != null && (doingRows catch (e) => null).length < 3
+
+  <div>
+    <section data-testid="col-todo">
+      {errored fallback(e) { <p>error</p> } {
+        {if todoRows == null {
+          <p>loading</p>
+        } else {
+          {for r in todoRows {
+            <button data-testid="right" disabled={!intoDoing} onClick={() => { move(r.card) }}>right</button>
+          }}
+        }}
+      }}
+    </section>
+    {errored fallback(e) { <p>error</p> } { {if doingRows == null { <p>loading</p> } else { <p>x</p> }} }}
+  </div>
+}

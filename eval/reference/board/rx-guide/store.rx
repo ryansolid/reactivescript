@@ -1,0 +1,173 @@
+// The board's data and every write on it (guide/async.md, "three layers"). The server's answers are equations; the
+// writes still out are guess lists with a constant question, laid over every answer by the equations below, so a
+// card shows each write the same in its column and in the detail. An accepted write ends with the answers asked
+// again; its guess stays until they land (D-34). A declined one reverts with its message, in one frame (AC-7).
+
+import pure { fetchCards, fetchChecklist } from "./api"
+import { moveCard, renameCard, addCard, archiveCard, toggleItem, addItem, Card, Item } from "./api"
+
+// a card as shown, with the answer it came from (a move carries that, so the column it lands in can show it)
+export type Row = { key: string; id: number; title: string; done: number; total: number; adding: boolean; card: Card; pos: number; last: boolean }
+type Move = { id: number; col: string; index: number; card: Card }
+type Rename = { id: number; title: string }
+type Toggle = { card: number; item: number; done: boolean }
+type ItemAdd = { card: number; text: string }
+type Fail = (m: string) => void
+type List = { card: number; items: Item[] }
+
+// opening the board page asks for its columns again (the app opens on it)
+export source visit: number := 0
+export source selected: number | null := null
+
+// the server's answers, with what an accepted add answered written over them until they are asked again (an add's
+// answer is the new card or item itself, so it re-asks nothing); `null` while a column's first answer is out
+export source todoAns = visit >= 0 ? (await fetchCards("todo") -> null) : null
+export source doingAns = visit >= 0 ? (await fetchCards("doing") -> null) : null
+export source doneAns = visit >= 0 ? (await fetchCards("done") -> null) : null
+// the answer names the card it is for, so an item add answered after another card was selected leaves it alone
+export source checklist = selected == null ? null : { card: selected, items: await fetchChecklist(selected) }
+
+source moving: Move[] = []
+source renaming: Rename[] = []
+source archiving: number[] = []
+source adding: string[] = []
+source toggling: Toggle[] = []
+source itemAdding: ItemAdd[] = []
+
+fn without(cs: Card[], id: number): Card[] => cs.filter(c => c.id != id)
+fn step(cs: Card[], col: string, m: Move): Card[] =>
+  m.col != col ? without(cs, m.id) : [...without(cs, m.id).slice(0, m.index), cs.find(c => c.id == m.id) ?? m.card, ...without(cs, m.id).slice(m.index)]
+fn withCard(cs: Card[] | null, c: Card): Card[] | null => cs == null || cs.some(x => x.id == c.id) ? cs : [...cs, c]
+fn counted(cs: Card[] | null, id: number): Card[] | null => cs == null ? cs : cs.map(c => c.id == id ? { ...c, total: c.total + 1 } : c)
+fn withItem(l: List | null, card: number, it: Item): List | null =>
+  l == null || l.card != card || l.items.some(x => x.id == it.id) ? l : { card: card, items: [...l.items, it] }
+fn titleOf(rs: Rename[], id: number, title: string): string => rs.reduce((t, r) => r.id == id ? r.title : t, title)
+fn doneOf(ts: Toggle[], card: number, item: number, done: boolean): boolean => ts.reduce((d, t) => t.card == card && t.item == item ? t.done : d, done)
+type Writes = { moving: Move[]; renaming: Rename[]; archiving: number[]; adding: string[]; toggling: Toggle[]; itemAdding: ItemAdd[] }
+fn shownCard(c: Card, w: Writes): Row =>
+  ({
+    key: `c${c.id}`, id: c.id, title: titleOf(w.renaming, c.id, c.title),
+    done: w.toggling.filter(t => t.card == c.id).reduce((n, t) => n + (t.done ? 1 : -1), c.done),
+    total: c.total + w.itemAdding.filter(a => a.card == c.id).length, adding: false, card: c, pos: 0, last: false,
+  })
+fn placed(cs: Card[], w: Writes): Row[] => cs.map((c, i) => ({ ...shownCard(c, w), pos: i, last: i + 1 == cs.length }))
+fn lay(ans: Card[] | null, col: string, w: Writes): Row[] | null =>
+  ans == null ? null : [
+    ...placed(w.moving.reduce((cs, m) => step(cs, col, m), ans).filter(c => !w.archiving.includes(c.id)), w),
+    ...(col == "todo" ? w.adding.map((t, i) => ({ key: `a${i}`, id: -1, title: t, done: 0, total: 0, adding: true, card: { id: -1, title: t, done: 0, total: 0 }, pos: -1, last: false })) : []),
+  ]
+
+w = { moving: moving, renaming: renaming, archiving: archiving, adding: adding, toggling: toggling, itemAdding: itemAdding }
+// null while the column's first answer is out
+export todoRows = lay(todoAns, "todo", w)
+export doingRows = lay(doingAns, "doing", w)
+export doneRows = lay(doneAns, "done", w)
+
+export type ItemRow = { key: string; id: number; text: string; done: boolean; adding: boolean }
+export items key key = checklist == null ? [] : [
+  ...checklist.items.map(it => ({ key: `i${it.id}`, id: it.id, text: it.text, done: doneOf(toggling, checklist.card, it.id, it.done), adding: false })),
+  ...itemAdding.filter(a => a.card == checklist.card).map((a, i) => ({ key: `a${i}`, id: -1, text: a.text, done: false, adding: true })),
+]
+
+// a write's re-ask (quiet, AC-4) of every column: each lays every write over its answer, and behind moves still
+// out, or answered in another order, the server may hold the card in any of them
+action reask() {
+  refresh todoAns
+  refresh doingAns
+  refresh doneAns
+}
+
+export action openBoard() {
+  visit := visit + 1
+  selected := null
+}
+
+export action select(id: number) {
+  selected := id
+}
+
+export action retry(col: string) {
+  if (col == "todo") {
+    affects todoAns
+    refresh todoAns
+  } else if (col == "doing") {
+    affects doingAns
+    refresh doingAns
+  } else {
+    affects doneAns
+    refresh doneAns
+  }
+}
+
+// Each write reports a decline to `fail`, which the page that made it owns: a failure message lives with the visit,
+// the write may outlive it. An accepted write re-asks what it guessed on.
+export action move(card: Card, col: string, index: number, fail: Fail) {
+  try {
+    guess moving := ms => [...ms, { id: card.id, col: col, index: index, card: card }]
+    await moveCard(card.id, col, index)
+    await reask()
+  } catch (e) {
+    fail(e.message)
+    onFlush(() => { fail(e.message) })
+  }
+}
+
+export action add(title: string, fail: Fail) {
+  try {
+    guess adding := as => [...as, title]
+    let r = await addCard("todo", title)
+    todoAns := cs => withCard(cs, { id: r.id, title: r.title, done: 0, total: 0 })
+  } catch (e) {
+    fail(e.message)
+    onFlush(() => { fail(e.message) })
+  }
+}
+
+export action rename(id: number, title: string, fail: Fail) {
+  try {
+    guess renaming := rs => [...rs, { id: id, title: title }]
+    await renameCard(id, title)
+    await reask()
+  } catch (e) {
+    fail(e.message)
+    onFlush(() => { fail(e.message) })
+  }
+}
+
+export action archive(id: number, fail: Fail) {
+  onFlush(() => { selected := null })
+  try {
+    guess archiving := xs => [...xs, id]
+    await archiveCard(id)
+    await reask()
+  } catch (e) {
+    fail(e.message)
+    onFlush(() => { fail(e.message) })
+  }
+}
+
+export action toggle(card: number, item: number, done: boolean, fail: Fail) {
+  try {
+    guess toggling := ts => [...ts, { card: card, item: item, done: done }]
+    await toggleItem(card, item, done)
+    refresh checklist
+    await reask()
+  } catch (e) {
+    fail(e.message)
+    onFlush(() => { fail(e.message) })
+  }
+}
+
+export action addOneItem(card: number, text: string, fail: Fail) {
+  try {
+    guess itemAdding := xs => [...xs, { card: card, text: text }]
+    let it = await addItem(card, text)
+    checklist := l => withItem(l, card, it)
+    todoAns := cs => counted(cs, card)
+    doingAns := cs => counted(cs, card)
+    doneAns := cs => counted(cs, card)
+  } catch (e) {
+    fail(e.message)
+    onFlush(() => { fail(e.message) })
+  }
+}

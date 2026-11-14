@@ -61,8 +61,22 @@ export async function runTest(browser, url, test) {
     async failOnly(fn, message) { await app.fail(await app.only(fn), message); },
     async noneInAir(fn) { await settle(); const ks = (await app.pending()).filter(k => k.startsWith(`${fn}:`)); if (ks.length) throw new Failure(`expected no ${fn} request in flight, found ${JSON.stringify(ks)}`); },
     async fail(key, message) { await settle(); await page.evaluate(([k, m]) => globalThis.__flights.fail(k, m), [key, message]); await settle(); },
+    // a button next to an element (in the nearest ancestor that holds no other element of its kind): the board's move buttons beside a `card`,
+    // `toggle` beside an `item`, `restore` beside an `archived-card`. `text` is the start of the element's text.
+    near(anchor, text, id) { return page.locator(sel(anchor), { hasText: new RegExp(`^\\s*${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) }).first().locator(`xpath=ancestor::*[count(.//*[@data-testid="${anchor}"]) = 1][1]`).locator(sel(id)); },
+    async clickNear(anchor, text, id) { await app.near(anchor, text, id).first().click(); await settle(); },
+    async nearCount(anchor, text, id) { await settle(); return app.near(anchor, text, id).count(); },
+    /** the button beside the element is shown and disabled (`true`), or shown and enabled (`false`) */
+    async nearDisabled(anchor, text, id, expected = true) { await settle(); const l = app.near(anchor, text, id); if (!(await l.count())) throw new Failure(`expected a [${id}] beside [${anchor}] "${text}…", there is none`); const d = await l.first().isDisabled(); if (d !== expected) throw new Failure(`expected [${id}] beside [${anchor}] "${text}…" to be ${expected ? "disabled" : "enabled"}, it is ${d ? "disabled" : "enabled"}`); },
+    async noNear(anchor, text, id) { if (await app.nearCount(anchor, text, id)) throw new Failure(`expected no [${id}] beside [${anchor}] "${text}…", there is one`); },
+    async disabled(id, expected = true, nth = 0) { await settle(); const l = page.locator(sel(id)).nth(nth); if (!(await l.count())) throw new Failure(`expected [${id}], there is none`); const d = await l.isDisabled(); if (d !== expected) throw new Failure(`expected [${id}] to be ${expected ? "disabled" : "enabled"}, it is ${d ? "disabled" : "enabled"}`); },
+    /** the `card` rows inside column `col` (todo, doing, done), top first */
+    async colRows(col, expected) { await settle(); const r = (await page.locator(`${sel(`col-${col}`)} ${sel("card")}`).allTextContents()).map(norm); if (JSON.stringify(r) !== JSON.stringify(expected)) throw new Failure(`expected [col-${col}] cards ${JSON.stringify(expected)}, got ${JSON.stringify(r)}`); },
     // assertions
     async see(id, ...parts) { const t = await app.text(id); for (const p of parts) if (t == null || !t.includes(p)) throw new Failure(`expected [${id}] to show "${p}", it shows ${t == null ? "nothing (no such element)" : `"${t}"`}`); },
+    /** the page as a whole shows each part (for text the brief places only "on the page") */
+    async seePage(...parts) { await settle(); const t = norm(await page.locator("body").textContent()); for (const p of parts) if (!t.includes(p)) throw new Failure(`expected the page to show "${p}", it shows "${t.slice(0, 300)}"`); },
+    async notSeePage(...parts) { await settle(); const t = norm(await page.locator("body").textContent()); for (const p of parts) if (t.includes(p)) throw new Failure(`expected the page not to show "${p}", it shows "${t.slice(0, 300)}"`); },
     async notSee(id, ...parts) { const t = await app.text(id); for (const p of parts) if (t != null && t.includes(p)) throw new Failure(`expected [${id}] not to show "${p}", it shows "${t}"`); },
     async eq(id, expected) { const t = await app.text(id); if (t !== expected) throw new Failure(`expected [${id}] to read "${expected}", it reads ${t == null ? "nothing (no such element)" : `"${t}"`}`); },
     async rows(id, expected) { const r = await app.items(id); if (JSON.stringify(r) !== JSON.stringify(expected)) throw new Failure(`expected [${id}] rows ${JSON.stringify(expected)}, got ${JSON.stringify(r)}`); },

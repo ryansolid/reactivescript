@@ -23,7 +23,7 @@ const r = await runTest(br, srv.url, { run: async app => {
     else await app.click(op);
     if (process.env.DUMP) console.log("   store:", await app.page.evaluate(() => { const s = globalThis.__stores?.issues; if (!s) return ""; return JSON.stringify([...s].map(x => ({ keys: Object.keys(x), id: x.id, t: x.title, a: x.assignee }))); }));
     if (process.env.EFFLOG) console.log("   fx:", await app.page.evaluate(() => { const l = globalThis.__efflog ?? []; globalThis.__efflog = []; return l.join(" | "); }));
-    console.log(s.slice(0, 32).padEnd(32), ...(process.env.TAB ? [`[${await app.text("tab-issues")}]`] : []), "|", JSON.stringify(await app.items("issue")), "|", (await app.text("detail") ?? "").slice(0, 30), "| air", JSON.stringify(await app.pending()));
+    console.log(s.slice(0, 32).padEnd(32), ...(process.env.TAB ? [`[${await app.text("tab-issues")}]`] : []), "|", JSON.stringify(await app.items("issue")), "|", (await app.text("detail") ?? "").slice(0, Number(process.env.DW ?? 30)), "| air", JSON.stringify(await app.pending()));
   }
 } });
 console.log(r.ok ? "ok" : r.error); await br.close(); srv.close();

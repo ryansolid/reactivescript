@@ -1,0 +1,10 @@
+// `rows key id` over a value that starts null (a first-paint default) never shows the answer: "null" stays after
+// fetchCards:todo lands. Without `key id` it shows "1 rows". rxc accepts it (ST-4a types a keyed equation T[]).
+import pure { fetchCards } from "./api"
+
+ans = await fetchCards("todo") -> null
+rows key id = ans == null ? null : ans
+
+export default component App() {
+  <div data-testid="out">{errored fallback(e) { <p>err</p> } { <p>{rows == null ? "null" : `${rows.length} rows`}</p> }}</div>
+}

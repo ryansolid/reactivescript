@@ -1,0 +1,27 @@
+import pure { fetchCards } from "./api"
+import { moveCard, Card } from "./api"
+
+export type Row = { id: number; card: Card }
+source visit: number := 0
+export source todoAns = visit >= 0 ? (await fetchCards("todo") -> null) : null
+export source doingAns = visit >= 0 ? (await fetchCards("doing") -> null) : null
+source moving: number[] = []
+
+fn lay(ans: Card[] | null, col: string, ms: number[]): Row[] | null =>
+  ans == null ? null : col == "doing" ? [...ans.map(c => ({ id: c.id, card: c })), ...ms.map(m => ({ id: m, card: { id: m, title: "", done: 0, total: 0 } }))] : ans.filter(c => !ms.includes(c.id)).map(c => ({ id: c.id, card: c }))
+export todoRows = lay(todoAns, "todo", moving)
+export doingRows = lay(doingAns, "doing", moving)
+
+action reask() {
+  refresh todoAns
+  refresh doingAns
+}
+
+export action move(card: Card) {
+  try {
+    guess moving := ms => [...ms, card.id]
+    await moveCard(card.id, "doing", 2)
+    await reask()
+  } catch (e) {
+  }
+}

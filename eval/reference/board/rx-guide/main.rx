@@ -1,0 +1,32 @@
+// The sprint board: two pages behind tabs. Only the open page is mounted, so leaving one discards its inputs, and
+// opening it asks for its data again.
+
+import { BoardPage } from "./board.rx"
+import { ArchivePage, openArchive } from "./archive.rx"
+import { openBoard } from "./store.rx"
+
+export default component App() {
+  source page: string := "board"
+
+  <div>
+    <nav>
+      <button data-testid="tab-board" onClick={() => {
+        if (page != "board") {
+          openBoard()
+          page := "board"
+        }
+      }}>Board</button>{" "}
+      <button data-testid="tab-archive" onClick={() => {
+        if (page != "archive") {
+          openArchive()
+          page := "archive"
+        }
+      }}>Archive</button>
+    </nav>
+    {if page == "board" {
+      <BoardPage />
+    } else {
+      <ArchivePage />
+    }}
+  </div>
+}
