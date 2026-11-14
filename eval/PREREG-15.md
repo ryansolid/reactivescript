@@ -79,7 +79,7 @@ The direction is the claim. A null or reversed result is reported as plainly, an
 ## Known caveats (from writing the references)
 
 - **Board, .rx:** the guide's desk9 shape gives fuzz holes on board: each write refreshes its keyed list, and guesses on one list from separate actions end together (H-11, ruled). The .rx reference instead keeps one record of every write per page (passes, 547 lines). Agents who follow the guide's desk9 shape will lose points here. That counts as an agent/guide defect, not a test bug. The guide is not changed for round 15.
-- **Board, Exact:** `parallel` hides an earlier send's failure once a later send concludes, and the brief clears a move error only when the next move starts. The Exact reference keeps errors in its data module.
+- **Board, Exact:** `parallel` hides an earlier send's failure once a later send concludes, and the brief clears a move error only when the next move starts. Idiomatic Contract cannot meet this (`parallel` takes no `then`), so the Exact reference keeps errors in its data module, the only way found. Recorded as an Exact limit that agents must work around; the test stays (Ryan, 2026-11-14).
 - **Board brief, unspecified but untested:**
   - a move into a column still loading;
   - whether "archive error" covers both the archive page's load failure and a declined archive;
