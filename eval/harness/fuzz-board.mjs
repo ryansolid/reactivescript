@@ -13,7 +13,8 @@
 //   is the server's. On the archive page: its rows are the server's archive.
 // Allowances, the same for every arm:
 // - B1 (brief: leaving a page discards it): a write that answers after its page was left need not show on the next
-//   visit, so a visit where one landed is not checked settled (Ryan, 2026-11-14: late writes are out of scope).
+//   visit, so a visit where one landed is not checked settled, nor for a card in two columns (a late move can land
+//   between the visit's column fetches) (Ryan, 2026-11-14: late writes are out of scope).
 // - B2 (brief: "if the server accepts, the card stays where it was moved"): after two moves overlapped in the air, a
 //   column's order is not checked settled for the rest of the visit, only which cards it holds. An app asked to keep a
 //   card where it showed it cannot know an order the server made from answers it applied in another order.
@@ -140,7 +141,7 @@ async function session(browser, url, seed, steps, log) {
     for (const col of COLS) {
       const c = b[col]; if (!c) continue;
       if (c.n !== c.rows.length) note("heading", `head-${col} counts ${c.n}, the column shows ${c.rows.length} cards`);
-      for (const x of c.rows) if (!x.adding) { if (seen.has(x.id)) note("duplicate card", `#${x.id} shows in ${seen.get(x.id)} and ${col}`); seen.set(x.id, col); }
+      for (const x of c.rows) if (!x.adding) { if (seen.has(x.id) && !lateVisit) note("duplicate card", `#${x.id} shows in ${seen.get(x.id)} and ${col}`); seen.set(x.id, col); }
     }
     const placeholders = COLS.flatMap(col => (b[col]?.rows ?? []).filter(x => x.adding).map(x => x.title));
     const addsOut = (await pending()).filter(k => k.startsWith("addCard:")).map(k => k.slice(k.indexOf(",") + 1));
