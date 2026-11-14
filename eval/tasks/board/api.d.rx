@@ -1,0 +1,15 @@
+// src/api.js, as .rx sees it. fetchCards, fetchChecklist and fetchArchived are loaders (safe to ask from an equation);
+// moveCard, renameCard, addCard, archiveCard, toggleItem, addItem and restoreCard write.
+export type Card = { id: number; title: string; done: number; total: number }
+export pure fn fetchCards(column: string): Promise<Card[]>
+export fn moveCard(id: number, column: string, index: number): Promise<{ id: number; column: string; index: number }>
+export fn renameCard(id: number, title: string): Promise<{ id: number; title: string }>
+export fn addCard(column: string, title: string): Promise<{ id: number; title: string }>
+export fn archiveCard(id: number): Promise<{ id: number }>
+export type Item = { id: number; text: string; done: boolean }
+export pure fn fetchChecklist(id: number): Promise<Item[]>
+export fn toggleItem(cardId: number, itemId: number, done: boolean): Promise<{ id: number; done: boolean }>
+export fn addItem(cardId: number, text: string): Promise<Item>
+export type Archived = { id: number; title: string }
+export pure fn fetchArchived(): Promise<Archived[]>
+export fn restoreCard(id: number): Promise<{ id: number }>

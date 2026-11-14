@@ -1,0 +1,14 @@
+export type Column = "todo" | "doing" | "done";
+export type Card = { id: number; title: string; done: number; total: number };
+export function fetchCards(column: Column): Promise<Card[]>;
+export function moveCard(id: number, column: Column, index: number): Promise<{ id: number; column: string; index: number }>;
+export function renameCard(id: number, title: string): Promise<{ id: number; title: string }>;
+export function addCard(column: Column, title: string): Promise<{ id: number; title: string }>;
+export function archiveCard(id: number): Promise<{ id: number }>;
+export type Item = { id: number; text: string; done: boolean };
+export function fetchChecklist(id: number): Promise<Item[]>;
+export function toggleItem(cardId: number, itemId: number, done: boolean): Promise<{ id: number; done: boolean }>;
+export function addItem(cardId: number, text: string): Promise<Item>;
+export type Archived = { id: number; title: string };
+export function fetchArchived(): Promise<Archived[]>;
+export function restoreCard(id: number): Promise<{ id: number }>;
